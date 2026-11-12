@@ -1,0 +1,118 @@
+{
+  "typographyTokens": {
+    "fontFamilies": {
+      "primary": "System Default (Roboto/Google Sans)",
+      "monospace": "System Monospace"
+    },
+    "typeScale": {
+      "displayLarge": {
+        "fontSize": 57,
+        "lineHeight": 64,
+        "fontWeight": "Regular",
+        "letterSpacing": -0.25,
+        "description": "Splash logo"
+      },
+      "displayMedium": {
+        "fontSize": 45,
+        "lineHeight": 52,
+        "fontWeight": "Regular",
+        "letterSpacing": 0,
+        "description": "Unused"
+      },
+      "displaySmall": {
+        "fontSize": 36,
+        "lineHeight": 44,
+        "fontWeight": "Regular",
+        "letterSpacing": 0,
+        "description": "Daily Report score"
+      },
+      "headlineLarge": {
+        "fontSize": 32,
+        "lineHeight": 40,
+        "fontWeight": "Regular",
+        "letterSpacing": 0,
+        "description": "Screen titles"
+      },
+      "headlineMedium": {
+        "fontSize": 28,
+        "lineHeight": 36,
+        "fontWeight": "Regular",
+        "letterSpacing": 0,
+        "description": "Card titles"
+      },
+      "headlineSmall": {
+        "fontSize": 24,
+        "lineHeight": 32,
+        "fontWeight": "Regular",
+        "letterSpacing": 0,
+        "description": "Section headers"
+      },
+      "titleLarge": {
+        "fontSize": 22,
+        "lineHeight": 28,
+        "fontWeight": "Medium",
+        "letterSpacing": 0,
+        "description": "Card subtitles"
+      },
+      "titleMedium": {
+        "fontSize": 16,
+        "lineHeight": 24,
+        "fontWeight": "Medium",
+        "letterSpacing": 0.15,
+        "description": "List items, buttons"
+      },
+      "titleSmall": {
+        "fontSize": 14,
+        "lineHeight": 20,
+        "fontWeight": "Medium",
+        "letterSpacing": 0.1,
+        "description": "Chips, labels"
+      },
+      "bodyLarge": {
+        "fontSize": 16,
+        "lineHeight": 24,
+        "fontWeight": "Regular",
+        "letterSpacing": 0.5,
+        "description": "Body text"
+      },
+      "bodyMedium": {
+        "fontSize": 14,
+        "lineHeight": 20,
+        "fontWeight": "Regular",
+        "letterSpacing": 0.25,
+        "description": "Secondary body"
+      },
+      "bodySmall": {
+        "fontSize": 12,
+        "lineHeight": 16,
+        "fontWeight": "Regular",
+        "letterSpacing": 0.4,
+        "description": "Captions, timestamps"
+      },
+      "labelLarge": {
+        "fontSize": 14,
+        "lineHeight": 20,
+        "fontWeight": "Medium",
+        "letterSpacing": 0.1,
+        "description": "Button text"
+      },
+      "labelMedium": {
+        "fontSize": 12,
+        "lineHeight": 16,
+        "fontWeight": "Medium",
+        "letterSpacing": 0.5,
+        "description": "Small buttons"
+      },
+      "labelSmall": {
+        "fontSize": 11,
+        "lineHeight": 16,
+        "fontWeight": "Medium",
+        "letterSpacing": 0.5,
+        "description": "Tags, badges"
+      }
+    }
+  },
+  "source": "Figma Design System - Typography Styles",
+  "exportedAt": "2024-11-12",
+  "version": "1.0"
+}

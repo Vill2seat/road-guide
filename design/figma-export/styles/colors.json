@@ -1,0 +1,113 @@
+{
+  "colorTokens": {
+    "primary": {
+      "value": "#6FAF8E",
+      "description": "Primary green - main actions, selected states"
+    },
+    "primaryContainer": {
+      "value": "#E7F2EB",
+      "description": "Primary container - card backgrounds, chips"
+    },
+    "secondary": {
+      "value": "#5A8FCF",
+      "description": "Secondary blue - secondary actions, route B"
+    },
+    "secondaryContainer": {
+      "value": "#DCECF3",
+      "description": "Secondary container - card backgrounds"
+    },
+    "background": {
+      "value": "#F7F9F7",
+      "description": "Screen background"
+    },
+    "surface": {
+      "value": "#FFFFFF",
+      "description": "Card background, sheets"
+    },
+    "surfaceVariant": {
+      "value": "#F0F2F0",
+      "description": "Elevated surfaces, dividers"
+    },
+    "onBackground": {
+      "value": "#26352D",
+      "description": "Primary text on background"
+    },
+    "onSurface": {
+      "value": "#26352D",
+      "description": "Text on cards"
+    },
+    "onSurfaceVariant": {
+      "value": "#7B8981",
+      "description": "Secondary text, hints"
+    },
+    "outline": {
+      "value": "#D0D8D3",
+      "description": "Dividers, borders"
+    },
+    "exposure": {
+      "good": {
+        "value": "#8FC9A8",
+        "description": "Good exposure level"
+      },
+      "moderate": {
+        "value": "#E7D18B",
+        "description": "Moderate exposure level"
+      },
+      "high": {
+        "value": "#E8A77F",
+        "description": "High exposure level"
+      },
+      "veryHigh": {
+        "value": "#D98787",
+        "description": "Very high exposure level"
+      }
+    },
+    "state": {
+      "error": {
+        "value": "#D98787",
+        "description": "Error state"
+      },
+      "warning": {
+        "value": "#E8A77F",
+        "description": "Warning state"
+      },
+      "success": {
+        "value": "#8FC9A8",
+        "description": "Success state"
+      },
+      "info": {
+        "value": "#5A8FCF",
+        "description": "Info state"
+      }
+    },
+    "map": {
+      "land": {
+        "value": "#F7F9F7",
+        "description": "Map land background"
+      },
+      "water": {
+        "value": "#DCECF3",
+        "description": "Map water"
+      },
+      "park": {
+        "value": "#E7F2EB",
+        "description": "Map parks/green areas"
+      },
+      "majorRoad": {
+        "value": "#B8C5BC",
+        "description": "Major roads"
+      },
+      "minorRoad": {
+        "value": "#E8EDE8",
+        "description": "Minor roads"
+      },
+      "building": {
+        "value": "#F0F2F0",
+        "description": "Buildings"
+      }
+    }
+  },
+  "source": "Figma Design System - Color Styles",
+  "exportedAt": "2024-11-12",
+  "version": "1.0"
+}

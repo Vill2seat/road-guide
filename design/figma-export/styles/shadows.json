@@ -1,0 +1,38 @@
+{
+  "shadowTokens": {
+    "elevation": {
+      "elevation0": {
+        "description": "Flat - no shadow",
+        "boxShadow": "none"
+      },
+      "elevation1": {
+        "description": "Cards on surface",
+        "boxShadow": "0dp 1dp 2dp 0dp rgba(0,0,0,0.05), 0dp 1dp 3dp 0dp rgba(0,0,0,0.03)",
+        "compose": "Shadow(elevation = 1.dp)"
+      },
+      "elevation2": {
+        "description": "Raised cards",
+        "boxShadow": "0dp 2dp 4dp 0dp rgba(0,0,0,0.06), 0dp 2dp 6dp 0dp rgba(0,0,0,0.04)",
+        "compose": "Shadow(elevation = 3.dp)"
+      },
+      "elevation3": {
+        "description": "Bottom sheet, dialogs",
+        "boxShadow": "0dp 4dp 8dp 0dp rgba(0,0,0,0.08), 0dp 4dp 12dp 0dp rgba(0,0,0,0.06)",
+        "compose": "Shadow(elevation = 6.dp)"
+      },
+      "elevation4": {
+        "description": "Modal bottom sheets",
+        "boxShadow": "0dp 8dp 16dp 0dp rgba(0,0,0,0.1), 0dp 8dp 24dp 0dp rgba(0,0,0,0.08)",
+        "compose": "Shadow(elevation = 12.dp)"
+      }
+    },
+    "mapMarkerShadow": {
+      "description": "Map marker drop shadow",
+      "boxShadow": "0dp 2dp 4dp 0dp rgba(0,0,0,0.2)",
+      "compose": "Shadow(elevation = 4.dp, shape = CircleShape)"
+    }
+  },
+  "source": "Figma Design System - Shadows/Elevation",
+  "exportedAt": "2024-11-12",
+  "version": "1.0"
+}

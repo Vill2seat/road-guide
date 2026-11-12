@@ -1,0 +1,36 @@
+{
+  "spacingTokens": {
+    "space": {
+      "space0": { "value": 0, "unit": "dp", "description": "No space" },
+      "space1": { "value": 4, "unit": "dp", "description": "Icon gaps, tight groups" },
+      "space2": { "value": 8, "unit": "dp", "description": "Internal card padding, item spacing" },
+      "space3": { "value": 12, "unit": "dp", "description": "Medium gaps" },
+      "space4": { "value": 16, "unit": "dp", "description": "Standard screen padding, card margins" },
+      "space5": { "value": 20, "unit": "dp", "description": "Large gaps" },
+      "space6": { "value": 24, "unit": "dp", "description": "Section separation" },
+      "space8": { "value": 32, "unit": "dp", "description": "Major section breaks" },
+      "space10": { "value": 40, "unit": "dp", "description": "Screen-level margins" },
+      "space12": { "value": 48, "unit": "dp", "description": "Large section breaks" },
+      "space16": { "value": 64, "unit": "dp", "description": "Extra large margins" }
+    },
+    "borderRadius": {
+      "radiusSmall": { "value": 8, "unit": "dp", "description": "Small elements, chips" },
+      "radiusMedium": { "value": 12, "unit": "dp", "description": "Cards, buttons" },
+      "radiusLarge": { "value": 16, "unit": "dp", "description": "Large cards, sheets" },
+      "radiusFull": { "value": 999, "unit": "dp", "description": "Pills, circular elements" }
+    },
+    "iconSizes": {
+      "small": { "value": 16, "unit": "dp" },
+      "medium": { "value": 24, "unit": "dp", "description": "Standard icon size" },
+      "large": { "value": 32, "unit": "dp" },
+      "xlarge": { "value": 48, "unit": "dp" }
+    },
+    "touchTargets": {
+      "minimum": { "value": 48, "unit": "dp", "description": "Minimum touch target" },
+      "comfortable": { "value": 56, "unit": "dp", "description": "Comfortable touch target" }
+    }
+  },
+  "source": "Figma Design System - Spacing System",
+  "exportedAt": "2024-11-12",
+  "version": "1.0"
+}

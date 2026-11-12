@@ -1,0 +1,1823 @@
+﻿ROAD GUIDE
+Полное техническое задание — Product & Technical Specification
+Версия: 2.0
+Название продукта: Road Guide
+Тип приложения: Android — Personal Daily Environmental Exposure Tracker & Eco Route Planner
+Основной язык интерфейса: English
+Платформа: Android
+Основная идея: автоматический мониторинг перемещений пользователя в течение дня и оценка экологической нагрузки с возможностью построения альтернативных маршрутов с меньшим воздействием загрязнения.
+________________
+
+
+ЧАСТЬ I. ПРОДУКТ И ЕГО НАЗНАЧЕНИЕ
+1. Концепция Road Guide
+Road Guide — персональный экологический навигатор, который помогает пользователю понимать, где он находится в течение дня, сколько времени проводит в разных местах и какую приблизительную экологическую нагрузку получает из-за окружающей среды.
+Приложение должно работать преимущественно в фоновом режиме и автоматически собирать информацию о перемещениях пользователя.
+В отличие от обычного GPS-трекера, Road Guide анализирует не только маршруты, но и весь день:
+* перемещения пешком;
+* поездки на автомобиле;
+* поездки на общественном транспорте;
+* велосипедные поездки;
+* остановки;
+* посещение мест;
+* продолжительное нахождение в одной локации;
+* время, проведённое около дорог, промышленных объектов и других потенциальных источников загрязнения;
+* время в парках и зелёных зонах;
+* погодные и экологические условия в конкретных местах и в конкретное время.
+В конце дня приложение формирует персональный отчёт.
+В отчёте пользователь видит:
+1. Где он находился.
+2. Сколько времени провёл в каждом месте.
+3. Как перемещался между местами.
+4. Какие участки и периоды дня имели наиболее неблагоприятные экологические условия.
+5. Какой приблизительный уровень экологического воздействия был рассчитан.
+6. Какие факторы повлияли на итоговую оценку.
+7. Какие маршруты или решения могли бы снизить воздействие.
+Дополнительно Road Guide предоставляет самостоятельный Eco Route Planner: пользователь задаёт начальную и конечную точки, после чего получает несколько вариантов маршрута с оценкой времени, расстояния и экологических условий.
+2. Два основных функциональных направления
+2.1. Automatic Daily Environmental Monitoring — основная функция
+Приложение автоматически записывает перемещения пользователя в течение дня.
+Пример:
+* 07:30 — пользователь вышел из дома.
+* 07:30–07:50 — пешком до остановки.
+* 07:50–08:20 — общественный транспорт.
+* 08:20–08:30 — пешком до работы.
+* 08:30–17:30 — пребывание на работе.
+* 17:30–18:00 — поездка домой.
+* 18:00–19:00 — прогулка.
+* 19:00 — возвращение домой.
+Road Guide должен восстановить эту хронологию автоматически, а не требовать от пользователя вручную запускать и останавливать каждую поездку.
+При этом приложение должно отличать:
+* движение;
+* короткую остановку;
+* продолжительное пребывание;
+* смену транспорта;
+* посещение нового места;
+* начало и завершение дня.
+2.2. Eco Route Planner — дополнительная функция
+Пользователь вручную задаёт:
+* начальную точку;
+* конечную точку;
+* при необходимости промежуточные точки;
+* способ передвижения.
+Приложение запрашивает несколько вариантов маршрута и сравнивает их по экологическим характеристикам.
+Например:
+Параметр
+	Route A
+	Route B
+	Route C
+	Distance
+	4.2 km
+	4.8 km
+	5.1 km
+	Estimated time
+	52 min
+	58 min
+	64 min
+	Exposure Score
+	68
+	39
+	27
+	Green areas
+	Low
+	Medium
+	High
+	Road proximity
+	High
+	Medium
+	Low
+	Пользователь должен видеть не только рекомендацию, но и компромиссы: более экологичный маршрут может быть длиннее.
+________________
+
+
+ЧАСТЬ II. ТЕХНИЧЕСКАЯ АРХИТЕКТУРА
+3. Общая архитектура
+Основные логические компоненты:
+1. Background Location Monitoring.
+2. Movement Detection Engine.
+3. Route & Stay Segmentation Engine.
+4. Transport Detection Engine.
+5. Environmental Data Engine.
+6. Geographic Context Engine.
+7. Exposure Calculation Engine.
+8. Daily Exposure Aggregator.
+9. Daily Timeline Engine.
+10. Eco Route Planner.
+11. Local Storage & Data Management.
+12. UI Presentation Layer.
+3.1. Общий поток данных
+Android Location Provider
+        |
+        v
+Background Location Service
+        |
+        v
+Location Points Storage
+        |
+        v
+Movement Detection Engine
+        |
+        +---- Movement
+        |
+        +---- Stay / Stop
+        |
+        +---- Transport Type
+        |
+        v
+Route & Daily Timeline Builder
+        |
+        v
+Geographic Context Engine
+        |
+        +---- OSM Road Data
+        +---- Road Type
+        +---- Green Areas
+        +---- Industrial Areas
+        +---- Nearby Infrastructure
+        |
+        v
+Environmental Data Engine
+        |
+        +---- CAMS / Air Quality
+        +---- Open-Meteo Weather
+        +---- Wind / Rain / Temperature
+        |
+        v
+Exposure Calculation Engine
+        |
+        v
+Daily Exposure Aggregator
+        |
+        +---- Daily Score
+        +---- Segment Scores
+        +---- Confidence
+        +---- Top Contributors
+        |
+        v
+Daily Report + Timeline + Eco Route Planner
+4. Технологический стек
+Сохранять существующую архитектуру проекта и не заменять рабочие компоненты без отдельного технического обоснования.
+Область
+	Технология
+	Platform
+	Android
+	Language
+	Kotlin
+	UI
+	Jetpack Compose
+	Architecture
+	MVVM / Repository pattern
+	Async
+	Kotlin Coroutines
+	Reactive state
+	Kotlin Flow / StateFlow
+	Local database
+	Room
+	Location
+	Google Play Services Location
+	Map
+	MapLibre Native for Android
+	Map data
+	OpenStreetMap
+	Map tiles
+	OpenFreeMap
+	Geographic queries
+	Overpass API
+	Routing
+	OSRM или Valhalla
+	Weather
+	Open-Meteo Weather API
+	Air quality
+	Open-Meteo Air Quality API / CAMS
+	Background execution
+	Android Foreground Service
+	Persistence
+	Room + DataStore
+	Dependency injection
+	Использовать существующее решение проекта
+	Testing
+	JUnit, AndroidX Test, Compose UI Test
+	Не менять Gradle, AGP, Kotlin, SDK и существующие зависимости без предварительного аудита и подтверждения необходимости.
+5. Фоновая запись местоположения
+5.1. Основное требование
+Road Guide должен продолжать сбор данных, когда:
+* пользователь свернул приложение;
+* экран телефона выключен;
+* пользователь переключился на другое приложение;
+* пользователь перемещается между локациями;
+* пользователь долго находится на одном месте.
+Приложение не должно требовать постоянно открытого экрана карты.
+5.2. Android Location Service
+Использовать Fused Location Provider.
+Компонент фоновой записи должен:
+* получать координаты;
+* фиксировать timestamp;
+* сохранять accuracy;
+* учитывать скорость;
+* учитывать bearing, если доступен;
+* фильтровать некорректные GPS-точки;
+* сохранять данные локально;
+* восстанавливать состояние после перезапуска процесса;
+* корректно обрабатывать отсутствие GPS;
+* не создавать дублирующие точки;
+* минимизировать расход батареи.
+Для продолжительного мониторинга предусмотреть Foreground Service типа location с постоянным уведомлением Android.
+Запуск и доступ к местоположению должны соответствовать правилам Android: запрос разрешений должен быть понятным пользователю, а фоновый доступ — обоснованным основной функцией приложения. На Android 10+ действует отдельное разрешение фоновой геолокации; для location foreground service требуется соответствующее объявление типа сервиса. Учитывать ограничения новых версий Android и Google Play. (Android Location Permissions: https://developer.android.com/develop/sensors-and-location/location/permissions)
+5.3. Режимы сбора данных
+В настройках предусмотреть:
+* Automatic Tracking — автоматическая запись.
+* Tracking Paused — временная пауза.
+* Manual Start / Stop — ручное управление.
+* Private Zones — исключение выбранных зон из подробной истории.
+* Tracking Schedule — необязательное расписание активности.
+Приватные зоны не должны отображаться в подробной истории, если пользователь включил их исключение. При этом необходимо ясно объяснить, как исключение влияет на полноту дневной статистики.
+5.4. Интервалы записи
+Не использовать один фиксированный интервал для всех ситуаций.
+Режимы:
+* движение — более частые обновления;
+* медленное движение — адаптивные обновления;
+* длительная остановка — редкие обновления;
+* потеря GPS — сохранение последнего известного состояния с признаком неопределённости.
+Конкретные интервалы и пороги определяются по результатам измерений батареи и качества GPS на реальном устройстве.
+5.5. Модель LocationPoint
+Каждая точка должна содержать:
+* id;
+* latitude;
+* longitude;
+* timestamp;
+* accuracyMeters;
+* speedMetersPerSecond;
+* bearing;
+* altitude, если доступно;
+* provider;
+* isMock, если доступно;
+* battery/collection diagnostics при необходимости;
+* quality flags.
+5.6. Восстановление состояния
+После:
+* перезапуска приложения;
+* уничтожения процесса;
+* перезагрузки телефона;
+* временной потери GPS;
+* отсутствия сети;
+приложение должно восстановить доступные данные и продолжить запись, если пользователь разрешил автоматический мониторинг и условия Android позволяют это сделать.
+Не обещать абсолютную непрерывность: Android, производители устройств и системные ограничения могут прерывать фоновые процессы. Приложение должно показывать пробелы в записи и не маскировать их вымышленными маршрутами.
+6. Movement Detection Engine
+Движение определяется по последовательности координат, времени, скорости и точности GPS.
+Учитывать:
+* расстояние между точками;
+* скорость;
+* изменение направления;
+* длительность неподвижности;
+* accuracy;
+* скачки координат;
+* правдоподобие перемещения.
+6.1. Основные состояния
+UNKNOWN
+STATIONARY
+WALKING
+RUNNING
+CYCLING
+IN_VEHICLE
+PUBLIC_TRANSPORT
+Необязательно определять все типы транспорта с абсолютной точностью. Если данных недостаточно, использовать UNKNOWN или вероятностную классификацию.
+6.2. Stay Detection
+Если пользователь находится в пределах заданного радиуса в течение заданного времени, система может сформировать Stay.
+Stay должен содержать:
+* startTime;
+* endTime;
+* centerLatitude;
+* centerLongitude;
+* radius;
+* confidence;
+* locationLabel, если удалось определить;
+* privacyStatus.
+Короткие остановки на светофоре не должны автоматически становиться отдельными посещениями.
+6.3. Transport Detection
+Определять тип передвижения по сочетанию:
+* скорости;
+* ускорения;
+* характера движения;
+* длительности;
+* GPS-трека;
+* доступных sensor samples;
+* сопоставления с дорожной сетью.
+Для общественного транспорта возможны дополнительные признаки:
+* движение по характерным транспортным коридорам;
+* частые остановки;
+* движение по маршрутам дорог;
+* характерные интервалы скорости.
+Не использовать только скорость как единственный критерий.
+7. Daily Timeline Engine
+Система должна объединять отдельные точки в понятную хронологию дня.
+Пример:
+07:30  Home
+       Stay — 8 h 10 min
+
+
+07:30  Walking
+       1.1 km — 18 min
+
+
+07:48  Public Transport
+       6.4 km — 24 min
+
+
+08:12  Walking
+       450 m — 7 min
+
+
+08:20  Work
+       Stay — 8 h 45 min
+
+
+17:05  Driving
+       5.8 km — 19 min
+
+
+17:24  Park
+       Stay — 42 min
+Каждый элемент Timeline должен иметь:
+* начало и конец;
+* продолжительность;
+* тип события;
+* координаты или геозону;
+* расстояние для перемещения;
+* транспорт;
+* экологическую оценку;
+* confidence;
+* источник данных.
+Пользователь должен иметь возможность исправить ошибочно определённый транспорт или место.
+8. Geographic Context Engine
+Источником географического контекста является OpenStreetMap.
+Использовать:
+* highway;
+* landuse;
+* leisure;
+* natural;
+* industrial;
+* amenity;
+* building;
+* railway;
+* public_transport.
+8.1. Типы объектов
+Road Types:
+* motorway;
+* trunk;
+* primary;
+* secondary;
+* tertiary;
+* residential;
+* service;
+* living_street;
+* cycleway;
+* footway;
+* path.
+Green Areas:
+* park;
+* forest;
+* grass;
+* meadow;
+* recreation_ground;
+* garden.
+Potential Pollution Sources:
+* industrial;
+* major roads;
+* railway infrastructure;
+* port infrastructure;
+* selected industrial facilities.
+Важно: наличие объекта OSM не доказывает фактическую концентрацию загрязнителя. OSM используется как географический контекст и дополнительный фактор, а не как датчик загрязнения.
+8.2. Overpass API
+Использовать Overpass API для получения объектов вокруг маршрута или точки.
+Пример запроса:
+[out:json][timeout:25];
+(
+  way(around:500,60.1699,24.9384)["highway"];
+  way(around:500,60.1699,24.9384)["landuse"];
+  way(around:500,60.1699,24.9384)["leisure"];
+  way(around:500,60.1699,24.9384)["natural"];
+);
+out tags center;
+Требования:
+* кэширование;
+* ограничение частоты запросов;
+* обработка таймаутов;
+* обработка недоступности серверов;
+* не запрашивать один и тот же участок повторно без необходимости;
+* учитывать публичную инфраструктуру Overpass и её ограничения.
+9. Environmental Data Engine
+Экологическая информация привязывается к координатам и времени.
+9.1. Air Quality — Open-Meteo / CAMS
+Основной источник: Open-Meteo Air Quality API.
+Endpoint:
+https://air-quality-api.open-meteo.com/v1/air-quality
+Основные переменные:
+* pm2_5;
+* pm10;
+* nitrogen_dioxide;
+* ozone;
+* sulphur_dioxide;
+* carbon_monoxide;
+* us_aqi;
+* european_aqi.
+Пример:
+https://air-quality-api.open-meteo.com/v1/air-quality
+?latitude=60.1699
+&longitude=24.9384
+&hourly=pm10,pm2_5,nitrogen_dioxide,ozone,sulphur_dioxide,carbon_monoxide,us_aqi
+&timezone=auto
+&timeformat=unixtime
+Open-Meteo предоставляет почасовые данные и использует модели CAMS. Для европейского домена указывается пространственное разрешение около 11 км, для глобального — около 45 км; глобальные и европейские наборы имеют разные характеристики и не должны считаться одинаковыми по точности. (https://open-meteo.com/en/docs/air-quality-api)
+Важно: разрешение модели значительно грубее расстояния между соседними улицами. Поэтому нельзя утверждать, что API точно измеряет загрязнение на конкретном тротуаре. Для оценки конкретного участка использовать сочетание фоновых данных и географического контекста.
+9.2. Weather — Open-Meteo
+Endpoint:
+https://api.open-meteo.com/v1/forecast
+Используемые параметры:
+* temperature_2m;
+* relative_humidity_2m;
+* apparent_temperature;
+* precipitation;
+* rain;
+* showers;
+* wind_speed_10m;
+* wind_direction_10m;
+* cloud_cover;
+* uv_index.
+Настройки:
+* wind_speed_unit=ms;
+* timezone=auto;
+* timeformat=unixtime.
+Погода используется для контекста и корректировки отдельных факторов модели, если такая корректировка обоснована.
+Не считать, что ветер всегда уменьшает воздействие: направление и локальные условия имеют значение.
+9.3. Данные по времени
+Для каждой точки маршрута и каждого Stay система должна выбирать экологические данные, соответствующие:
+* координатам;
+* времени события;
+* временному интервалу модели;
+* актуальности данных.
+9.4. Data Quality Validator
+Сохранить существующие ограничения проекта:
+* максимальный возраст экологических данных: 3 часа;
+* максимальное расстояние между координатами и точкой данных: 30 км;
+* допустимое будущее смещение timestamp: 15 минут.
+Если проверка не пройдена:
+* не использовать данные как достоверные;
+* снижать confidence;
+* показывать отсутствие данных;
+* не подставлять нули как будто загрязнения нет.
+10. Exposure Calculation Engine
+10.1. Назначение
+Exposure Engine рассчитывает относительную экологическую нагрузку по событиям дня.
+Результат — нормализованная оценка 0–100, а не медицинское заключение и не точная измеренная доза загрязнителя.
+В интерфейсе использовать формулировки:
+* Estimated Exposure;
+* Environmental Exposure Score;
+* Estimated Environmental Load;
+* Data Confidence.
+Не использовать формулировки:
+* точная доза;
+* измеренная доза;
+* фактически вдохнутое количество;
+* медицинский риск, если он не подтверждён отдельной валидированной моделью.
+10.2. Базовая формула сегмента
+Сохранить существующую концепцию:
+E_segment = P × T × A × R × W × S
+Где:
+* P — Pollution Factor;
+* T — Time Factor;
+* A — Activity Factor;
+* R — Road / Geographic Context Factor;
+* W — Weather Factor;
+* S — Skin / Exposure Adjustment Factor.
+10.3. Time Factor
+Существующая спецификация:
+T_raw = durationSeconds / 1800.0
+Reference duration = 30 минут.
+EXPOSURE_T_MAX = 2.0
+В рамках текущей модели T ограничивается верхним пределом, определённым существующей реализацией.
+Не менять калибровочные константы без отдельного анализа и тестов.
+10.4. Activity Factor
+Существующий диапазон:
+Activity
+	Factor
+	Stationary
+	0.7
+	Walking
+	Использовать текущую конфигурацию модели
+	Cycling
+	Использовать текущую конфигурацию модели
+	Running
+	До 1.5
+	Факторы должны отражать различия в интенсивности активности, если они обоснованы моделью.
+10.5. Road Factor
+Существующие константы:
+EXPOSURE_ROAD_SOURCE_FACTOR = 1.0
+Географический контекст может учитывать:
+* тип дороги;
+* близость к крупной дороге;
+* наличие зелёной зоны;
+* потенциальный промышленный источник;
+* доступность данных о локальной среде.
+Не вводить произвольные множители для каждого объекта без калибровки.
+10.6. Calibration
+Существующая константа:
+EXPOSURE_CALIBRATION_K = 5.0
+Не менять без проверки текущей формулы, тестов и сохранённых результатов.
+10.7. Skin Factor
+S = 1.0
+Это значение по умолчанию в существующей модели.
+Если пользователь вводит процент открытой кожи, это может использоваться только в отдельной модели контактного воздействия, если она действительно реализована и научно обоснована.
+Нельзя выдавать процент открытой кожи за точную оценку поглощения веществ через кожу.
+10.8. Pollution Factor
+P должен формироваться на основе доступных концентраций загрязнителей.
+Учитывать:
+* PM2.5;
+* PM10;
+* NO2;
+* O3;
+* SO2;
+* CO.
+Не складывать концентрации разных веществ напрямую без нормализации.
+Для каждого загрязнителя требуется:
+1. собственная шкала;
+2. источник порогов;
+3. нормализация;
+4. обработка отсутствующих значений;
+5. оценка качества данных.
+Если используется AQI, указывать, какой именно индекс применяется: US AQI или European AQI. Не смешивать их в одной шкале.
+10.9. Daily Exposure Score
+Дневная оценка должна учитывать все сегменты дня, а не только поездки.
+Концептуальная агрегация:
+DailyExposureRaw =
+    Sum(WeightedExposureSegment_i)
+Затем:
+DailyExposureScore =
+    Normalize(DailyExposureRaw, 0, 100)
+Функция нормализации должна быть определена и протестирована отдельно. Нельзя просто складывать оценки 0–100 за каждый сегмент и ограничивать сумму до 100: это приведёт к некорректным результатам.
+Для дневного отчёта хранить:
+* общий Daily Exposure Score;
+* оценку по каждому сегменту;
+* оценку по каждому Stay;
+* вклад времени;
+* вклад загрязнения;
+* вклад активности;
+* вклад географического контекста;
+* confidence;
+* coverage.
+10.10. Confidence и Coverage
+Две независимые характеристики.
+Coverage — какая доля времени дня покрыта достаточными данными.
+Confidence — насколько надёжны данные и классификация.
+Пример:
+Daily Exposure Score: 42 / 100
+Data Coverage: 86%
+Confidence: Medium
+Coverage нельзя использовать как синоним точности.
+10.11. Indoor / Outdoor
+Road Guide должен отличать пребывание внутри помещения от нахождения на улице, если это возможно определить.
+Однако GPS и CAMS не измеряют качество воздуха внутри квартиры или офиса.
+Поэтому:
+* indoor-периоды должны присутствовать в Timeline;
+* продолжительность пребывания должна учитываться;
+* внешние данные нельзя представлять как измеренное качество воздуха внутри здания;
+* для indoor-периодов показывать ограниченную оценку или статус Insufficient Indoor Data;
+* пользователь может вручную указать Indoor Environment, если это предусмотрено настройками.
+10.12. Важное ограничение модели
+Road Guide оценивает экологические условия и относительную нагрузку. Для расчёта реальной вдыхаемой дозы потребуются дополнительные параметры:
+* концентрация вещества в воздухе;
+* продолжительность воздействия;
+* интенсивность дыхания;
+* вентиляция лёгких;
+* активность;
+* индивидуальные параметры пользователя.
+До появления валидированной модели не выводить миллиграммы или микрограммы полученной пользователем дозы как фактический результат.
+11. Daily Exposure Aggregator
+Основная задача — свести события дня в один отчёт.
+Отчёт должен включать:
+* Daily Exposure Score;
+* Coverage;
+* Confidence;
+* total time tracked;
+* total distance;
+* walking time;
+* transport time;
+* stationary time;
+* number of visited places;
+* top exposure contributors;
+* best environmental period;
+* worst environmental period;
+* recommendations.
+11.1. Top Exposure Contributors
+Пример:
+Main exposure contributors
+
+
+1. 08:10–08:35
+   Public transport near major road
+   Estimated contribution: High
+
+
+2. 17:20–17:45
+   Walking near busy traffic
+   Estimated contribution: Medium
+
+
+3. 12:30–13:10
+   Outdoor stay in urban area
+   Estimated contribution: Medium
+Вклад должен рассчитываться из той же модели, что и итоговая оценка, а не определяться только по субъективной категории места.
+11.2. Recommendations Engine
+Рекомендации должны быть объяснимыми.
+Примеры:
+* Choose a quieter parallel street.
+* Avoid the busiest road section when possible.
+* Consider walking through the nearby park.
+* Shift outdoor activity to a period with better air quality.
+* The alternative route is longer but has a lower estimated exposure score.
+Не давать медицинских рекомендаций.
+12. Eco Route Planner
+12.1. Входные данные
+* Origin;
+* Destination;
+* Waypoints;
+* Transport mode;
+* Preferred route characteristics.
+12.2. Routing Engine
+Возможные варианты:
+* OSRM;
+* Valhalla.
+OSRM поддерживает запрос альтернативных маршрутов, но не гарантирует, что альтернативы будут найдены для каждого запроса. (https://project-osrm.org/docs/)
+Valhalla предоставляет routing API и модели стоимости маршрута. (https://valhalla.github.io/valhalla/api/route/api-reference/)
+Сохранить возможность использовать существующую routing-инфраструктуру проекта.
+12.3. Маршрутные профили
+* Walking;
+* Cycling;
+* Driving;
+* Public Transport — только при наличии подходящего routing provider и данных.
+12.4. Сравнение маршрутов
+Для каждого маршрута рассчитывать:
+* distance;
+* estimated duration;
+* route geometry;
+* pollution context;
+* road proximity;
+* green-area proximity;
+* exposure score;
+* confidence;
+* coverage.
+12.5. Route Recommendation
+Пользователь должен видеть:
+* Fastest;
+* Lowest Exposure;
+* Balanced.
+Balanced — компромисс между временем и экологической оценкой.
+Не выбирать самый экологичный маршрут, если данные по нему недостаточны, без предупреждения.
+13. Local Database
+Использовать Room.
+Основные сущности:
+LocationPoint
+* id;
+* latitude;
+* longitude;
+* timestamp;
+* accuracy;
+* speed;
+* bearing;
+* provider;
+* qualityFlags.
+Route
+* id;
+* startTime;
+* endTime;
+* distance;
+* status;
+* routeType;
+* confidence.
+RouteSegment
+* id;
+* routeId;
+* startTime;
+* endTime;
+* activityType;
+* transportType;
+* distance;
+* geometryReference.
+Stay
+* id;
+* startTime;
+* endTime;
+* centerLatitude;
+* centerLongitude;
+* radius;
+* placeId;
+* confidence.
+Place
+* id;
+* name;
+* category;
+* latitude;
+* longitude;
+* isPrivate;
+* userLabel.
+EnvironmentalSample
+* id;
+* latitude;
+* longitude;
+* timestamp;
+* PM2_5;
+* PM10;
+* NO2;
+* O3;
+* SO2;
+* CO;
+* AQI;
+* temperature;
+* humidity;
+* windSpeed;
+* windDirection;
+* precipitation;
+* source;
+* dataQuality.
+ExposureResult
+* id;
+* routeId;
+* segmentId;
+* stayId;
+* score;
+* confidence;
+* coverage;
+* calculationVersion;
+* createdAt.
+DailyReport
+* id;
+* date;
+* totalScore;
+* confidence;
+* coverage;
+* totalDistance;
+* totalDuration;
+* reportVersion.
+UserSettings
+* trackingEnabled;
+* trackingSchedule;
+* privacyZones;
+* units;
+* language;
+* notifications;
+* dataRetention.
+Существующие сущности и миграции необходимо сохранить и расширять совместимым способом.
+14. Приватность и безопасность
+Данные геолокации являются чувствительными.
+Требования:
+* хранить историю локально по умолчанию;
+* не отправлять координаты на сторонние серверы без необходимости;
+* не передавать историю маршрутов аналитическим системам;
+* предусмотреть удаление истории;
+* предусмотреть экспорт данных;
+* предусмотреть паузу мониторинга;
+* предусмотреть приватные зоны;
+* не показывать домашний адрес в публичных отчётах;
+* объяснять, какие данные и для чего собираются.
+Авторизация не должна быть обязательной для базового локального мониторинга.
+Если появится синхронизация, она должна быть отдельной опциональной функцией с явным согласием пользователя.
+________________
+
+
+ЧАСТЬ III. ПОЛЬЗОВАТЕЛЬСКИЙ ОПЫТ И ИНТЕРФЕЙС
+15. Общий стиль интерфейса
+15.1. Визуальная концепция
+Светлый интерфейс с мягкими пастельными цветами.
+Основные характеристики:
+* светлый фон;
+* пастельные зелёные оттенки;
+* мягкие голубые оттенки;
+* светлые серые поверхности;
+* скруглённые карточки;
+* минималистичные иконки;
+* хорошая читаемость;
+* отсутствие визуального перегруза.
+Цвета должны помогать понимать экологическое состояние, но не должны быть единственным способом передачи информации.
+Предлагаемая палитра:
+Назначение
+	Цвет
+	Primary green
+	#6FAF8E
+	Light green
+	#E7F2EB
+	Soft blue
+	#DCECF3
+	Background
+	#F7F9F7
+	Surface
+	#FFFFFF
+	Text primary
+	#26352D
+	Text secondary
+	#7B8981
+	Good
+	#8FC9A8
+	Moderate
+	#E7D18B
+	High
+	#E8A77F
+	Very high
+	#D98787
+	15.2. Карта
+Карта — основной визуальный фон главного экрана.
+Требования:
+* карта занимает всю доступную область экрана;
+* карточки и панели располагаются поверх карты;
+* нижняя панель прокручивается;
+* карта остаётся визуально на месте, пока пользователь прокручивает содержимое;
+* элементы карты не должны мешать управлению карточками.
+Использовать MapLibre + OpenStreetMap/OpenFreeMap.
+15.3. Иконки
+Использовать единый набор простых line icons.
+Предпочтительно:
+* Map;
+* Route;
+* Calendar;
+* Chart;
+* User;
+* Settings;
+* Navigation;
+* Footprints;
+* Car;
+* Bus;
+* Bicycle;
+* Clock;
+* MapPin;
+* Tree;
+* Wind;
+* Cloud;
+* Sun;
+* Droplets;
+* Shield;
+* Lock;
+* Bell;
+* Battery;
+* Info;
+* ChevronDown;
+* Search;
+* Plus;
+* Minus;
+* Crosshair;
+* Layers;
+* Filter;
+* Edit;
+* Trash;
+* Pause;
+* Play;
+* Check;
+* AlertCircle.
+Иконки должны быть визуально одинаковыми по толщине линий и стилю.
+________________
+
+
+16. Полный список экранов
+16.1. Splash Screen
+Первый экран при запуске.
+Содержимое:
+* логотип Road Guide;
+* название;
+* короткий слоган: "Understand your daily environmental exposure";
+* спокойная светлая подложка.
+Не показывать рекламные баннеры.
+После загрузки приложение переходит к Onboarding или главному экрану, если первоначальная настройка уже завершена.
+16.2. Welcome / Onboarding Screen
+Назначение — объяснить пользователю, что делает приложение.
+Экран содержит три информационных блока:
+1. Track your day
+   * Automatic movement tracking.
+   * Daily location timeline.
+2. Understand your exposure
+   * Air quality and weather context.
+   * Daily environmental report.
+3. Choose better routes
+   * Compare route alternatives.
+   * Find routes with lower estimated exposure.
+Кнопки:
+* Get Started;
+* Sign In — необязательная.
+Не требовать регистрацию до использования основных функций.
+16.3. Location Permission Screen
+Перед системным окном Android объяснить, зачем приложению геолокация.
+Текст:
+"Road Guide uses your location to record your daily movements, recognize visited places and estimate environmental conditions along your day."
+Показать:
+* иконку MapPin;
+* короткое описание;
+* кнопку Continue.
+После нажатия запросить системное разрешение на точное местоположение.
+Если пользователь отказал:
+* объяснить, какие функции будут недоступны;
+* предложить повторить запрос;
+* не блокировать просмотр приложения.
+16.4. Background Location Explanation
+Отдельный экран перед запросом фонового доступа.
+Объяснить:
+"To build your daily timeline, Road Guide needs to continue tracking when the app is not open."
+Показать:
+* пример постоянного уведомления;
+* пример дневной Timeline;
+* кнопку Enable Background Tracking.
+Запрашивать фоновые разрешения в соответствии с текущей версией Android и системным сценарием разрешений.
+Не запускать скрытый сбор геолокации.
+16.5. Activity Recognition Permission
+Если приложение использует Activity Recognition API или датчики для определения типа движения, объяснить назначение разрешения.
+Текст:
+"Road Guide uses movement signals to distinguish walking, cycling, driving and stationary periods."
+Кнопки:
+* Allow;
+* Not Now.
+При отказе приложение продолжает работу с меньшей точностью классификации.
+16.6. Notification Permission
+Объяснить:
+* уведомление показывает, что мониторинг активен;
+* пользователь может поставить мониторинг на паузу;
+* приложение может сообщать о завершении дневного отчёта.
+Не запрашивать разрешение без объяснения.
+16.7. Privacy Setup
+Пользователь выбирает:
+* Enable Automatic Tracking;
+* Start Tracking Manually;
+* Configure Later.
+Отдельно показать:
+* данные хранятся локально;
+* мониторинг можно остановить;
+* можно исключить приватные зоны;
+* можно удалить историю.
+16.8. Main Screen — Tracker / Daily Map
+Это основной экран приложения.
+Карта занимает весь экран и служит фоном.
+Сверху:
+* слева — текущий статус мониторинга;
+* справа — иконка пользователя.
+Центральная область:
+* карта;
+* текущая позиция;
+* линия текущего маршрута;
+* маркеры остановок;
+* кнопка определения текущей позиции.
+Снизу — прокручиваемая панель.
+Верхняя панель
+Иконки:
+* User — профиль и настройки аккаунта;
+* Tracking Status — активен/пауза;
+* Layers — переключение слоёв карты.
+Нижняя панель — карточки
+Карточка 1: Today's Overview
+Показывает:
+* текущую дату;
+* время мониторинга;
+* пройденное расстояние;
+* количество перемещений;
+* количество посещённых мест.
+Карточка 2: Daily Exposure
+Показывает:
+* текущий предварительный Exposure Score;
+* Confidence;
+* Coverage;
+* краткое описание.
+Если день ещё не завершён, использовать подпись "Live estimate".
+Карточка 3: Current Environment
+Показывает:
+* AQI;
+* PM2.5;
+* PM10;
+* температуру;
+* ветер.
+Показывать время обновления и источник данных.
+Карточка 4: Recent Activity
+Последние события:
+* Walking;
+* Driving;
+* Public Transport;
+* Stay.
+Карточка 5: Daily Timeline
+Кнопка View Full Timeline.
+Карточка 6: Quick Actions
+* Pause Tracking;
+* Resume Tracking;
+* Plan a Route;
+* View Daily Report.
+Поведение прокрутки
+Пользователь может прокручивать нижнюю панель вверх и вниз.
+При прокрутке:
+* карта остаётся фоном;
+* нижняя панель может занимать большую часть экрана;
+* верхняя навигация остаётся доступной;
+* кнопки не должны перекрываться картой;
+* при раскрытии карточки показывается больше информации.
+Не размещать отдельный блок "Activity Type" на главном экране Tracker. Тип активности показывается в истории и Timeline.
+16.9. Full Daily Timeline
+Экран хронологии дня.
+Вверху:
+* дата;
+* стрелки предыдущего/следующего дня;
+* кнопка календаря.
+Далее:
+* вертикальная временная шкала;
+* события дня;
+* места;
+* остановки;
+* перемещения;
+* транспорт.
+Каждый элемент:
+* иконка типа события;
+* время начала;
+* время завершения;
+* продолжительность;
+* расстояние;
+* название места;
+* Exposure Score;
+* confidence.
+При нажатии на событие открывается Event Details.
+Доступные действия:
+* Edit Activity;
+* Change Place Name;
+* Correct Transport Type;
+* Mark as Private;
+* Delete Event.
+16.10. Event Details
+Экран подробностей события.
+Показывает:
+* карту участка;
+* начало и конец;
+* длительность;
+* расстояние;
+* тип перемещения;
+* скорость, если доступна;
+* экологическую оценку;
+* загрязнители;
+* погоду;
+* geographic context;
+* confidence;
+* coverage.
+Кнопки:
+* Edit;
+* Report Incorrect Detection;
+* Delete.
+16.11. Daily Report
+Главный экран итогового отчёта.
+Верхняя часть:
+* дата;
+* общий Daily Exposure Score;
+* цветовая шкала;
+* Confidence;
+* Coverage.
+Далее блоки:
+1. Daily Summary
+   * Total distance;
+   * Walking time;
+   * Transport time;
+   * Stationary time;
+   * Visited places.
+2. Exposure Breakdown
+   * PM2.5;
+   * PM10;
+   * NO2;
+   * O3;
+   * другие доступные показатели.
+3. Most Exposed Periods
+   * время;
+   * место;
+   * событие;
+   * причина;
+   * вклад в расчёт.
+4. Best Periods
+   * наиболее благоприятные интервалы дня.
+5. Recommendations
+   * что можно изменить;
+   * альтернативный маршрут;
+   * альтернативное время прогулки.
+6. Data Quality
+   * Coverage;
+   * Confidence;
+   * пропуски данных;
+   * ограничения оценки.
+Кнопки:
+* View on Map;
+* View Timeline;
+* Compare Routes;
+* Share Report — только если пользователь сам инициирует экспорт.
+16.12. Exposure Details
+Подробный разбор оценки.
+Показывать:
+* итоговую оценку;
+* формулу на понятном языке;
+* факторы, повлиявшие на результат;
+* график изменения оценки в течение дня;
+* значения загрязнителей;
+* источники;
+* временные метки;
+* качество данных.
+Обязательно показывать объяснение, почему оценка выросла или снизилась.
+16.13. Eco Route Planner
+Экран ручного построения маршрута.
+Поля:
+* From;
+* To;
+* Add Stop.
+Кнопка:
+* Find Routes.
+Выбор способа передвижения:
+* Walking;
+* Cycling;
+* Driving;
+* Public Transport — если поддерживается.
+Иконки:
+* MapPin — начальная точка;
+* Flag — конечная точка;
+* Plus — добавить остановку;
+* Search — построить маршруты.
+16.14. Route Alternatives
+Показывать карту с несколькими маршрутами.
+Каждый маршрут имеет:
+* номер;
+* расстояние;
+* время;
+* Exposure Score;
+* Confidence;
+* Coverage;
+* краткое описание.
+Категории:
+* Fastest;
+* Lowest Exposure;
+* Balanced.
+При выборе маршрута:
+* линия выбранного маршрута становится заметнее;
+* остальные остаются видимыми;
+* открывается подробная карточка;
+* пользователь может начать навигацию или сохранить маршрут.
+16.15. Route Details
+Показывает:
+* полную карту;
+* расстояние;
+* время;
+* экологическую оценку;
+* разбивку по сегментам;
+* загрязнители;
+* зелёные зоны;
+* близость к крупным дорогам;
+* качество данных.
+Кнопки:
+* Select Route;
+* Start Navigation;
+* Save Route;
+* Compare.
+16.16. Places
+Экран мест пользователя.
+Список:
+* Home;
+* Work;
+* Frequently Visited;
+* Recent Places;
+* Saved Places.
+Каждое место:
+* название;
+* адрес или приблизительная зона;
+* количество посещений;
+* время пребывания;
+* экологическая статистика, если данные достаточны.
+Пользователь может:
+* переименовать место;
+* задать категорию;
+* отметить как приватное;
+* удалить из сохранённых.
+16.17. Place Details
+Показывает:
+* карту;
+* название;
+* адрес;
+* историю посещений;
+* общее время пребывания;
+* экологическую оценку по доступным данным;
+* график по времени.
+16.18. History
+Экран истории по дням.
+Каждая карточка:
+* дата;
+* Daily Exposure Score;
+* Coverage;
+* Confidence;
+* расстояние;
+* количество событий.
+При нажатии открывается Daily Report.
+Фильтры:
+* Date;
+* Exposure Level;
+* Transport;
+* Places.
+16.19. Notifications Center
+Показывает уведомления приложения:
+* Daily Report Ready;
+* Tracking Paused;
+* Location Permission Missing;
+* Environmental Data Unavailable;
+* Tracking Interrupted.
+16.20. Profile
+Иконка пользователя в правом верхнем углу главного экрана.
+Экран:
+* профиль;
+* имя;
+* email, если пользователь авторизован;
+* Sign In;
+* Create Account;
+* Sign Out;
+* Privacy;
+* Settings.
+Авторизация необязательна для базового мониторинга.
+16.21. Sign In
+Поля:
+* Email;
+* Password.
+Кнопки:
+* Sign In;
+* Forgot Password;
+* Create Account.
+16.22. Create Account
+Поля:
+* Name;
+* Email;
+* Password;
+* Confirm Password.
+Показать политику конфиденциальности и согласие на обработку данных.
+Не требовать регистрации для доступа к локальным функциям.
+16.23. Settings
+Главный экран настроек.
+Разделы:
+1. Tracking Settings.
+2. Privacy & Data.
+3. Environmental Preferences.
+4. Notifications.
+5. Map Settings.
+6. Units & Language.
+7. Account.
+8. About Road Guide.
+16.24. Tracking Settings
+Настройки:
+* Automatic Tracking;
+* Tracking Schedule;
+* Location Accuracy;
+* Battery Optimization;
+* Activity Detection;
+* Background Monitoring;
+* Pause Tracking;
+* Tracking Diagnostics.
+Показывать статус разрешений Android.
+16.25. Privacy & Data
+Настройки:
+* Private Zones;
+* Excluded Locations;
+* Data Retention;
+* Export My Data;
+* Delete Daily History;
+* Delete All Data;
+* Privacy Policy.
+Перед удалением данных запрашивать подтверждение.
+16.26. Environmental Preferences
+Показывать:
+* используемые источники данных;
+* выбранный AQI standard;
+* предпочтения отображения загрязнителей;
+* объяснение Exposure Score;
+* предупреждение о расчётном характере данных.
+Не давать пользователю менять научные коэффициенты модели без отдельного экспертного режима.
+16.27. Notifications Settings
+Переключатели:
+* Daily Report;
+* Tracking Status;
+* Data Warnings;
+* Route Suggestions;
+* Environmental Alerts.
+16.28. Map Settings
+Настройки:
+* Map Style;
+* Show Green Areas;
+* Show Major Roads;
+* Show Exposure Overlay;
+* Show Timeline Points;
+* Show Private Zones — по умолчанию выключено.
+16.29. Units & Language
+* Distance: km / miles.
+* Temperature: Celsius / Fahrenheit.
+* Language: English.
+* Time format: 12h / 24h.
+16.30. About Road Guide
+Показывать:
+* App Version;
+* Data Sources;
+* Open-source Licenses;
+* Privacy Policy;
+* Terms;
+* Contact;
+* Disclaimer.
+________________
+
+
+ЧАСТЬ IV. НАВИГАЦИЯ И ИКОНКИ
+17. Нижняя навигация
+Основные разделы:
+1. Map — карта и текущий мониторинг.
+2. Timeline — хронология дня.
+3. Planner — построение маршрутов.
+4. History — предыдущие дни и отчёты.
+5. Places — сохранённые места.
+Profile и Settings доступны через иконку пользователя в верхнем правом углу.
+Иконки
+Раздел
+	Иконка
+	Map
+	map
+	Timeline
+	clock / timeline
+	Planner
+	route
+	History
+	calendar
+	Places
+	map-pin
+	Profile
+	user-round
+	Settings
+	settings
+	Notifications
+	bell
+	Search
+	search
+	Add
+	plus
+	Edit
+	pencil
+	Delete
+	trash-2
+	Pause
+	pause
+	Resume
+	play
+	Layers
+	layers
+	Current location
+	locate
+	Exposure
+	activity / gauge
+	Green areas
+	trees
+	Air quality
+	wind
+	Weather
+	cloud-sun
+	Privacy
+	shield-check
+	________________
+
+
+ЧАСТЬ V. ВИЗУАЛЬНЫЕ МАКЕТЫ
+18. Main Tracker — текстовый wireframe
+┌─────────────────────────────────────┐
+│ Road Guide             ● Tracking  👤│
+│                                     │
+│                                     │
+│               MAP                   │
+│                                     │
+│          Current Location           │
+│                                     │
+│       Route line / Places           │
+│                                     │
+│                                     │
+│                                     │
+├─────────────────────────────────────┤
+│ Today's Overview                    │
+│  8.4 km    5 places    2h 15m       │
+│                                     │
+│ Daily Exposure                      │
+│  42 / 100       Confidence: Medium  │
+│  Coverage: 86%                      │
+│                                     │
+│ Current Environment                 │
+│  AQI 38   PM2.5  8.2 μg/m³         │
+│  12°C     Wind  3.2 m/s             │
+│                                     │
+│ Recent Activity                     │
+│  Walking       07:30–07:48          │
+│  Bus           07:48–08:12          │
+│                                     │
+│ [View Timeline] [Daily Report]      │
+│                                     │
+│ [Map] [Timeline] [Planner] [History]│
+└─────────────────────────────────────┘
+19. Daily Report — текстовый wireframe
+┌─────────────────────────────────────┐
+│ ← Daily Report              11 Nov  │
+│                                     │
+│         DAILY EXPOSURE              │
+│              42 / 100               │
+│          Estimated Load             │
+│                                     │
+│ Confidence: Medium                  │
+│ Coverage: 86%                       │
+│                                     │
+│ ─── Daily Summary ───────────────    │
+│ Distance              8.4 km        │
+│ Walking               52 min        │
+│ Transport             48 min        │
+│ Stationary            9 h 20 min    │
+│ Places                5             │
+│                                     │
+│ ─── Exposure Breakdown ─────────    │
+│ PM2.5                 ...           │
+│ PM10                  ...           │
+│ NO2                   ...           │
+│                                     │
+│ ─── Main Contributors ──────────    │
+│ 08:10–08:35  High                   │
+│ 17:20–17:45  Medium                 │
+│                                     │
+│ ─── Recommendations ────────────     │
+│ Try a quieter parallel street       │
+│                                     │
+│ [View on Map] [Compare Routes]      │
+└─────────────────────────────────────┘
+20. Eco Route Planner — текстовый wireframe
+┌─────────────────────────────────────┐
+│ ← Eco Route Planner                 │
+│                                     │
+│ From                                │
+│ [ Current location             ]    │
+│                                     │
+│ To                                  │
+│ [ Enter destination            ]    │
+│                                     │
+│ + Add Stop                          │
+│                                     │
+│ Mode                                │
+│ [Walking] [Cycling] [Driving]       │
+│                                     │
+│ [Find Routes]                       │
+│                                     │
+│               MAP                   │
+│                                     │
+│ Route A — Fastest                   │
+│ 4.2 km · 52 min · Score 68          │
+│                                     │
+│ Route B — Balanced                  │
+│ 4.8 km · 58 min · Score 39          │
+│                                     │
+│ Route C — Lowest Exposure           │
+│ 5.1 km · 64 min · Score 27          │
+│                                     │
+│ [Select Route]                      │
+└─────────────────────────────────────┘
+Все числовые значения в wireframe являются иллюстративными примерами, а не реальными результатами API.
+________________
+
+
+ЧАСТЬ VI. DESIGN SYSTEM И ИНСТРУМЕНТЫ ДИЗАЙНА
+21. Дизайн должен быть самостоятельной частью проекта
+Нельзя поручать разработчику самостоятельно придумывать каждый экран без утверждённой дизайн-системы.
+Нужно создать:
+* Design System;
+* Color Tokens;
+* Typography;
+* Icon System;
+* Components;
+* Screen Layouts;
+* Navigation Flow;
+* Interactive States;
+* Empty States;
+* Error States;
+* Loading States;
+* Permission States.
+22. Figma
+Figma — основной источник визуальной спецификации.
+В Figma должны находиться:
+1. Color styles.
+2. Typography styles.
+3. Spacing system.
+4. Buttons.
+5. Cards.
+6. Bottom navigation.
+7. Top navigation.
+8. Map overlays.
+9. Timeline components.
+10. Exposure indicators.
+11. Charts.
+12. Forms.
+13. Dialogs.
+14. Permission screens.
+15. Settings components.
+Каждый экран должен иметь:
+* Default state;
+* Loading state;
+* Empty state;
+* Error state;
+* Disabled state, если применимо.
+23. AI-инструменты для дизайна
+Figma AI / Figma Make
+Использовать для:
+* генерации первоначальных концепций;
+* быстрого создания UI-вариантов;
+* преобразования идей в прототипы;
+* работы с компонентами.
+Google Stitch
+Использовать как дополнительный инструмент генерации UI-концепций, если он доступен пользователю.
+Penpot
+Открытая альтернатива для работы с дизайн-системой и прототипами.
+FigJam
+Использовать для:
+* User Flow;
+* Customer Journey;
+* Navigation Map;
+* схем взаимодействия экранов.
+ChatGPT Image Generation
+Использовать для создания визуальных концепций и иллюстраций, но не считать сгенерированное изображение заменой редактируемого макета Figma.
+24. Передача дизайна разработчику
+Разработчик должен получать:
+* ссылку на Figma;
+* описание экрана;
+* размеры;
+* цвета;
+* отступы;
+* иконки;
+* состояния;
+* поведение при нажатии;
+* правила прокрутки;
+* адаптацию к разным размерам экранов.
+Реализация выполняется на Jetpack Compose.
+Визуальная проверка проводится на реальном устройстве, включая Pixel 9.
+________________
+
+
+ЧАСТЬ VII. API И СЕРВИСЫ
+25. Основные интеграции
+Сервис
+	Назначение
+	Google Play Services Location
+	GPS и местоположение
+	Android Activity Recognition / Sensors
+	Определение движения
+	OpenStreetMap
+	Географические данные
+	Overpass API
+	Запрос объектов OSM
+	OpenFreeMap
+	Карта и тайлы
+	MapLibre
+	Отображение карты
+	Open-Meteo Weather
+	Погода
+	Open-Meteo Air Quality
+	Загрязнители и AQI
+	CAMS
+	Модельные данные качества воздуха
+	OSRM
+	Маршрутизация
+	Valhalla
+	Альтернативная маршрутизация
+	Для каждого внешнего сервиса документировать:
+* endpoint;
+* параметры;
+* формат ответа;
+* лимиты;
+* лицензию;
+* атрибуцию;
+* обработку ошибок;
+* кэширование;
+* fallback.
+26. API Data Flow
+Location
+Device GPS
+  -> Location Service
+  -> Location Repository
+  -> Room
+  -> Movement Engine
+Air Quality
+Coordinates + Timestamp
+  -> Environmental Repository
+  -> Open-Meteo Air Quality API
+  -> Data Validator
+  -> Environmental Cache
+  -> Exposure Engine
+Weather
+Coordinates + Timestamp
+  -> Open-Meteo Weather API
+  -> Data Validator
+  -> Weather Cache
+  -> Exposure Engine
+Routing
+Origin + Destination + Mode
+  -> Routing Provider
+  -> Alternative Routes
+  -> Route Geometry
+  -> Environmental Enrichment
+  -> Route Exposure Evaluation
+  -> Route Comparison UI
+
+________________
+ЧАСТЬ VIII. UX-ПРАВИЛА И СОСТОЯНИЯ
+27. Обязательные состояния интерфейса
+Каждый экран, использующий сеть или фоновые данные, должен предусматривать:
+* Loading;
+* Success;
+* Empty;
+* Error;
+* Offline;
+* Permission denied;
+* Insufficient data;
+* Partial data;
+* Stale data.
+28. Отсутствие экологических данных
+Если API недоступен:
+* карта продолжает работать;
+* Timeline продолжает записываться;
+* GPS-данные сохраняются;
+* Exposure Score не должен рассчитываться как будто загрязнение равно нулю;
+* показывается предупреждение;
+* оценка может быть помечена как incomplete.
+29. Ошибки определения активности
+Пользователь должен иметь возможность исправить:
+* Walking на Cycling;
+* Driving на Public Transport;
+* Stay на Movement;
+* ошибочно определённое место.
+Исправление должно сохраняться и влиять на последующий пересчёт.
+30. Дневной цикл
+Road Guide не должен считать день завершённым только потому, что пользователь перестал двигаться.
+Система должна:
+* сохранять продолжительные Stay;
+* не создавать бесконечную активную поездку;
+* корректно разделять даты;
+* учитывать переход через полночь;
+* позволять просматривать прошлые дни;
+* пересчитывать отчёт при появлении опоздавших экологических данных.
+День должен формироваться на основе локального времени пользователя.
+________________
+
+
+ЧАСТЬ IX. ТЕСТИРОВАНИЕ И КРИТЕРИИ КАЧЕСТВА
+31. Технические тесты
+Проверять:
+* GPS точность;
+* фильтрацию скачков;
+* Stay Detection;
+* Movement Detection;
+* Transport Detection;
+* Route Segmentation;
+* Daily Timeline;
+* Exposure Engine;
+* Confidence;
+* Coverage;
+* API validation;
+* offline mode;
+* database migrations;
+* recovery after process death;
+* background service behavior;
+* battery consumption.
+32. Пользовательские сценарии
+Обязательные сценарии:
+1. Пользователь весь день перемещается между несколькими местами.
+2. Пользователь долго находится дома.
+3. Пользователь долго находится на работе.
+4. Пользователь едет на автобусе.
+5. Пользователь едет на автомобиле.
+6. Пользователь гуляет в парке три часа.
+7. Пользователь совершает короткие остановки.
+8. Пользователь проходит рядом с крупной дорогой.
+9. GPS временно пропадает.
+10. Интернет отключается.
+11. Приложение закрывается системой.
+12. Пользователь ставит мониторинг на паузу.
+13. Пользователь исключает приватную зону.
+14. Пользователь строит альтернативные маршруты.
+15. Пользователь исправляет неправильно определённый транспорт.
+33. Критерии качества
+* Ни одна точка не должна теряться без регистрации причины.
+* Данные должны переживать перезапуск приложения.
+* Длительное пребывание не должно исчезать из Timeline.
+* Остановки не должны превращаться в сотни фиктивных маршрутов.
+* Неизвестный тип активности не должен подменяться вымышленным.
+* Отсутствие экологических данных не должно превращаться в нулевое загрязнение.
+* Exposure Score должен быть объяснимым.
+* Confidence и Coverage должны отображаться отдельно.
+* Все основные экраны должны иметь состояния ошибок и отсутствия данных.
+* Основные действия должны быть доступны без регистрации.
+* Приватные зоны должны работать предсказуемо.
+* Интерфейс должен оставаться удобным при работе с картой и прокручиваемой панелью.
+________________
+
+
+ЧАСТЬ X. ДОКУМЕНТАЦИЯ ПРОЕКТА
+34. Структура документации
+docs/
+  product/
+    ROAD_GUIDE_PRODUCT_VISION.md
+    USER_PERSONAS.md
+    USER_JOURNEYS.md
+    FUNCTIONAL_REQUIREMENTS.md
+
+
+  architecture/
+    SYSTEM_ARCHITECTURE.md
+    DATA_FLOW.md
+    BACKGROUND_TRACKING.md
+    MOVEMENT_DETECTION.md
+    DAILY_TIMELINE.md
+    DATABASE_SCHEMA.md
+
+
+  exposure/
+    EXPOSURE_MODEL.md
+    POLLUTION_NORMALIZATION.md
+    DAILY_AGGREGATION.md
+    CONFIDENCE_AND_COVERAGE.md
+    MODEL_LIMITATIONS.md
+
+
+  integrations/
+    OPEN_METEO_WEATHER.md
+    OPEN_METEO_AIR_QUALITY.md
+    CAMS.md
+    OSM.md
+    OVERPASS.md
+    ROUTING.md
+    MAPLIBRE.md
+
+
+  design/
+    DESIGN_SYSTEM.md
+    SCREEN_SPECIFICATION.md
+    ICONS.md
+    FIGMA_HANDOFF.md
+    USER_FLOW.md
+
+
+  privacy/
+    LOCATION_PRIVACY.md
+    PERMISSIONS.md
+    DATA_RETENTION.md
+
+
+  testing/
+    TEST_STRATEGY.md
+    DEVICE_TESTING.md
+    BATTERY_TESTING.md
+    API_TESTING.md
+
+
+  decisions/
+    ADR/
+35. Правила работы AI-агентов
+Analyst
+Задачи:
+* изучение архитектуры;
+* анализ существующих функций;
+* проверка соответствия ТЗ;
+* подготовка технических требований;
+* проверка интеграций;
+* анализ формул;
+* выявление противоречий.
+Developer
+Задачи:
+* реализация утверждённых требований;
+* соблюдение существующей архитектуры;
+* написание тестов;
+* сборка APK;
+* отчёт о результатах.
+Designer
+Задачи:
+* Figma;
+* Design System;
+* экраны;
+* компоненты;
+* иконки;
+* состояния;
+* визуальная проверка.
+QA
+Задачи:
+* функциональное тестирование;
+* проверка реального устройства;
+* проверка фонового режима;
+* проверка батареи;
+* проверка точности Timeline;
+* проверка экологических расчётов.
+AI-агенты не должны самостоятельно менять продуктовую концепцию, формулы или архитектурные решения без фиксации причины и согласования.
+________________
+
+
+ЧАСТЬ XI. ИТОГОВОЕ ОПИСАНИЕ ПРОДУКТА
+Road Guide — это персональная система ежедневного экологического мониторинга и планирования маршрутов.
+Основной пользовательский сценарий:
+1. Пользователь один раз настраивает разрешения и включает автоматический мониторинг.
+2. Road Guide работает в фоне и собирает данные о перемещениях.
+3. Система определяет перемещения, остановки и места пребывания.
+4. Для доступных координат и времени получает экологические и погодные данные.
+5. Рассчитывает относительную экологическую нагрузку.
+6. Формирует дневную Timeline.
+7. В конце дня показывает Daily Report.
+8. Выделяет периоды и места с наибольшим вкладом в оценку.
+9. Предлагает альтернативные маршруты и решения.
+10. Пользователь может самостоятельно построить маршрут и сравнить несколько вариантов.
+Главный принцип Road Guide:
+Не просто показать пользователю, где он был, а помочь понять, как окружающая среда сопровождала его в течение дня и какие изменения маршрута или повседневных решений могут уменьшить предполагаемое воздействие загрязнения.
+Road Guide — Know your route. Understand your exposure. Choose better.

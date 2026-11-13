@@ -1,30 +1,28 @@
 package com.roadguide.app.data.local.dao
 
-import com.roadguide.app.data.local.entity.ExposureResult
+import androidx.room.Dao
 import androidx.room.Insert
 import androidx.room.Query
-import androidx.room.RoomDatabase
+import com.roadguide.app.data.local.entity.ExposureResult
 import kotlinx.coroutines.flow.Flow
 
+@Dao
 interface ExposureResultDao {
+    @Insert
+    suspend fun insert(result: ExposureResult): Long
+
     @Insert
     suspend fun insertAll(results: List<ExposureResult>): List<Long>
 
-    @Query("SELECT * FROM exposure_results WHERE routeId = :routeId")
+    @Query("SELECT * FROM exposure_results WHERE routeId = :routeId ORDER BY createdAt")
     fun getByRouteId(routeId: Long): Flow<List<ExposureResult>>
 
-    @Query("SELECT * FROM exposure_results WHERE segmentId = :segmentId")
+    @Query("SELECT * FROM exposure_results WHERE segmentId = :segmentId LIMIT 1")
     fun getBySegmentId(segmentId: Long): Flow<ExposureResult?>
 
-    @Query("SELECT * FROM exposure_results WHERE stayId = :stayId")
+    @Query("SELECT * FROM exposure_results WHERE stayId = :stayId LIMIT 1")
     fun getByStayId(stayId: Long): Flow<ExposureResult?>
 
-    @Query("SELECT * FROM exposure_results ORDER BY timestamp DESC")
+    @Query("SELECT * FROM exposure_results ORDER BY createdAt DESC")
     fun observeAll(): Flow<List<ExposureResult>>
-
-    @Update
-    suspend fun update(result: ExposureResult)
-
-    @Query("DELETE FROM exposure_results WHERE id = :id")
-    suspend fun deleteById(id: Long)
 }

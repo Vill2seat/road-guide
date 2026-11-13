@@ -4,21 +4,27 @@ import android.content.Context
 import androidx.room.Database
 import androidx.room.Room
 import androidx.room.RoomDatabase
-import com.roadguide.app.data.local.entity.DataRetentionPolicy
-import com.roadguide.app.data.local.entity.ExposureResult
+import androidx.room.TypeConverters
+import com.roadguide.app.data.local.Converters
+import com.roadguide.app.data.local.dao.DailyReportDao
+import com.roadguide.app.data.local.dao.EnvironmentalSampleDao
+import com.roadguide.app.data.local.dao.ExposureResultDao
+import com.roadguide.app.data.local.dao.LocationPointDao
+import com.roadguide.app.data.local.dao.PlaceDao
+import com.roadguide.app.data.local.dao.PrivacyZoneDao
+import com.roadguide.app.data.local.dao.RouteDao
+import com.roadguide.app.data.local.dao.RouteSegmentDao
+import com.roadguide.app.data.local.dao.StayDao
 import com.roadguide.app.data.local.entity.DailyReport
+import com.roadguide.app.data.local.entity.DataRetentionPolicy
+import com.roadguide.app.data.local.entity.EnvironmentalSample
+import com.roadguide.app.data.local.entity.ExposureResult
 import com.roadguide.app.data.local.entity.LocationPoint
 import com.roadguide.app.data.local.entity.Place
 import com.roadguide.app.data.local.entity.PrivacyZone
 import com.roadguide.app.data.local.entity.Route
 import com.roadguide.app.data.local.entity.RouteSegment
-import com.roadguide.app.data.local.entity.RouteStatus
-import com.roadguide.app.data.local.entity.RouteType
 import com.roadguide.app.data.local.entity.Stay
-import com.roadguide.app.data.local.entity.EnvironmentalSample
-import com.roadguide.app.data.local.entity.PrivacyZone.PrivacyZoneType
-import com.roadguide.app.data.local.entity.Place.PlaceCategory
-import com.roadguide.app.data.local.TypeConverters
 
 @Database(
     entities = [
@@ -36,6 +42,7 @@ import com.roadguide.app.data.local.TypeConverters
     version = 1,
     exportSchema = true
 )
+@TypeConverters(Converters::class)
 abstract class RoadGuideDatabase : RoomDatabase() {
 
     abstract fun locationPointDao(): LocationPointDao
@@ -47,8 +54,7 @@ abstract class RoadGuideDatabase : RoomDatabase() {
     abstract fun exposureResultDao(): ExposureResultDao
     abstract fun dailyReportDao(): DailyReportDao
     abstract fun privacyZoneDao(): PrivacyZoneDao
-    
-    @TypeConverters([TypeConverters::class])
+
     companion object {
         @Volatile private var INSTANCE: RoadGuideDatabase? = null
 
@@ -59,7 +65,8 @@ abstract class RoadGuideDatabase : RoomDatabase() {
                     RoadGuideDatabase::class.java,
                     "road_guide.db"
                 ).fallbackToDestructiveMigration()
-                    .build().also { INSTANCE = it }
+                    .build()
+                    .also { INSTANCE = it }
             }
         }
     }

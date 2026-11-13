@@ -4,18 +4,25 @@ import androidx.room.Entity
 import androidx.room.Index
 import androidx.room.PrimaryKey
 
-enum class PlaceCategory { HOME, WORK, FAVORITE, CUSTOM }
-
 @Entity(
     tableName = "places",
-    indices = [Index(value = ["category"]), Index(value = ["visitCount"])]
+    indices = [Index(value = ["category"]), Index(value = ["isPrivate"])]
+)
 data class Place(
     @PrimaryKey(autoGenerate = true) val id: Long = 0,
     val name: String,
+    val category: PlaceCategory = PlaceCategory.OTHER,
     val latitude: Double,
     val longitude: Double,
-    val category: PlaceCategory = PlaceCategory.CUSTOM,
-    val visitCount: Int = 0,
+    val radiusMeters: Double = 100.0,
+    val address: String? = null,
     val isPrivate: Boolean = false,
-    val lastVisit: Long = 0
+    val userLabel: String? = null,
+    val visitCount: Int = 0,
+    val totalDurationSeconds: Long = 0,
+    val firstVisitTime: Long = 0,
+    val lastVisitTime: Long = 0,
+    val environmentalStats: String? = null
 )
+
+enum class PlaceCategory { HOME, WORK, SCHOOL, GYM, PARK, SHOP, RESTAURANT, TRANSIT, OTHER }

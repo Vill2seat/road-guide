@@ -1,20 +1,20 @@
 package com.roadguide.app.data.local.dao
 
-import com.roadguide.app.data.local.entity.LocationPoint
-import androidx.room.DaoObject
+import androidx.room.Dao
 import androidx.room.Delete
 import androidx.room.Insert
 import androidx.room.OnConflictStrategy
 import androidx.room.Query
-import androidx.room.RoomDatabase
+import com.roadguide.app.data.local.entity.LocationPoint
 import kotlinx.coroutines.flow.Flow
 
+@Dao
 interface LocationPointDao {
-    @Insert(onConflict = OnConflictStrategy.REPLACE)
-    suspend fun insert(point: LocationPoint)
+    @Insert(onConflict = OnConflictStrategy.IGNORE)
+    suspend fun insert(point: LocationPoint): Long
 
-    @Insert
-    suspend fun insertAll(points: List<LocationPoint>)
+    @Insert(onConflict = OnConflictStrategy.IGNORE)
+    suspend fun insertAll(points: List<LocationPoint>): List<Long>
 
     @Delete
     suspend fun delete(point: LocationPoint)
@@ -25,9 +25,12 @@ interface LocationPointDao {
     @Query("SELECT * FROM location_points WHERE routeId = :routeId ORDER BY timestamp")
     fun observeByRoute(routeId: Long): Flow<List<LocationPoint>>
 
-    @Query("SELECT * FROM location_points WHERE timestamp BETWEEN :startTime AND :endTime")
+    @Query("SELECT * FROM location_points WHERE timestamp BETWEEN :startTime AND :endTime ORDER BY timestamp")
     fun observeInTimeRange(startTime: Long, endTime: Long): Flow<List<LocationPoint>>
 
-    @Query("SELECT * FROM location_points WHERE routeId = :routeId AND qualityFlags & 2 = 0 ORDER BY timestamp LIMIT :limit")
-    fun observeRecentGoodQuality(routeId: Long, limit: Int): Flow<List<LocationPoint>>
+    @Query("UPDATE location_points SET routeId = :routeId WHERE id IN (:pointIds)")
+    suspend fun assignToRoute(pointIds: List<Long>, routeId: Long)
+
+    @Query("DELETE FROM location_points WHERE timestamp < :cutoff")
+    suspend fun deleteOlderThan(cutoff: Long): Int
 }

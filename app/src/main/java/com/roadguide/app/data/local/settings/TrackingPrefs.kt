@@ -1,47 +1,54 @@
 package com.roadguide.app.data.local.settings
 
-import androidx.datastore.preferences.core.BooleanPref
-import androidx.datastore.preferences.core.Pref
-import androidx.datastore.preferences.core.Preferences
-import androidx.datastore.preferences.core.PreferencesFactory
-import androidx.datastore.rxjava3.
-import com.roadguide.app.domain.model.ExposureConstants
-import io.reactivex.rxjava3.core.Observable
+import android.content.Context
+import androidx.datastore.preferences.core.booleanPreferencesKey
+import androidx.datastore.preferences.core.edit
+import androidx.datastore.preferences.core.intPreferencesKey
+import androidx.datastore.preferences.core.stringPreferencesKey
+import androidx.datastore.preferences.preferencesDataStore
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.map
 
-object TrackingPrefs {
+private val Context.trackingDataStore by preferencesDataStore(name = "tracking_prefs")
 
-    const val TRACKING_ENABLED = "tracking_enabled"
-    const val INTERVAL_SECONDS = "interval_seconds"
-    const val UNITS = "units"
-    const val AQI_THRESHOLD = "aqi_threshold"
+data class TrackingPreferences(
+    val trackingEnabled: Boolean = true,
+    val intervalSeconds: Int = 60,
+    val units: String = "metric",
+    val aqiThreshold: Int = 100
+)
 
-    class TrackingEnabled : BooleanPref(DEFAULT = true)
-    class IntervalSeconds : IntPref(DEFAULT = 60)
-    class Units : StringPref(DEFAULT = "metric")
-        override val values = listOf("metric", "imperial")
-    class AqiThreshold : IntPref(DEFAULT = 100)
+class TrackingPrefs(private val context: Context) {
 
-    object Factory : PreferencesFactory {
-        override fun create(preferences: Preferences): TrackingPrefs = TrackingPrefs(
-            TRACKING_ENABLED to preferences.getOrElse(TRACKING_ENABLED) { TrackingEnabled.defaultValue() },
-            INTERVAL_SECONDS to preferences.getOrElse(INTERVAL_SECONDS) { IntervalSeconds.defaultValue() },
-            UNITS to preferences.getOrElse(UNITS) { Units.defaultValue() },
-            AQI_THRESHOLD to preferences.getOrElse(AQI_THRESHOLD) { AqiThreshold.defaultValue() }
+    val preferencesFlow: Flow<TrackingPreferences> = context.trackingDataStore.data.map { prefs ->
+        TrackingPreferences(
+            trackingEnabled = prefs[TRACKING_ENABLED] ?: true,
+            intervalSeconds = prefs[INTERVAL_SECONDS] ?: 60,
+            units = prefs[UNITS] ?: "metric",
+            aqiThreshold = prefs[AQI_THRESHOLD] ?: 100
         )
     }
 
-    data class Defaults(
-        val trackingEnabled: Boolean = true,
-        val intervalSeconds: Int = 60,
-        val units: String = "metric",
-        val aqiThreshold: Int = 100
-    )
+    suspend fun setTrackingEnabled(enabled: Boolean) {
+        context.trackingDataStore.edit { it[TRACKING_ENABLED] = enabled }
+    }
 
-    val defaultObservables: Observable<TrackingPrefs>
-        = Observable.just(TrackingPrefs(
-            TRACKING_ENABLED to true,
-            INTERVAL_SECONDS to 60,
-            UNITS to "metric",
-            AQI_THRESHOLD to 100
-        ))
+    suspend fun setIntervalSeconds(seconds: Int) {
+        context.trackingDataStore.edit { it[INTERVAL_SECONDS] = seconds }
+    }
+
+    suspend fun setUnits(units: String) {
+        context.trackingDataStore.edit { it[UNITS] = units }
+    }
+
+    suspend fun setAqiThreshold(threshold: Int) {
+        context.trackingDataStore.edit { it[AQI_THRESHOLD] = threshold }
+    }
+
+    companion object {
+        private val TRACKING_ENABLED = booleanPreferencesKey("tracking_enabled")
+        private val INTERVAL_SECONDS = intPreferencesKey("interval_seconds")
+        private val UNITS = stringPreferencesKey("units")
+        private val AQI_THRESHOLD = intPreferencesKey("aqi_threshold")
+    }
 }

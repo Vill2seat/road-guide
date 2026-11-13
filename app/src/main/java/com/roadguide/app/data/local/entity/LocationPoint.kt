@@ -10,18 +10,19 @@ import androidx.room.PrimaryKey
         Index(value = ["timestamp"]),
         Index(value = ["routeId"])
     ]
+)
 data class LocationPoint(
     @PrimaryKey(autoGenerate = true) val id: Long = 0,
     val latitude: Double,
     val longitude: Double,
-    val timestamp: Long,                    // Unix milliseconds (UTC)
+    val timestamp: Long,
     val accuracyMeters: Float,
-    val speedMetersPerSecond: Float?,
-    val bearing: Float?,                    // Degrees 0-360
-    val altitude: Double?,                  // Meters above WGS84 ellipsoid
-    val provider: String,                   // "gps", "network", "fused", "passive"
+    val speedMetersPerSecond: Float? = null,
+    val bearing: Float? = null,
+    val altitude: Double? = null,
+    val provider: String,
     val isMock: Boolean = false,
-    val qualityFlags: Int = 0,              // Bitmask: 1=low_accuracy, 2=mock, 4=jump_detected, 8=stale
-    val routeId: Long? = null,              // FK to Route (nullable until segmented)
-    val collectionDiagnostics: String? = null // JSON: battery, interval, source
+    val qualityFlags: Int = 0,
+    val routeId: Long? = null,
+    val collectionDiagnostics: String? = null
 )

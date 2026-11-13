@@ -1,18 +1,18 @@
 package com.roadguide.app.core.ui.theme
 
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.Button
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.unit.dp
 
-/**
- * Shared empty-state placeholder used by all feature screens.
- */
 @Composable
 fun EmptyPlaceholder(
     title: String,
@@ -20,45 +20,36 @@ fun EmptyPlaceholder(
     modifier: Modifier = Modifier
 ) {
     Column(
-        modifier = modifier.fillMaxSize().padding(RgDimens.Space4),
+        modifier = modifier
+            .fillMaxSize()
+            .padding(RgDimens.Space4),
         horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = androidx.compose.foundation.layout.Arrangement.Center
+        verticalArrangement = Arrangement.Center
     ) {
         Text(
             text = title,
-            style = MaterialTheme.typography.headlineMedium,
+            style = MaterialTheme.typography.headlineSmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
         Text(
             text = message,
             style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.padding(top = RgDimens.Space2)
         )
     }
 }
 
-/**
- * Shared loading-state placeholder.
- */
 @Composable
-fun LoadingPlaceholder(
-    modifier: Modifier = Modifier
-) {
-    androidx.compose.foundation.layout.Box(
+fun LoadingPlaceholder(modifier: Modifier = Modifier) {
+    Box(
         modifier = modifier.fillMaxSize(),
         contentAlignment = Alignment.Center
     ) {
-        Text(
-            text = "Loading…",
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
-        )
+        CircularProgressIndicator()
     }
 }
 
-/**
- * Shared error-state placeholder with optional retry action.
- */
 @Composable
 fun ErrorPlaceholder(
     message: String,
@@ -66,26 +57,29 @@ fun ErrorPlaceholder(
     modifier: Modifier = Modifier
 ) {
     Column(
-        modifier = modifier.fillMaxSize().padding(RgDimens.Space4),
+        modifier = modifier
+            .fillMaxSize()
+            .padding(RgDimens.Space4),
         horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = androidx.compose.foundation.layout.Arrangement.Center
+        verticalArrangement = Arrangement.Center
     ) {
         Text(
             text = "Error",
-            style = MaterialTheme.typography.headlineMedium,
+            style = MaterialTheme.typography.headlineSmall,
             color = MaterialTheme.colorScheme.error
         )
         Text(
             text = message,
             style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.padding(top = RgDimens.Space2)
         )
-        onRetry?.let {
-            androidx.compose.material3.Button(
-                onClick = it,
+        if (onRetry != null) {
+            Button(
+                onClick = onRetry,
                 modifier = Modifier.padding(top = RgDimens.Space2)
             ) {
-                Text(text = "Retry")
+                Text("Retry")
             }
         }
     }

@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Road Guide</string>
+    <string name="nav_map">Map</string>
+    <string name="nav_timeline">Timeline</string>
+    <string name="nav_planner">Planner</string>
+    <string name="nav_history">History</string>
+    <string name="nav_places">Places</string>
+    <string name="nav_profile">Profile</string>
+    <string name="screen_tracker">Tracker</string>
+    <string name="screen_timeline">Timeline</string>
+    <string name="screen_planner">Planner</string>
+    <string name="screen_history">History</string>
+    <string name="screen_places">Places</string>
+    <string name="screen_profile">Profile</string>
+    <string name="placeholder_empty">Empty state</string>
+</resources>

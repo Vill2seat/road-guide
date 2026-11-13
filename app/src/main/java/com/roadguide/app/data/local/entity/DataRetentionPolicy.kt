@@ -1,16 +1,15 @@
 package com.roadguide.app.data.local.entity
 
 import androidx.room.Entity
-import androidx.room.Index
 import androidx.room.PrimaryKey
 
-@Entity(
-    tableName = "data_retention_policy",
-    indices = []
+@Entity(tableName = "data_retention_policy")
 data class DataRetentionPolicy(
-    @PrimaryKey(val id: Long = 0)
-    val maxAgeDays: Int = 30,
-    val maxDataPoints: Int = 10000,
-    val cleanupSchedule: String = "daily",
-    val lastCleanup: Long = 0
+    @PrimaryKey val key: String = "default",
+    val locationPointsDays: Int = 90,
+    val routesDays: Int = 365,
+    val environmentalSamplesHours: Int = 72,
+    val exposureResultsDays: Int = 365,
+    val dailyReportsDays: Int = -1,
+    val autoDeleteEnabled: Boolean = true
 )

@@ -440,3 +440,25 @@ Privacy-first: no third-party data collection.
 3. Link from relevant technical document
 4. Update this index
 5. Never delete — mark Superseded if overturned
+---
+
+## ADR-20261113-009: Build Toolchain Unblock & Data Layer Integration (TASK-009/011)
+
+**Status**: Accepted  
+**Date**: 2026-11-13
+
+### Context
+Repo had a broken/incomplete Gradle configuration and partially integrated TASK-011 sources: missing `[libraries]`/misaligned plugin aliases in `libs.versions.toml`, root/app scripts out of sync, no Room/KSP/DataStore wiring, JDK mismatch in environment (default JDK 25 incompatible with Gradle 8.10.2/AGP 8.7.3; JDK 17 absent initially), and Room entities/DAOs/DB/converters with syntax/integration issues.
+
+### Decision
+- **Toolchain (Variant A):** Gradle wrapper 8.10.2, AGP 8.7.3, Kotlin 2.0.21 + `org.jetbrains.kotlin.plugin.compose`, KSP 2.0.21-1.0.28, Compose BOM 2024.10.01, `compileSdk/targetSdk 35`, `minSdk 26`, Java 17 (`jvmToolchain(17)` + `compilerOptions.jvmTarget=JVM_17`, `source/targetCompatibility 17`).
+- **Environment:** installed JDK 17 (`/usr/local/sdkman/candidates/java/17.0.21.0+2-ms`) and run wrapper with `JAVA_HOME=<jdk17>`; keep constrained flags `-Dorg.gradle.jvmargs="-Xmx1536m -XX:MaxMetaspaceSize=512m" -Dorg.gradle.daemon=false --no-build-cache`.
+- **Gradle config:** rebuilt `libs.versions.toml` (`[versions]/[libraries]/[plugins]`) and aligned root/app `build.gradle.kts` (Compose enabled, Room runtime/ktx + KSP compiler, DataStore Preferences, test deps, `ksp { room.schemaLocation = "$projectDir/schemas" }`).
+- **Data layer v1:** fixed/integrated Room entities, DAOs, `Converters`, and `RoadGuideDatabase` (v1, `exportSchema=true`) to compile against spec-aligned schema baseline; added minimal `TrackingPrefs` DataStore skeleton; set `ExposureConstants`/`ValidatorConstants` to exact spec values.
+- **Cleanup:** removed deprecated `package` from `AndroidManifest.xml`; cleaned invalid `gradle.properties` content.
+
+### Consequences
+- ✅ `:app:assembleDebug` and `:app:lint` **BUILD SUCCESSFUL** with JDK 17 + constrained flags (verified 2026-11-13).
+- ✅ Data layer sources are wired into the build (KSP/Room codegen runs) and constants match spec.
+- ⚠️ Room schema/DAO coverage is a compiling v1 baseline; requires continued parity checks vs `03_DATA_MODEL_AND_DATABASE.md`, proper migrations (dev currently allows destructive fallback), and repository/usecase integration.
+- ⚠️ Build depends on selecting a compatible JDK (JDK 25 default fails); document `JAVA_HOME` for reproducibility.

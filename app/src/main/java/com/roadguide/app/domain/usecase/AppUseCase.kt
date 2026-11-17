@@ -1,21 +1,26 @@
 package com.roadguide.app.domain.usecase
 
-import com.roadguide.app.core.common.Result
-import com.roadguide.app.domain.model.AppModel
+import com.roadguide.app.domain.model.LocationPointSummary
+import com.roadguide.app.domain.model.RouteSummary
+import com.roadguide.app.domain.model.TrackingSettingsState
+import kotlinx.coroutines.flow.Flow
 
-/**
- * Placeholder use case interface.
- * Real use cases are defined per layer in 02_SYSTEM_ARCHITECTURE.md
- * and will be implemented in later tasks.
- */
-interface AppUseCase {
-    suspend fun execute(): Result<AppModel>
+interface GetTrackingSettings {
+    fun invoke(): TrackingSettingsState
 }
 
-/**
- * Placeholder use case implementation.
- */
-class AppUseCaseImpl : AppUseCase {
-    override suspend fun execute(): Result<AppModel> =
-        Result.Success(AppModel(id = "1", name = "Placeholder"))
+interface GetLocationPoints {
+    fun invoke(): Flow<List<LocationPointSummary>>
+}
+
+interface GetRouteSummaries {
+    fun invoke(): Flow<List<RouteSummary>>
+}
+
+interface ToggleTracking {
+    suspend fun invoke(enabled: Boolean): TrackingSettingsState
+}
+
+interface SaveRoute {
+    suspend fun invoke(summary: RouteSummary): Long
 }

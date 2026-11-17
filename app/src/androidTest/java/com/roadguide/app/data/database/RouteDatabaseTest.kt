@@ -115,7 +115,7 @@ class RouteDatabaseTest {
         )
 
         dao.insert(route)
-        dao.delete(route)
+        dao.deleteById(1L)
 
         val fetched = dao.getById(1L).first()
         assert(fetched == null)

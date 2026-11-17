@@ -41,7 +41,7 @@ class TrackingSettingsRepositoryTest {
         // Initial state should be defaults
         val settings = repository.preferencesFlow.first()
 
-        assertEquals(false, settings.enabled)
+        assertEquals(false, settings.trackingEnabled)
         assertEquals(60, settings.intervalSeconds)
         assertEquals("metric", settings.units)
         assertEquals(100, settings.aqiThreshold)
@@ -52,7 +52,7 @@ class TrackingSettingsRepositoryTest {
         repository.setTrackingEnabled(true)
         val settings = repository.preferencesFlow.first()
 
-        assertTrue(settings.enabled)
+        assertTrue(settings.trackingEnabled)
     }
 
     @Test

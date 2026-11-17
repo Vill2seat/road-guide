@@ -1,0 +1,35 @@
+package com.roadguide.app.data.repository
+
+import com.roadguide.app.data.local.dao.DailyReportDao
+import com.roadguide.app.data.local.entity.DailyReport
+import kotlinx.coroutines.flow.Flow
+
+interface DailyReportRepository {
+    suspend fun insert(report: DailyReport): Long
+
+    fun getByDate(date: String): Flow<DailyReport?>
+
+    fun observeByDate(date: String): Flow<DailyReport>
+
+    fun observeRecent(limit: Int): Flow<List<DailyReport>>
+
+    suspend fun update(report: DailyReport)
+
+    suspend fun deleteById(id: Long)
+}
+
+class DailyReportRepositoryImpl(private val dao: DailyReportDao) : DailyReportRepository {
+
+    override suspend fun insert(report: DailyReport): Long = dao.insert(report)
+
+    override fun getByDate(date: String): Flow<DailyReport?> = dao.getByDate(date)
+
+    override fun observeByDate(date: String): Flow<DailyReport> = dao.observeByDate(date)
+
+    override fun observeRecent(limit: Int): Flow<List<DailyReport>> = dao.observeRecent(limit)
+
+    override suspend fun update(report: DailyReport) = dao.update(report)
+
+    override suspend fun deleteById(id: Long) = dao.deleteById(id)
+}
+ENDTITLE

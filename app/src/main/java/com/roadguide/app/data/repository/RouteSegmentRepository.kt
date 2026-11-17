@@ -11,11 +11,7 @@ interface RouteSegmentRepository {
 
     fun getById(id: Long): Flow<RouteSegment?>
 
-    fun getByRouteId(routeId: Long): Flow<List<RouteSegment>>
-
-    fun getByRouteIdAndTimeRange(routeId: Long, startTime: Long, endTime: Long): Flow<List<RouteSegment>>
-
-    suspend fun delete(id: Long)
+    fun observeByRoute(routeId: Long): Flow<List<RouteSegment>>
 }
 
 class RouteSegmentRepositoryImpl(private val dao: RouteSegmentDao) : RouteSegmentRepository {
@@ -26,14 +22,5 @@ class RouteSegmentRepositoryImpl(private val dao: RouteSegmentDao) : RouteSegmen
 
     override fun getById(id: Long): Flow<RouteSegment?> = dao.getById(id)
 
-    override fun getByRouteId(routeId: Long): Flow<List<RouteSegment>> = dao.getByRouteId(routeId)
-
-    override fun getByRouteIdAndTimeRange(
-        routeId: Long,
-        startTime: Long,
-        endTime: Long
-    ): Flow<List<RouteSegment>> = dao.getByRouteIdAndTimeRange(routeId, startTime, endTime)
-
-    override suspend fun delete(id: Long) = dao.delete(id)
+    override fun observeByRoute(routeId: Long): Flow<List<RouteSegment>> = dao.observeByRoute(routeId)
 }
-ENDTITLE

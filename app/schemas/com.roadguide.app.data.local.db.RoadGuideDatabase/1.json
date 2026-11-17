@@ -2,7 +2,7 @@
   "formatVersion": 1,
   "database": {
     "version": 1,
-    "identityHash": "4e1fcebbd845ce8d273ee839dc37c09b",
+    "identityHash": "cf6153cd4155dfbf49fe513dfb7d2475",
     "entities": [
       {
         "tableName": "location_points",
@@ -813,17 +813,11 @@
       },
       {
         "tableName": "exposure_results",
-        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `routeId` INTEGER NOT NULL, `segmentId` INTEGER, `stayId` INTEGER, `score` REAL NOT NULL, `normalizedScore` REAL NOT NULL, `confidence` REAL NOT NULL, `coverage` REAL NOT NULL, `pollutionFactor` REAL NOT NULL, `timeFactor` REAL NOT NULL, `activityFactor` REAL NOT NULL, `roadFactor` REAL NOT NULL, `weatherFactor` REAL NOT NULL, `skinFactor` REAL NOT NULL, `calculationVersion` INTEGER NOT NULL, `createdAt` INTEGER NOT NULL, FOREIGN KEY(`routeId`) REFERENCES `routes`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE , FOREIGN KEY(`segmentId`) REFERENCES `route_segments`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE , FOREIGN KEY(`stayId`) REFERENCES `stays`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `segmentId` INTEGER, `stayId` INTEGER, `routeId` INTEGER, `exposureScore` REAL NOT NULL, `pollution` REAL NOT NULL, `durationMinutes` INTEGER NOT NULL, `activityLevel` REAL NOT NULL, `confidence` REAL NOT NULL, `createdTimestamp` INTEGER NOT NULL, `updatedTimestamp` INTEGER NOT NULL, FOREIGN KEY(`segmentId`) REFERENCES `route_segments`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
         "fields": [
           {
             "fieldPath": "id",
             "columnName": "id",
-            "affinity": "INTEGER",
-            "notNull": true
-          },
-          {
-            "fieldPath": "routeId",
-            "columnName": "routeId",
             "affinity": "INTEGER",
             "notNull": true
           },
@@ -840,14 +834,32 @@
             "notNull": false
           },
           {
-            "fieldPath": "score",
-            "columnName": "score",
+            "fieldPath": "routeId",
+            "columnName": "routeId",
+            "affinity": "INTEGER",
+            "notNull": false
+          },
+          {
+            "fieldPath": "exposureScore",
+            "columnName": "exposureScore",
             "affinity": "REAL",
             "notNull": true
           },
           {
-            "fieldPath": "normalizedScore",
-            "columnName": "normalizedScore",
+            "fieldPath": "pollution",
+            "columnName": "pollution",
+            "affinity": "REAL",
+            "notNull": true
+          },
+          {
+            "fieldPath": "durationMinutes",
+            "columnName": "durationMinutes",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "activityLevel",
+            "columnName": "activityLevel",
             "affinity": "REAL",
             "notNull": true
           },
@@ -858,56 +870,14 @@
             "notNull": true
           },
           {
-            "fieldPath": "coverage",
-            "columnName": "coverage",
-            "affinity": "REAL",
-            "notNull": true
-          },
-          {
-            "fieldPath": "pollutionFactor",
-            "columnName": "pollutionFactor",
-            "affinity": "REAL",
-            "notNull": true
-          },
-          {
-            "fieldPath": "timeFactor",
-            "columnName": "timeFactor",
-            "affinity": "REAL",
-            "notNull": true
-          },
-          {
-            "fieldPath": "activityFactor",
-            "columnName": "activityFactor",
-            "affinity": "REAL",
-            "notNull": true
-          },
-          {
-            "fieldPath": "roadFactor",
-            "columnName": "roadFactor",
-            "affinity": "REAL",
-            "notNull": true
-          },
-          {
-            "fieldPath": "weatherFactor",
-            "columnName": "weatherFactor",
-            "affinity": "REAL",
-            "notNull": true
-          },
-          {
-            "fieldPath": "skinFactor",
-            "columnName": "skinFactor",
-            "affinity": "REAL",
-            "notNull": true
-          },
-          {
-            "fieldPath": "calculationVersion",
-            "columnName": "calculationVersion",
+            "fieldPath": "createdTimestamp",
+            "columnName": "createdTimestamp",
             "affinity": "INTEGER",
             "notNull": true
           },
           {
-            "fieldPath": "createdAt",
-            "columnName": "createdAt",
+            "fieldPath": "updatedTimestamp",
+            "columnName": "updatedTimestamp",
             "affinity": "INTEGER",
             "notNull": true
           }
@@ -919,15 +889,6 @@
           ]
         },
         "indices": [
-          {
-            "name": "index_exposure_results_routeId",
-            "unique": false,
-            "columnNames": [
-              "routeId"
-            ],
-            "orders": [],
-            "createSql": "CREATE INDEX IF NOT EXISTS `index_exposure_results_routeId` ON `${TABLE_NAME}` (`routeId`)"
-          },
           {
             "name": "index_exposure_results_segmentId",
             "unique": false,
@@ -945,46 +906,15 @@
             ],
             "orders": [],
             "createSql": "CREATE INDEX IF NOT EXISTS `index_exposure_results_stayId` ON `${TABLE_NAME}` (`stayId`)"
-          },
-          {
-            "name": "index_exposure_results_calculationVersion",
-            "unique": false,
-            "columnNames": [
-              "calculationVersion"
-            ],
-            "orders": [],
-            "createSql": "CREATE INDEX IF NOT EXISTS `index_exposure_results_calculationVersion` ON `${TABLE_NAME}` (`calculationVersion`)"
           }
         ],
         "foreignKeys": [
-          {
-            "table": "routes",
-            "onDelete": "CASCADE",
-            "onUpdate": "NO ACTION",
-            "columns": [
-              "routeId"
-            ],
-            "referencedColumns": [
-              "id"
-            ]
-          },
           {
             "table": "route_segments",
             "onDelete": "CASCADE",
             "onUpdate": "NO ACTION",
             "columns": [
               "segmentId"
-            ],
-            "referencedColumns": [
-              "id"
-            ]
-          },
-          {
-            "table": "stays",
-            "onDelete": "CASCADE",
-            "onUpdate": "NO ACTION",
-            "columns": [
-              "stayId"
             ],
             "referencedColumns": [
               "id"
@@ -1256,7 +1186,7 @@
     "views": [],
     "setupQueries": [
       "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
-      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '4e1fcebbd845ce8d273ee839dc37c09b')"
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, 'cf6153cd4155dfbf49fe513dfb7d2475')"
     ]
   }
 }

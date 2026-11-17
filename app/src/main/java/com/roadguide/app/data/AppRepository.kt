@@ -34,4 +34,3 @@ class AppRepository(
     val trackingSettingsRepository: TrackingSettingsRepository =
         TrackingSettingsRepositoryImpl(dataProvider.trackingPrefs)
 }
-ENDTITLE

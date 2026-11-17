@@ -13,30 +13,39 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.roadguide.app.core.common.ScreenState
 import com.roadguide.app.core.ui.theme.ErrorPlaceholder
 import com.roadguide.app.core.ui.theme.LoadingPlaceholder
-import com.roadguide.app.core.ui.theme.RgDimens
+import com.roadguide.app.data.local.DataProvider
+import com.roadguide.app.data.local.db.RoadGuideDatabase
+import com.roadguide.app.data.repository.PlaceRepositoryImpl
 import com.roadguide.app.feature.places.viewmodel.PlacesViewModel
 
 @Composable
 fun PlacesScreen(
-    placesViewModel: PlacesViewModel = viewModel(
-        factory = { PlacesViewModel(
-            placeRepository = com.roadguide.app.data.repository.PlaceRepositoryImpl(
-                dao = com.roadguide.app.data.local.db.RoadGuideDatabase.getInstance(
-                    androidx.lifecycle.viewmodel.viewModelScopeLocalContext.current.context
-                ).placeDao
-            ),
-            context = androidx.lifecycle.viewmodel.viewModelScopeLocalContext.current.context
-        ) }
-    ),
     modifier: Modifier = Modifier
 ) {
+    val context = LocalContext.current
+    val dataProvider = DataProvider.getInstance(context)
+    val placeRepository = PlaceRepositoryImpl(dataProvider.placeDao)
+
+    val placesViewModel: PlacesViewModel = viewModel(
+        factory = ViewModelProvider.Factory { _ ->
+            PlacesViewModel(
+                placeRepository = placeRepository,
+                context = context
+            )
+        }
+    )
+
     val uiState by placesViewModel.uiState.collectAsState()
     val places by placesViewModel.places.collectAsState()
+
+    val currentUiState = uiState
 
     Scaffold(
         modifier = modifier.fillMaxSize(),
@@ -47,17 +56,16 @@ fun PlacesScreen(
         }
     ) { padding ->
         Box(modifier = Modifier.padding(padding)) {
-            when (uiState) {
+            when (currentUiState) {
                 ScreenState.Loading -> LoadingPlaceholder(modifier = Modifier.fillMaxSize())
                 is ScreenState.Error -> ErrorPlaceholder(
-                    message = uiState.message,
+                    message = currentUiState.message,
                     onRetry = { placesViewModel.loadData() },
                     modifier = Modifier.fillMaxSize()
                 )
-                ScreenState.Success -> {
+                ScreenState.Success, ScreenState.Empty -> {
                     Column(
-                        modifier = Modifier.fillMaxSize(),
-                        verticalArrangement = androidx.compose.foundation.layout.VerticalArrangement.spacedBy(8.dp)
+                        modifier = Modifier.fillMaxSize()
                     ) {
                         Text(
                             text = "${places.size} places",
@@ -65,7 +73,7 @@ fun PlacesScreen(
                         )
                         places.forEach { place ->
                             Card(modifier = Modifier.fillMaxSize()) {
-                                com.roadguide.app.feature.places.PlacesScreenPlaceItem(
+                                PlacesScreenPlaceItem(
                                     place = place,
                                     modifier = Modifier.padding(12.dp)
                                 )
@@ -83,17 +91,17 @@ private fun PlacesScreenPlaceItem(
     place: com.roadguide.app.data.local.entity.Place,
     modifier: Modifier = Modifier
 ) {
-    androidx.compose.foundation.layout.Column(
+    Column(
         modifier = modifier,
-        horizontalAlignment = androidx.compose.foundation.layout.Alignment.CenterHorizontally
+        horizontalAlignment = Alignment.CenterHorizontally
     ) {
         Text(
             text = place.name,
             style = MaterialTheme.typography.bodyLarge
         )
-                                Text(
-                                    text = place.userLabel ?: place.name,
-                                    style = MaterialTheme.typography.bodyMedium
-                                )
+        Text(
+            text = place.category.toString(),
+            style = MaterialTheme.typography.bodyMedium
+        )
     }
 }

@@ -23,8 +23,8 @@ class ProfileViewModel(
     private val _uiState = MutableStateFlow<ScreenState>(ScreenState.Loading)
     val uiState: StateFlow<ScreenState> = _uiState.asStateFlow()
 
-    val trackingSettings: StateFlow<TrackingSettingsState> = _trackingSettings.asStateFlow()
     private val _trackingSettings = MutableStateFlow(TrackingSettingsState())
+    val trackingSettings: StateFlow<TrackingSettingsState> = _trackingSettings.asStateFlow()
 
     init {
         loadSettings()
@@ -37,7 +37,7 @@ class ProfileViewModel(
                 _trackingSettings.value = state
                 _uiState.value = ScreenState.Success
             } catch (e: Exception) {
-                _uiState.value = ScreenState.Error(e.message)
+                _uiState.value = ScreenState.Error(e.message ?: "Unknown error")
             }
         }
     }
@@ -52,7 +52,7 @@ class ProfileViewModel(
                 _trackingSettings.value = state
                 _uiState.value = ScreenState.Success
             } catch (e: Exception) {
-                _uiState.value = ScreenState.Error(e.message)
+                _uiState.value = ScreenState.Error(e.message ?: "Unknown error")
             }
         }
     }

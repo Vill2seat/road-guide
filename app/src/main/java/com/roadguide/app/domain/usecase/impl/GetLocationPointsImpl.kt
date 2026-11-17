@@ -9,6 +9,7 @@ import com.roadguide.app.data.repository.RouteRepository
 import com.roadguide.app.mapper.LocationPointMapper
 import com.roadguide.app.mapper.RouteMapper
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.map
 
 /**
  * Use case implementation for retrieving location point summaries.

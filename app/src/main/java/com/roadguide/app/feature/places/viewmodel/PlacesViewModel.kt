@@ -4,13 +4,13 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.roadguide.app.core.common.ScreenState
 import com.roadguide.app.data.local.DataProvider
-import com.roadguide.app.data.local.db.RoadGuideDatabase
+import com.roadguide.app.data.local.settings.TrackingPrefs
 import com.roadguide.app.data.repository.PlaceRepository
-import com.roadguide.app.data.repository.PlaceRepositoryImpl
-import com.roadguide.app.data.local.dao.PlaceDao
+import com.roadguide.app.data.repository.TrackingSettingsRepositoryImpl
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 
 /**
@@ -38,19 +38,16 @@ class PlacesViewModel(
     private fun loadData() {
         viewModelScope.launch {
             try {
-                val db = RoadGuideDatabase.getInstance(context)
-                val prefsDao = com.roadguide.app.data.local.settings.TrackingPrefs(context)
-                val trackingPrefsRepository = com.roadguide.app.data.repository.TrackingSettingsRepositoryImpl(
-                    trackingPrefs = prefsDao
-                )
+                val dataProvider = DataProvider.getInstance(context)
+                val trackingPrefsRepository = TrackingSettingsRepositoryImpl(dataProvider.trackingPrefs)
                 val settings = trackingPrefsRepository.preferencesFlow.first()
                 _trackingEnabled.value = settings.trackingEnabled
 
-                val places = placeRepository.observeAll().first()
+                val places = placeRepository.observePublicPlaces().first()
                 _places.value = places
                 _uiState.value = ScreenState.Success
             } catch (e: Exception) {
-                _uiState.value = ScreenState.Error(e.message)
+                _uiState.value = ScreenState.Error(e.message ?: "Unknown error")
             }
         }
     }

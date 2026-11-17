@@ -14,9 +14,7 @@ interface PlaceRepository {
 
     fun observeByCategory(category: PlaceCategory): Flow<List<Place>>
 
-    fun observeMostVisited(): Flow<List<Place>>
-
-    suspend fun deleteById(id: Long)
+    fun observePublicPlaces(): Flow<List<Place>>
 }
 
 class PlaceRepositoryImpl(private val dao: PlaceDao) : PlaceRepository {
@@ -30,8 +28,5 @@ class PlaceRepositoryImpl(private val dao: PlaceDao) : PlaceRepository {
     override fun observeByCategory(category: PlaceCategory): Flow<List<Place>> =
         dao.observeByCategory(category)
 
-    override fun observeMostVisited(): Flow<List<Place>> = dao.observeMostVisited()
-
-    override suspend fun deleteById(id: Long) = dao.deleteById(id)
+    override fun observePublicPlaces(): Flow<List<Place>> = dao.observePublicPlaces()
 }
-ENDTITLE

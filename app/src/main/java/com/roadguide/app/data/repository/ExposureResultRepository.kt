@@ -7,36 +7,27 @@ import kotlinx.coroutines.flow.Flow
 interface ExposureResultRepository {
     suspend fun insert(result: ExposureResult): Long
 
-    suspend fun update(result: ExposureResult)
-
-    fun getById(id: Long): Flow<ExposureResult?>
-
     fun getByRouteId(routeId: Long): Flow<List<ExposureResult>>
 
-    fun getBySegmentId(segmentId: Long): Flow<List<ExposureResult>>
+    fun getBySegmentId(segmentId: Long): Flow<ExposureResult?>
 
-    fun getByStayId(stayId: Long): Flow<List<ExposureResult>>
+    fun getByStayId(stayId: Long): Flow<ExposureResult?>
 
-    suspend fun deleteById(id: Long)
+    fun observeAll(): Flow<List<ExposureResult>>
 }
 
 class ExposureResultRepositoryImpl(private val dao: ExposureResultDao) : ExposureResultRepository {
 
     override suspend fun insert(result: ExposureResult): Long = dao.insert(result)
 
-    override suspend fun update(result: ExposureResult) = dao.update(result)
-
-    override fun getById(id: Long): Flow<ExposureResult?> = dao.getById(id)
-
     override fun getByRouteId(routeId: Long): Flow<List<ExposureResult>> =
         dao.getByRouteId(routeId)
 
-    override fun getBySegmentId(segmentId: Long): Flow<List<ExposureResult>> =
+    override fun getBySegmentId(segmentId: Long): Flow<ExposureResult?> =
         dao.getBySegmentId(segmentId)
 
-    override fun getByStayId(stayId: Long): Flow<List<ExposureResult>> =
+    override fun getByStayId(stayId: Long): Flow<ExposureResult?> =
         dao.getByStayId(stayId)
 
-    override suspend fun deleteById(id: Long) = dao.deleteById(id)
+    override fun observeAll(): Flow<List<ExposureResult>> = dao.observeAll()
 }
-ENDTITLE

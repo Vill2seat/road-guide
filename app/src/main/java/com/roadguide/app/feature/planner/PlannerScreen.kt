@@ -17,5 +17,6 @@ fun PlannerScreen(
         ScreenState.Empty -> EmptyPlaceholder("Planner", "Eco route planner will be displayed here.", modifier)
         ScreenState.Loading -> LoadingPlaceholder(modifier)
         is ScreenState.Error -> ErrorPlaceholder(state.message, onRetry, modifier)
+        ScreenState.Success -> EmptyPlaceholder("Planner", "Planner data loaded.", modifier)
     }
 }

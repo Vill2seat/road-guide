@@ -15,39 +15,44 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.roadguide.app.core.common.ScreenState
 import com.roadguide.app.core.ui.theme.ErrorPlaceholder
 import com.roadguide.app.core.ui.theme.LoadingPlaceholder
-import com.roadguide.app.core.ui.theme.RgDimens
+import com.roadguide.app.data.local.DataProvider
+import com.roadguide.app.data.local.settings.TrackingPrefs
+import com.roadguide.app.data.repository.TrackingSettingsRepositoryImpl
+import com.roadguide.app.domain.usecase.GetTrackingSettings
+import com.roadguide.app.domain.usecase.GetTrackingSettingsImpl
+import com.roadguide.app.domain.usecase.ToggleTracking
+import com.roadguide.app.domain.usecase.ToggleTrackingImpl
 import com.roadguide.app.domain.model.TrackingSettingsState
 import com.roadguide.app.feature.profile.viewmodel.ProfileViewModel
 
 @Composable
 fun ProfileScreen(
-    profileViewModel: ProfileViewModel = viewModel(
-        factory = { ProfileViewModel(
-            getTrackingSettings = com.roadguide.app.domain.usecase.impl.GetTrackingSettingsImpl(
-                trackingSettingsRepository = com.roadguide.app.data.repository.TrackingSettingsRepositoryImpl(
-                    trackingPrefs = com.roadguide.app.data.local.settings.TrackingPrefs(
-                        context = androidx.lifecycle.viewmodel.viewModelScopeLocalContext.current.context
-                    )
-                )
-            ),
-            toggleTracking = com.roadguide.app.domain.usecase.impl.ToggleTrackingImpl(
-                trackingSettingsRepository = com.roadguide.app.data.repository.TrackingSettingsRepositoryImpl(
-                    trackingPrefs = com.roadguide.app.data.local.settings.TrackingPrefs(
-                        context = androidx.lifecycle.viewmodel.viewModelScopeLocalContext.current.context
-                    )
-                )
-            )
-        ) }
-    ),
     modifier: Modifier = Modifier
 ) {
+    val context = LocalContext.current
+    val trackingPrefs = TrackingPrefs(context)
+    val trackingSettingsRepository = TrackingSettingsRepositoryImpl(trackingPrefs)
+
+    val profileViewModel: ProfileViewModel = viewModel(
+        factory = ViewModelProvider.Factory { _ ->
+            ProfileViewModel(
+                getTrackingSettings = GetTrackingSettingsImpl(trackingSettingsRepository),
+                toggleTracking = ToggleTrackingImpl(trackingSettingsRepository)
+            )
+        }
+    )
+
     val uiState by profileViewModel.uiState.collectAsState()
     val trackingSettings by profileViewModel.trackingSettings.collectAsState()
+
+    val currentUiState = uiState
 
     Scaffold(
         modifier = modifier.fillMaxSize(),
@@ -58,14 +63,14 @@ fun ProfileScreen(
         }
     ) { padding ->
         Box(modifier = Modifier.padding(padding)) {
-            when (uiState) {
+            when (currentUiState) {
                 ScreenState.Loading -> LoadingPlaceholder(modifier = Modifier.fillMaxSize())
                 is ScreenState.Error -> ErrorPlaceholder(
-                    message = uiState.message,
+                    message = currentUiState.message,
                     onRetry = { profileViewModel.loadSettings() },
                     modifier = Modifier.fillMaxSize()
                 )
-                ScreenState.Success -> {
+                ScreenState.Success, ScreenState.Empty -> {
                     Column(
                         modifier = Modifier.fillMaxSize(),
                         horizontalAlignment = Alignment.CenterHorizontally,
@@ -77,7 +82,7 @@ fun ProfileScreen(
                                 containerColor = MaterialTheme.colorScheme.surface
                             )
                         ) {
-                            com.roadguide.app.feature.profile.ProfileScreenSettings(
+                            ProfileScreenSettings(
                                 settings = trackingSettings,
                                 onTrackingToggle = { profileViewModel.toggleTracking(it) },
                                 modifier = Modifier.padding(16.dp)
@@ -96,9 +101,9 @@ private fun ProfileScreenSettings(
     onTrackingToggle: (Boolean) -> Unit,
     modifier: Modifier = Modifier
 ) {
-    androidx.compose.foundation.layout.Column(
+    Column(
         modifier = modifier,
-        horizontalAlignment = androidx.compose.foundation.layout.Alignment.CenterHorizontally
+        horizontalAlignment = Alignment.CenterHorizontally
     ) {
         Text(
             text = "Tracking Settings",

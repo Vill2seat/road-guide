@@ -9,37 +9,46 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.roadguide.app.core.common.ScreenState
 import com.roadguide.app.core.ui.theme.ErrorPlaceholder
 import com.roadguide.app.core.ui.theme.LoadingPlaceholder
-import com.roadguide.app.core.ui.theme.RgDimens
-import com.roadguide.app.domain.model.RouteSummary
+import com.roadguide.app.data.local.DataProvider
+import com.roadguide.app.data.local.db.RoadGuideDatabase
+import com.roadguide.app.data.repository.RouteRepositoryImpl
+import com.roadguide.app.domain.usecase.GetRouteSummaries
+import com.roadguide.app.domain.usecase.impl.GetRouteSummariesImpl
 import com.roadguide.app.feature.timeline.viewmodel.TimelineViewModel
+import com.roadguide.app.mapper.RouteMapper
 
 @Composable
 fun TimelineScreen(
-    timelineViewModel: TimelineViewModel = viewModel(
-        factory = { TimelineViewModel(
-            getRouteSummaries = com.roadguide.app.domain.usecase.impl.GetRouteSummariesImpl(
-                routeRepository = com.roadguide.app.data.repository.RouteRepositoryImpl(
-                    dao = com.roadguide.app.data.local.db.RoadGuideDatabase.getInstance(
-                        androidx.lifecycle.viewmodel.viewModelScopeLocalContext.current.context
-                    ).routeDao
-                )
-            )
-        ) }
-    ),
     modifier: Modifier = Modifier
 ) {
+    val context = LocalContext.current
+    val dataProvider = DataProvider.getInstance(context)
+    val routeRepository = RouteRepositoryImpl(dataProvider.routeDao)
+    val routeMapper = RouteMapper
+
+    val timelineViewModel: TimelineViewModel = viewModel(
+        factory = ViewModelProvider.Factory { _ ->
+            TimelineViewModel(
+                getRouteSummaries = GetRouteSummariesImpl(routeRepository, routeMapper)
+            )
+        }
+    )
+
     val uiState by timelineViewModel.uiState.collectAsState()
     val routes by timelineViewModel.routes.collectAsState()
+
+    val currentUiState = uiState
 
     Scaffold(
         modifier = modifier.fillMaxSize(),
@@ -50,17 +59,16 @@ fun TimelineScreen(
         }
     ) { padding ->
         Box(modifier = Modifier.padding(padding)) {
-            when (uiState) {
+            when (currentUiState) {
                 ScreenState.Loading -> LoadingPlaceholder(modifier = Modifier.fillMaxSize())
                 is ScreenState.Error -> ErrorPlaceholder(
-                    message = uiState.message,
+                    message = currentUiState.message,
                     onRetry = { timelineViewModel.loadData() },
                     modifier = Modifier.fillMaxSize()
                 )
-                ScreenState.Success -> {
+                ScreenState.Success, ScreenState.Empty -> {
                     Column(
-                        modifier = Modifier.fillMaxSize(),
-                        verticalArrangement = androidx.compose.foundation.layout.VerticalArrangement.spacedBy(8.dp)
+                        modifier = Modifier.fillMaxSize()
                     ) {
                         Text(
                             text = "${routes.size} routes",
@@ -68,7 +76,7 @@ fun TimelineScreen(
                         )
                         routes.forEach { route ->
                             Card(modifier = Modifier.fillMaxSize()) {
-                                com.roadguide.app.feature.timeline.TimelineScreenRouteItem(
+                                TimelineScreenRouteItem(
                                     route = route,
                                     modifier = Modifier.padding(12.dp)
                                 )
@@ -83,17 +91,17 @@ fun TimelineScreen(
 
 @Composable
 private fun TimelineScreenRouteItem(
-    route: RouteSummary,
+    route: com.roadguide.app.domain.model.RouteSummary,
     modifier: Modifier = Modifier
 ) {
-    androidx.compose.foundation.layout.Column(
+    Column(
         modifier = modifier,
-        horizontalAlignment = androidx.compose.foundation.layout.Alignment.CenterHorizontally
+        horizontalAlignment = Alignment.CenterHorizontally
     ) {
-                                Text(
-                                    text = route.routeType ?: "Route",
-                                    style = MaterialTheme.typography.bodyLarge
-                                )
+        Text(
+            text = route.routeType,
+            style = MaterialTheme.typography.bodyLarge
+        )
         Text(
             text = "${route.distanceMeters} m",
             style = MaterialTheme.typography.bodyMedium

@@ -9,6 +9,7 @@ import com.roadguide.app.domain.usecase.GetTrackingSettings
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 
 /**
@@ -43,7 +44,7 @@ class HistoryViewModel(
                 _reports.value = reports
                 _uiState.value = ScreenState.Success
             } catch (e: Exception) {
-                _uiState.value = ScreenState.Error(e.message)
+                _uiState.value = ScreenState.Error(e.message ?: "Unknown error")
             }
         }
     }

@@ -9,13 +9,9 @@ interface DailyReportRepository {
 
     fun getByDate(date: String): Flow<DailyReport?>
 
-    fun observeByDate(date: String): Flow<DailyReport>
-
     fun observeRecent(limit: Int): Flow<List<DailyReport>>
 
     suspend fun update(report: DailyReport)
-
-    suspend fun deleteById(id: Long)
 }
 
 class DailyReportRepositoryImpl(private val dao: DailyReportDao) : DailyReportRepository {
@@ -24,12 +20,7 @@ class DailyReportRepositoryImpl(private val dao: DailyReportDao) : DailyReportRe
 
     override fun getByDate(date: String): Flow<DailyReport?> = dao.getByDate(date)
 
-    override fun observeByDate(date: String): Flow<DailyReport> = dao.observeByDate(date)
-
-    override fun observeRecent(limit: Int): Flow<List<DailyReport>> = dao.observeRecent(limit)
+    override fun observeRecent(limit: Int): Flow<List<DailyReport>> = dao.getRecent(limit)
 
     override suspend fun update(report: DailyReport) = dao.update(report)
-
-    override suspend fun deleteById(id: Long) = dao.deleteById(id)
 }
-ENDTITLE

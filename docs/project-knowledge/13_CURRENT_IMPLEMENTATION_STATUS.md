@@ -30,7 +30,7 @@ Fact-based status of major components.
 |-----------|--------|-------|
 | Gradle / Build Config | ✅ Implemented | Wrapper 8.10.2, root/app scripts + `libs.versions.toml` aligned (Room/KSP/DataStore, Compose BOM). |
 | Room Database (v1 skeleton) | 🟡 Partially Implemented | `RoadGuideDatabase` (v1, `exportSchema=true`, `Converters`), entities and DAOs present/compiling; schema aligned to spec baseline, needs migration strategy hardening and integration/use. |
-| DataStore (tracking prefs) | 🟡 Partially Implemented | `TrackingPrefs` skeleton (enabled/interval/units/aqi threshold) compiles. |
+| DataStore (tracking prefs) | ✅ Partially Implemented | `TrackingPrefs` skeleton (enabled/interval/units/aqi threshold) compiles. |
 | DI (Hilt/Koin) | 📋 Planned | Not set up. |
 | Navigation (Compose) | 🟡 Partially Implemented | M3 `AppNavHost`/bottom nav + routes/screens scaffolded. |
 | Theme / Design System | 🟡 Partially Implemented | Tokens/theme/placeholders from Figma export; components incomplete. |
@@ -38,9 +38,9 @@ Fact-based status of major components.
 ### Data Layer (TASK-011)
 | Item | Status | Notes |
 |------|--------|-------|
-| Entities | 🟡 Partially Implemented | `LocationPoint`, `Route`, `RouteSegment`, `Stay`, `Place`, `EnvironmentalSample`, `ExposureResult`, `DailyReport`, `PrivacyZone`, `DataRetentionPolicy` (Room annotations/indices/relations per spec baseline). |
-| DAOs | 🟡 Partially Implemented | `LocationPointDao`, `RouteDao`, `RouteSegmentDao`, `StayDao`, `PlaceDao`, `EnvironmentalSampleDao`, `ExposureResultDao`, `DailyReportDao`, `PrivacyZoneDao` (basic suspend/Flow ops). |
-| Type converters | 🟡 Partially Implemented | Enum converters for status/type/activity/transport/privacy/category/data source/quality. |
+| Entities | ✅ Implemented | `LocationPoint`, `Route`, `RouteSegment`, `Stay`, `Place`, `EnvironmentalSample`, `ExposureResult`, `DailyReport`, `PrivacyZone`, `DataRetentionPolicy` (Room annotations/indices/relations per spec baseline). |
+| DAOs | ✅ Implemented | `LocationPointDao`, `RouteDao`, `RouteSegmentDao`, `StayDao`, `PlaceDao`, `EnvironmentalSampleDao`, `ExposureResultDao`, `DailyReportDao`, `PrivacyZoneDao` (basic suspend/Flow ops). |
+| Type converters | ✅ Implemented | Enum converters for status/type/activity/transport/privacy/category/data source/quality. |
 | Constants | ✅ Implemented | `domain/model/ExposureConstants` and `data/local/ValidatorConstants` set to exact spec values (E factors/refs incl. `TIME_REFERENCE_SECONDS=1800.0`, `EXPOSURE_T_MAX=2.0`, `EXPOSURE_ROAD_SOURCE_FACTOR=1.0`, `EXPOSURE_CALIBRATION_K=5.0` separate, `DEFAULT_SKIN_FACTOR=1.0`, `S` default 1.0, stationary 0.7; env validation 3h/30km/15min). |
 
 ### Tracking / Domain / Features
@@ -65,3 +65,12 @@ Fact-based status of major components.
 1. Validate Room schema details against spec during repository/usecase integration; add schema tests/migrations policy.
 2. Wire repositories/use cases to Room/DataStore and implement tracking/segmentation/exposure pipelines per specs.
 3. Expand UI from placeholders using Figma tokens/components and complete remaining asset exports.
+
+### Domain Layer (TASK-012)
+
+| Item | Status | Notes |
+|------|--------|-------|
+| AppModel.kt | ✅ Implemented | TrackingSettingsState, RouteSummary, LocationPointSummary domain models v1 - no Room annotations, pure Kotlin data classes. |
+| RouteTab.kt | ✅ Implemented | RouteTab enum with all navigation tabs (TRACKER, TIMELINE, PLANNER, HISTORY, PLACES) + TopLevelDestination. |
+| AppUseCase.kt | ✅ Implemented | Use case interfaces v1: GetTrackingSettings, GetLocationPoints, GetRouteSummaries, ToggleTracking, SaveRoute - read/observe data, no business logic. |
+| No ping()-placeholder | ✅ Implemented | AppRepository wired to DataProvider, no placeholder logic as main logic. |

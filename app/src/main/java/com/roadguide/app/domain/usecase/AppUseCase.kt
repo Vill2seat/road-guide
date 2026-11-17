@@ -6,7 +6,7 @@ import com.roadguide.app.domain.model.TrackingSettingsState
 import kotlinx.coroutines.flow.Flow
 
 interface GetTrackingSettings {
-    fun invoke(): TrackingSettingsState
+    suspend fun invoke(): TrackingSettingsState
 }
 
 interface GetLocationPoints {

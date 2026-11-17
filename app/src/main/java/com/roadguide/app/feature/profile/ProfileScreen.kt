@@ -5,6 +5,8 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Button
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Switch
@@ -25,11 +27,11 @@ import com.roadguide.app.core.ui.theme.LoadingPlaceholder
 import com.roadguide.app.data.local.DataProvider
 import com.roadguide.app.data.local.settings.TrackingPrefs
 import com.roadguide.app.data.repository.TrackingSettingsRepositoryImpl
-import com.roadguide.app.domain.usecase.GetTrackingSettings
-import com.roadguide.app.domain.usecase.GetTrackingSettingsImpl
-import com.roadguide.app.domain.usecase.ToggleTracking
-import com.roadguide.app.domain.usecase.ToggleTrackingImpl
 import com.roadguide.app.domain.model.TrackingSettingsState
+import com.roadguide.app.domain.usecase.GetTrackingSettings
+import com.roadguide.app.domain.usecase.ToggleTracking
+import com.roadguide.app.domain.usecase.impl.GetTrackingSettingsImpl
+import com.roadguide.app.domain.usecase.impl.ToggleTrackingImpl
 import com.roadguide.app.feature.profile.viewmodel.ProfileViewModel
 
 @Composable
@@ -41,11 +43,13 @@ fun ProfileScreen(
     val trackingSettingsRepository = TrackingSettingsRepositoryImpl(trackingPrefs)
 
     val profileViewModel: ProfileViewModel = viewModel(
-        factory = ViewModelProvider.Factory { _ ->
-            ProfileViewModel(
-                getTrackingSettings = GetTrackingSettingsImpl(trackingSettingsRepository),
-                toggleTracking = ToggleTrackingImpl(trackingSettingsRepository)
-            )
+        factory = object : ViewModelProvider.Factory {
+            override fun <T : androidx.lifecycle.ViewModel> create(modelClass: Class<T>): T {
+                return ProfileViewModel(
+                    getTrackingSettings = GetTrackingSettingsImpl(trackingSettingsRepository),
+                    toggleTracking = ToggleTrackingImpl(trackingSettingsRepository)
+                ) as T
+            }
         }
     )
 
@@ -55,12 +59,7 @@ fun ProfileScreen(
     val currentUiState = uiState
 
     Scaffold(
-        modifier = modifier.fillMaxSize(),
-        topBar = {
-            androidx.compose.material3.TopAppBar(
-                title = { Text("Profile", style = MaterialTheme.typography.headlineSmall) }
-            )
-        }
+        modifier = modifier.fillMaxSize()
     ) { padding ->
         Box(modifier = Modifier.padding(padding)) {
             when (currentUiState) {
@@ -73,12 +72,11 @@ fun ProfileScreen(
                 ScreenState.Success, ScreenState.Empty -> {
                     Column(
                         modifier = Modifier.fillMaxSize(),
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = androidx.compose.foundation.layout.VerticalArrangement.spacedBy(16.dp)
+                        horizontalAlignment = Alignment.CenterHorizontally
                     ) {
-                        androidx.compose.material3.Card(
+                        Card(
                             modifier = Modifier.fillMaxSize(0.8f),
-                            colors = androidx.compose.material3.CardDefaults.cardColors(
+                            colors = CardDefaults.cardColors(
                                 containerColor = MaterialTheme.colorScheme.surface
                             )
                         ) {
@@ -109,7 +107,7 @@ private fun ProfileScreenSettings(
             text = "Tracking Settings",
             style = MaterialTheme.typography.headlineSmall
         )
-        androidx.compose.material3.Switch(
+        Switch(
             checked = settings.trackingEnabled,
             onCheckedChange = onTrackingToggle,
             colors = SwitchDefaults.colors(

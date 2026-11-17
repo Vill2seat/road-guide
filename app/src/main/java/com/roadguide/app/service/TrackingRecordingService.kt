@@ -113,7 +113,7 @@ class TrackingRecordingService : Service() {
             this,
             NOTIFICATION_ID,
             createNotification(),
-            ""
+            0
         )
     }
 

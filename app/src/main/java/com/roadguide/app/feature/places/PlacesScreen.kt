@@ -34,11 +34,13 @@ fun PlacesScreen(
     val placeRepository = PlaceRepositoryImpl(dataProvider.placeDao)
 
     val placesViewModel: PlacesViewModel = viewModel(
-        factory = ViewModelProvider.Factory { _ ->
-            PlacesViewModel(
-                placeRepository = placeRepository,
-                context = context
-            )
+        factory = object : ViewModelProvider.Factory {
+            override fun <T : androidx.lifecycle.ViewModel> create(modelClass: Class<T>): T {
+                return PlacesViewModel(
+                    placeRepository = placeRepository,
+                    context = context
+                ) as T
+            }
         }
     )
 
@@ -48,12 +50,7 @@ fun PlacesScreen(
     val currentUiState = uiState
 
     Scaffold(
-        modifier = modifier.fillMaxSize(),
-        topBar = {
-            androidx.compose.material3.TopAppBar(
-                title = { Text("Places", style = MaterialTheme.typography.headlineSmall) }
-            )
-        }
+        modifier = modifier.fillMaxSize()
     ) { padding ->
         Box(modifier = Modifier.padding(padding)) {
             when (currentUiState) {

@@ -35,7 +35,7 @@ class PlacesViewModel(
         loadData()
     }
 
-    private fun loadData() {
+    fun loadData() {
         viewModelScope.launch {
             try {
                 val dataProvider = DataProvider.getInstance(context)

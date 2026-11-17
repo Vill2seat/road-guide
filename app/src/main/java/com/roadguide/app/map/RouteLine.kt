@@ -58,10 +58,9 @@ fun RouteLine(
     // Animate progress if needed
     LaunchedEffect(showProgress, routePoints.size) {
         if (showProgress && routePoints.isNotEmpty()) {
-            val duration = tween(durationMillis = 500)
-            animatedProgress.animateTo<Float>(
+            animatedProgress.animateTo(
                 targetValue = 1f,
-                animationSpec = duration
+                animationSpec = tween(durationMillis = 500)
             )
         }
     }

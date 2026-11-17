@@ -77,6 +77,9 @@ dependencies {
     ksp(libs.androidx.room.compiler)
     implementation(libs.androidx.datastore.preferences)
 
+    // MapLibre Native Android — разблокировать когда maven.maplibre.org будет доступен по DNS:
+    // implementation(libs.maplibre.android)
+
     debugImplementation(libs.androidx.compose.ui.tooling)
     debugImplementation(libs.androidx.compose.ui.test.manifest)
 

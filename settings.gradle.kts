@@ -3,9 +3,14 @@ pluginManagement {
         google()
         mavenCentral()
         gradlePluginPortal()
-        maven {
-            url = uri("https://maven.maplibre.org")
-        }
+        // MapLibre Native Android — разблокировать когда maven.maplibre.org будет доступен по DNS:
+        // maven {
+        //     url = uri("https://maven.maplibre.org")
+        // }
+        // Альтернативный источник (требует аутентификации):
+        // maven {
+        //     url = uri("https://jitpack.io")
+        // }
     }
 }
 
@@ -13,9 +18,13 @@ dependencyResolutionManagement {
     repositories {
         google()
         mavenCentral()
-        maven {
-            url = uri("https://maven.maplibre.org")
-        }
+        // MapLibre Native Android — разблокировать когда maven.maplibre.org будет доступен по DNS:
+        // maven {
+        //     url = uri("https://maven.maplibre.org")
+        // }
+        // maven {
+        //     url = uri("https://jitpack.io")
+        // }
     }
 }
 

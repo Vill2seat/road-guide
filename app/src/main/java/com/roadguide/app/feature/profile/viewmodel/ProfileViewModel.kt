@@ -30,7 +30,7 @@ class ProfileViewModel(
         loadSettings()
     }
 
-    private fun loadSettings() {
+    fun loadSettings() {
         viewModelScope.launch {
             try {
                 val state = getTrackingSettings.invoke()

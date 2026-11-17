@@ -33,7 +33,7 @@ class TrackerViewModel(
         loadTrackingState()
     }
 
-    private fun loadTrackingState() {
+    fun loadTrackingState() {
         viewModelScope.launch {
             try {
                 val state = getTrackingSettings.invoke()
@@ -71,10 +71,10 @@ class TrackerViewModel(
         if (_recordingState.value != RecordingState.RECORDING) return
 
         _currentRoutePoints.value = _currentRoutePoints.value + LocationPointSummary(
+            id = 0L,
             latitude = point.latitude,
             longitude = point.longitude,
             timestamp = point.timestamp,
-            accuracyMeters = point.accuracyMeters,
             speedMps = point.speedMetersPerSecond?.toDouble() ?: 0.0,
             activityType = activityTypeToString(point)
         )

@@ -22,9 +22,13 @@ import com.roadguide.app.core.ui.theme.ErrorPlaceholder
 import com.roadguide.app.core.ui.theme.LoadingPlaceholder
 import com.roadguide.app.data.local.DataProvider
 import com.roadguide.app.data.local.db.RoadGuideDatabase
+import com.roadguide.app.data.local.settings.TrackingPrefs
 import com.roadguide.app.data.repository.RouteRepositoryImpl
+import com.roadguide.app.data.repository.TrackingSettingsRepositoryImpl
 import com.roadguide.app.domain.usecase.GetRouteSummaries
+import com.roadguide.app.domain.usecase.GetTrackingSettings
 import com.roadguide.app.domain.usecase.impl.GetRouteSummariesImpl
+import com.roadguide.app.domain.usecase.impl.GetTrackingSettingsImpl
 import com.roadguide.app.feature.timeline.viewmodel.TimelineViewModel
 import com.roadguide.app.mapper.RouteMapper
 
@@ -37,11 +41,17 @@ fun TimelineScreen(
     val routeRepository = RouteRepositoryImpl(dataProvider.routeDao)
     val routeMapper = RouteMapper
 
+    val trackingPrefs = TrackingPrefs(context)
+    val trackingSettingsRepository = TrackingSettingsRepositoryImpl(trackingPrefs)
+
     val timelineViewModel: TimelineViewModel = viewModel(
-        factory = ViewModelProvider.Factory { _ ->
-            TimelineViewModel(
-                getRouteSummaries = GetRouteSummariesImpl(routeRepository, routeMapper)
-            )
+        factory = object : ViewModelProvider.Factory {
+            override fun <T : androidx.lifecycle.ViewModel> create(modelClass: Class<T>): T {
+                return TimelineViewModel(
+                    getRouteSummaries = GetRouteSummariesImpl(routeRepository, routeMapper),
+                    getTrackingSettings = GetTrackingSettingsImpl(trackingSettingsRepository)
+                ) as T
+            }
         }
     )
 
@@ -51,12 +61,7 @@ fun TimelineScreen(
     val currentUiState = uiState
 
     Scaffold(
-        modifier = modifier.fillMaxSize(),
-        topBar = {
-            androidx.compose.material3.TopAppBar(
-                title = { Text("Timeline", style = MaterialTheme.typography.headlineSmall) }
-            )
-        }
+        modifier = modifier.fillMaxSize()
     ) { padding ->
         Box(modifier = Modifier.padding(padding)) {
             when (currentUiState) {

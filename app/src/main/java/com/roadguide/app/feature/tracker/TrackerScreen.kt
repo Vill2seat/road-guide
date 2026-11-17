@@ -59,12 +59,7 @@ fun TrackerScreen(
     val currentUiState = uiState
 
     Scaffold(
-        modifier = modifier.fillMaxSize(),
-        topBar = {
-            androidx.compose.material3.TopAppBar(
-                title = { Text("Tracker", style = MaterialTheme.typography.headlineSmall) }
-            )
-        }
+        modifier = modifier.fillMaxSize()
     ) { padding ->
         Box(modifier = Modifier.padding(padding)) {
             when (currentUiState) {

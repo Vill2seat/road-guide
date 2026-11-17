@@ -37,6 +37,9 @@ interface EnvironmentalSampleDao {
     @Query("SELECT * FROM environmental_samples ORDER BY timestamp DESC LIMIT 1")
     fun observeLatest(): Flow<EnvironmentalSample?>
 
+    @Query("SELECT * FROM environmental_samples ORDER BY timestamp DESC")
+    fun observeAll(): Flow<List<EnvironmentalSample>>
+
     @Query("DELETE FROM environmental_samples WHERE fetchedAt < :cutoff")
     suspend fun deleteOlderThan(cutoff: Long): Int
 }

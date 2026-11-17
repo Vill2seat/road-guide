@@ -34,7 +34,7 @@ class TimelineViewModel(
         loadData()
     }
 
-    private fun loadData() {
+    fun loadData() {
         viewModelScope.launch {
             try {
                 val settings = getTrackingSettings.invoke()

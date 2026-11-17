@@ -1,7 +1,6 @@
 package com.roadguide.app.domain.mapper
 
 import com.roadguide.app.domain.model.RouteSummary
-import com.roadguide.app.domain.model.RouteTab
 import com.roadguide.app.mapper.RouteMapper
 import com.roadguide.app.data.local.entity.Route
 import com.roadguide.app.data.local.entity.RouteStatus
@@ -36,7 +35,7 @@ class RouteMapperTest {
         assertEquals(1500.0, summary.distanceMeters, 0.0)
         assertEquals(3600L, summary.durationSeconds)
         assertEquals("completed", summary.status)
-        assertEquals(RouteTab.TRACKER, summary.routeType)
+        assertEquals("daily_auto", summary.routeType)
     }
 
     @Test
@@ -60,6 +59,6 @@ class RouteMapperTest {
         assertEquals(null, summary.endTime)
         assertEquals(1000.0, summary.distanceMeters, 0.0)
         assertEquals("in_progress", summary.status)
-        assertEquals(RouteTab.TRACKER, summary.routeType)
+        assertEquals("daily_auto", summary.routeType)
     }
 }

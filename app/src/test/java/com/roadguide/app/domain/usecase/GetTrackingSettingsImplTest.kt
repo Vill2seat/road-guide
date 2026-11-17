@@ -16,7 +16,7 @@ class GetTrackingSettingsImplTest {
     private val mockTrackingSettingsRepository = object : TrackingSettingsRepository {
         override val preferencesFlow = flow {
             emit(TrackingPreferences(
-                enabled = true,
+                trackingEnabled = true,
                 intervalSeconds = 60,
                 units = "metric",
                 aqiThreshold = 100

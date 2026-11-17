@@ -1,11 +1,6 @@
 package com.roadguide.app.domain.usecase
 
 import com.roadguide.app.domain.model.RouteSummary
-import com.roadguide.app.domain.usecase.impl.SaveRouteImpl
-import com.roadguide.app.data.repository.RouteRepository
-import com.roadguide.app.data.local.entity.Route
-import com.roadguide.app.data.local.entity.RouteStatus
-import com.roadguide.app.data.local.entity.RouteType
 import org.junit.Assert.assertEquals
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -42,7 +37,7 @@ class SaveRouteImplTest {
             averageAqi = 50.0,
             durationSeconds = 3600L,
             status = "completed",
-            routeType = com.roadguide.app.domain.model.RouteTab.TRACKER
+            routeType = "daily_auto"
         )
 
         // SaveRouteImpl returns routeRepository.insert(route)

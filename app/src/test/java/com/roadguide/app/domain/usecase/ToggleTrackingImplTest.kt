@@ -5,6 +5,7 @@ import com.roadguide.app.domain.usecase.impl.ToggleTrackingImpl
 import com.roadguide.app.data.repository.TrackingSettingsRepository
 import kotlinx.coroutines.flow.flow
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -16,7 +17,7 @@ class ToggleTrackingImplTest {
     private val mockTrackingSettingsRepository = object : TrackingSettingsRepository {
         override val preferencesFlow = flow {
             emit(TrackingPreferences(
-                enabled = false,
+                trackingEnabled = false,
                 intervalSeconds = 60,
                 units = "metric",
                 aqiThreshold = 100

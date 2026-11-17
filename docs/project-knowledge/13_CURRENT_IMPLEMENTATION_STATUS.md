@@ -110,4 +110,31 @@ Fact-based status of major components.
 | HistoryScreen | ✅ Updated | Display reports with Loading/Empty/Error states |
 | PlacesScreen | ✅ Updated | Display places with Loading/Empty/Error states |
 | ProfileScreen | ✅ Updated | Tracking settings toggle with Loading/Empty/Error states |
-| AppNavHost | ✅ Updated | Wires all 6 destinations with ViewModels |\n\n### Instrumentation Tests (TASK-016)\n\n| Item | Status | Notes |\n|------|--------|-------|\n| RouteDatabaseTest | ✅ Implemented | Route CRUD with in-memory Room DB (androidTest) |\n| LocationPointDatabaseTest | ✅ Implemented | LocationPoint CRUD (androidTest) |\n| TrackingSettingsRepositoryTest | ✅ Implemented | DataStore preferences read/write (androidTest) |\n| PlaceRepositoryTest | ✅ Implemented | Place CRUD (androidTest) |\n| PrivacyZoneRepositoryTest | ✅ Implemented | PrivacyZone CRUD (androidTest) |\n| TrackingPipelineIntegrationTest | ✅ Implemented | Full pipeline skeleton (androidTest) |\n| ExposureCalculationIntegrationTest | ✅ Implemented | Exposure formula verification (androidTest) |\n\n**Note:** These tests require a connected Android device or emulator to run (`./gradlew :app:connectedDebugAndroidTest`).
+
+### TASK-011: Map Integration & Route Recording
+
+| Item | Status | Notes |
+|------|--------|-------|
+| MapLibre dependency | ✅ Added | `org.maplibre.maplibre-android:maplibre:11.1.0` |
+| Android permissions | ✅ Added | ACCESS_FINE_LOCATION, ACCESS_COARSE_LOCATION, FOREGROUND_SERVICE |
+| MapView composable | ✅ Created | `map/MapView.kt` - MapLibre map wrapper |
+| RouteLine composable | ✅ Created | `map/RouteLine.kt` - Polylines with optional gradient |
+| LocationMarker model | ✅ Created | `map/model/LocationMarker.kt` - Location data wrapper |
+| TrackerViewModel | ✅ Updated | Added recording state, route points |
+| TrackerScreen | ✅ Updated | Map display + bottom controls |
+| TrackingRecordingService | ✅ Created | Foreground service for background tracking |
+| AppNavHost | ✅ Verified | Tracker route wired correctly |
+
+### Instrumentation Tests (TASK-016)
+
+| Item | Status | Notes |
+|------|--------|-------|
+| RouteDatabaseTest | ✅ Implemented | Route CRUD with in-memory Room DB (androidTest) |
+| LocationPointDatabaseTest | ✅ Implemented | LocationPoint CRUD (androidTest) |
+| TrackingSettingsRepositoryTest | ✅ Implemented | DataStore preferences read/write (androidTest) |
+| PlaceRepositoryTest | ✅ Implemented | Place CRUD (androidTest) |
+| PrivacyZoneRepositoryTest | ✅ Implemented | PrivacyZone CRUD (androidTest) |
+| TrackingPipelineIntegrationTest | ✅ Implemented | Full pipeline skeleton (androidTest) |
+| ExposureCalculationIntegrationTest | ✅ Implemented | Exposure formula verification (androidTest) |
+
+**Note:** These tests require a connected Android device or emulator to run (`./gradlew :app:connectedDebugAndroidTest`). 

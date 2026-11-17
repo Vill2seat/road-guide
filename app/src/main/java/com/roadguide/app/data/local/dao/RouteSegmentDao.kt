@@ -23,4 +23,7 @@ interface RouteSegmentDao {
 
     @Query("SELECT * FROM route_segments WHERE id = :id")
     fun getById(id: Long): Flow<RouteSegment?>
+
+    @Query("UPDATE route_segments SET endTime = :endTime WHERE id = :id")
+    suspend fun updateEndTime(id: Long, endTime: Long)
 }

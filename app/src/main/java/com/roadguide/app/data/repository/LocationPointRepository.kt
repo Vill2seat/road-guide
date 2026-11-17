@@ -42,4 +42,3 @@ class LocationPointRepositoryImpl(private val dao: LocationPointDao) : LocationP
 
     override suspend fun deleteOlderThan(cutoff: Long): Int = dao.deleteOlderThan(cutoff)
 }
-ENDTITLE

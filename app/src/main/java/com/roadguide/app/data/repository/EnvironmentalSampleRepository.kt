@@ -9,8 +9,6 @@ interface EnvironmentalSampleRepository {
 
     fun observeAll(): Flow<List<EnvironmentalSample>>
 
-    fun observeByRouteId(routeId: Long): Flow<List<EnvironmentalSample>>
-
     fun getLatest(): Flow<EnvironmentalSample?>
 
     suspend fun deleteOlderThan(cutoff: Long): Int
@@ -23,11 +21,7 @@ class EnvironmentalSampleRepositoryImpl(private val dao: EnvironmentalSampleDao)
 
     override fun observeAll(): Flow<List<EnvironmentalSample>> = dao.observeAll()
 
-    override fun observeByRouteId(routeId: Long): Flow<List<EnvironmentalSample>> =
-        dao.observeByRouteId(routeId)
-
-    override fun getLatest(): Flow<EnvironmentalSample?> = dao.getLatest()
+    override fun getLatest(): Flow<EnvironmentalSample?> = dao.observeLatest()
 
     override suspend fun deleteOlderThan(cutoff: Long): Int = dao.deleteOlderThan(cutoff)
 }
-ENDTITLE

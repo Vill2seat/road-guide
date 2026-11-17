@@ -37,4 +37,3 @@ class RouteRepositoryImpl(private val dao: RouteDao) : RouteRepository {
 
     override fun getRecent(limit: Int): Flow<List<Route>> = dao.getRecent(limit)
 }
-ENDTITLE

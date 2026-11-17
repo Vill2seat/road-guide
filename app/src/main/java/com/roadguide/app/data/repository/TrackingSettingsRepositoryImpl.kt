@@ -25,4 +25,3 @@ class TrackingSettingsRepositoryImpl(private val trackingPrefs: TrackingPrefs) :
         trackingPrefs.setAqiThreshold(threshold)
     }
 }
-ENDTITLE

@@ -6,7 +6,7 @@ import com.roadguide.app.data.local.settings.TrackingPrefs
 
 class DataProvider private constructor(
     private val database: RoadGuideDatabase,
-    private val trackingPrefs: TrackingPrefs
+    val trackingPrefs: TrackingPrefs
 ) {
 
     val locationPointDao = database.locationPointDao()
@@ -18,8 +18,6 @@ class DataProvider private constructor(
     val exposureResultDao = database.exposureResultDao()
     val dailyReportDao = database.dailyReportDao()
     val privacyZoneDao = database.privacyZoneDao()
-
-    val trackingPrefs = trackingPrefs
 
     companion object {
         @Volatile private var instance: DataProvider? = null
@@ -34,4 +32,3 @@ class DataProvider private constructor(
         }
     }
 }
-ENDTITLE

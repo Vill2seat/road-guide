@@ -14,4 +14,3 @@ interface TrackingSettingsRepository {
 
     suspend fun setAqiThreshold(threshold: Int)
 }
-ENDTITLE

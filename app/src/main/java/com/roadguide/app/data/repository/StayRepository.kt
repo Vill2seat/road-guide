@@ -9,13 +9,7 @@ interface StayRepository {
 
     suspend fun update(stay: Stay)
 
-    fun getById(id: Long): Flow<Stay?>
-
-    fun getByRouteId(routeId: Long): Flow<List<Stay>>
-
-    fun getByTimeRange(startTime: Long, endTime: Long): Flow<List<Stay>>
-
-    suspend fun delete(id: Long)
+    fun observeByRoute(routeId: Long): Flow<List<Stay>>
 }
 
 class StayRepositoryImpl(private val dao: StayDao) : StayRepository {
@@ -24,13 +18,5 @@ class StayRepositoryImpl(private val dao: StayDao) : StayRepository {
 
     override suspend fun update(stay: Stay) = dao.update(stay)
 
-    override fun getById(id: Long): Flow<Stay?> = dao.getById(id)
-
-    override fun getByRouteId(routeId: Long): Flow<List<Stay>> = dao.getByRouteId(routeId)
-
-    override fun getByTimeRange(startTime: Long, endTime: Long): Flow<List<Stay>> =
-        dao.getByTimeRange(startTime, endTime)
-
-    override suspend fun delete(id: Long) = dao.delete(id)
+    override fun observeByRoute(routeId: Long): Flow<List<Stay>> = dao.observeByRoute(routeId)
 }
-ENDTITLE

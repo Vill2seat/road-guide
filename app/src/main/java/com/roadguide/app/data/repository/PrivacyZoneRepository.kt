@@ -9,9 +9,9 @@ interface PrivacyZoneRepository {
 
     suspend fun update(zone: PrivacyZone)
 
-    fun getById(id: Long): Flow<PrivacyZone?>
+    fun observeActiveZones(): Flow<List<PrivacyZone>>
 
-    fun observeActive(): Flow<List<PrivacyZone>>
+    fun observeAll(): Flow<List<PrivacyZone>>
 
     suspend fun deleteById(id: Long)
 }
@@ -22,10 +22,9 @@ class PrivacyZoneRepositoryImpl(private val dao: PrivacyZoneDao) : PrivacyZoneRe
 
     override suspend fun update(zone: PrivacyZone) = dao.update(zone)
 
-    override fun getById(id: Long): Flow<PrivacyZone?> = dao.getById(id)
+    override fun observeActiveZones(): Flow<List<PrivacyZone>> = dao.observeActiveZones()
 
-    override fun observeActive(): Flow<List<PrivacyZone>> = dao.observeActive()
+    override fun observeAll(): Flow<List<PrivacyZone>> = dao.observeAll()
 
     override suspend fun deleteById(id: Long) = dao.deleteById(id)
 }
-ENDTITLE

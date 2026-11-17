@@ -64,8 +64,7 @@ abstract class RoadGuideDatabase : RoomDatabase() {
                     context.applicationContext,
                     RoadGuideDatabase::class.java,
                     "road_guide.db"
-                ).fallbackToDestructiveMigration()
-                    .build()
+                ).build()
                     .also { INSTANCE = it }
             }
         }

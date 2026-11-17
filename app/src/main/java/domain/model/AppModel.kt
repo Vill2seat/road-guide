@@ -1,5 +1,6 @@
 package com.roadguide.app.domain.model
 
+/** Domain model representing current tracking settings state from DataStore preferences. */
 data class TrackingSettingsState(
     val trackingEnabled: Boolean = false,
     val intervalSeconds: Int = 60,
@@ -7,6 +8,7 @@ data class TrackingSettingsState(
     val aqiThreshold: Int = 100
 )
 
+/** Domain model representing a route summary for UI display. */
 data class RouteSummary(
     val id: Long,
     val startTime: Long,
@@ -18,6 +20,7 @@ data class RouteSummary(
     val routeType: RouteTab? = null
 )
 
+/** Domain model representing a location point summary. */
 data class LocationPointSummary(
     val id: Long,
     val latitude: Double,

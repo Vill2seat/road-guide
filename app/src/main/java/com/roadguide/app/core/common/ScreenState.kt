@@ -7,6 +7,7 @@ package com.roadguide.app.core.common
 sealed interface ScreenState {
     data object Empty : ScreenState
     data object Loading : ScreenState
+    data object Success : ScreenState
     data class Error(val message: String) : ScreenState
 }
 

@@ -74,3 +74,40 @@ Fact-based status of major components.
 | RouteTab.kt | ✅ Implemented | RouteTab enum with all navigation tabs (TRACKER, TIMELINE, PLANNER, HISTORY, PLACES) + TopLevelDestination. |
 | AppUseCase.kt | ✅ Implemented | Use case interfaces v1: GetTrackingSettings, GetLocationPoints, GetRouteSummaries, ToggleTracking, SaveRoute - read/observe data, no business logic. |
 | No ping()-placeholder | ✅ Implemented | AppRepository wired to DataProvider, no placeholder logic as main logic. |
+
+### Use Case Implementations (TASK-013)
+
+| Item | Status | Notes |
+|------|--------|-------|
+| GetTrackingSettingsImpl | ✅ Implemented | Reads from TrackingSettingsRepository.preferencesFlow |
+| GetLocationPointsImpl | ✅ Implemented | Wires to LocationPointRepository.observeAll() with mapping |
+| GetRouteSummariesImpl | ✅ Implemented | Wires to RouteRepository.observeAll() with mapping |
+| ToggleTrackingImpl | ✅ Implemented | Calls setTrackingEnabled and returns updated state |
+| SaveRouteImpl | ✅ Implemented | Wires to RouteRepository.insert() returning Long |
+| RouteMapper | ✅ Implemented | Room entity to domain model mapping (no Room annotations in domain) |
+| LocationPointMapper | ✅ Implemented | Room entity to domain model mapping |
+
+### Tracking Pipeline (TASK-013)
+
+| Component | Status | Notes |
+|-----------|--------|-------|
+| TrackingPipeline | ✅ Skeleton | Location collection, segmentation, exposure calculation, daily report skeleton |
+| Exposure calculation | ✅ Skeleton | Uses ExposureConstants formula E = K × P × T × A × R × W × S |
+| Stay detection | 📋 Planned | Skeleton - real implementation pending segmentation criteria |
+| DailyReport creation | 📋 Planned | Skeleton - normalization 0-100 pending |
+
+### UI Layer Integration (TASK-014)
+
+| Item | Status | Notes |
+|------|--------|-------|
+| TrackerViewModel | ✅ Implemented | StateFlow for tracking state, toggle tracking action |
+| TimelineViewModel | ✅ Implemented | StateFlow for routes, tracking state |
+| HistoryViewModel | ✅ Implemented | StateFlow for historical reports |
+| PlacesViewModel | ✅ Implemented | StateFlow for places list |
+| ProfileViewModel | ✅ Implemented | StateFlow for tracking settings, toggle action |
+| TrackerScreen | ✅ Updated | Connected to ViewModel with Loading/Empty/Error states |
+| TimelineScreen | ✅ Updated | Display route summaries with Loading/Empty/Error states |
+| HistoryScreen | ✅ Updated | Display reports with Loading/Empty/Error states |
+| PlacesScreen | ✅ Updated | Display places with Loading/Empty/Error states |
+| ProfileScreen | ✅ Updated | Tracking settings toggle with Loading/Empty/Error states |
+| AppNavHost | ✅ Updated | Wires all 6 destinations with ViewModels |

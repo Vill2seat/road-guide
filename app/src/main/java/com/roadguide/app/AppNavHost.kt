@@ -16,9 +16,11 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
@@ -88,13 +90,27 @@ fun AppNavHost() {
             startDestination = ScreenRoutes.Tracker,
             modifier = Modifier.padding(innerPadding)
         ) {
-            composable(ScreenRoutes.Tracker) { TrackerScreen() }
-            composable(ScreenRoutes.Timeline) { TimelineScreen() }
-            composable(ScreenRoutes.Planner) { PlannerScreen() }
-            composable(ScreenRoutes.History) { HistoryScreen() }
-            composable(ScreenRoutes.Places) { PlacesScreen() }
-            composable(ScreenRoutes.Profile) { ProfileScreen() }
-            composable(ScreenRoutes.Settings) { ProfileScreen() }
+            composable(ScreenRoutes.Tracker) {
+                TrackerScreen()
+            }
+            composable(ScreenRoutes.Timeline) {
+                TimelineScreen()
+            }
+            composable(ScreenRoutes.Planner) {
+                PlannerScreen()
+            }
+            composable(ScreenRoutes.History) {
+                HistoryScreen()
+            }
+            composable(ScreenRoutes.Places) {
+                PlacesScreen()
+            }
+            composable(ScreenRoutes.Profile) {
+                ProfileScreen()
+            }
+            composable(ScreenRoutes.Settings) {
+                ProfileScreen()
+            }
         }
     }
 }

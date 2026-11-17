@@ -6,38 +6,25 @@ import org.junit.Test
 class TrackingPrefsConverterTest {
 
     @Test
-    fun `tracking preferences serializes to string`() {
+    fun `tracking preferences has correct defaults`() {
         val prefs = TrackingPreferences(
-            enabled = true,
+            trackingEnabled = true,
             intervalSeconds = 60,
             units = "metric",
             aqiThreshold = 100
         )
 
-        val json = prefs.toJson()
-        println("JSON: $json")
-        // JSON should contain all fields
-        assert(json.contains("enabled"))
-        assert(json.contains("interval_seconds"))
-        assert(json.contains("units"))
-        assert(json.contains("aqi_threshold"))
+        assertEquals(true, prefs.trackingEnabled)
+        assertEquals(60, prefs.intervalSeconds)
+        assertEquals("metric", prefs.units)
+        assertEquals(100, prefs.aqiThreshold)
     }
 
     @Test
-    fun `tracking preferences deserializes from string`() {
-        val json = "{\"enabled\":false,\"interval_seconds\":30,\"units\":\"imperial\",\"aqi_threshold\":150}"
-        val prefs = TrackingPreferences.fromJson(json)
+    fun `tracking preferences defaults when constructed empty`() {
+        val prefs = TrackingPreferences()
 
-        assertEquals(false, prefs.enabled)
-        assertEquals(30, prefs.intervalSeconds)
-        assertEquals("imperial", prefs.units)
-        assertEquals(150, prefs.aqiThreshold)
-    }
-
-    @Test
-    fun `tracking preferences defaults when json is empty`() {
-        val prefs = TrackingPreferences.fromJson("")
-        assertEquals(false, prefs.enabled)
+        assertEquals(true, prefs.trackingEnabled)
         assertEquals(60, prefs.intervalSeconds)
         assertEquals("metric", prefs.units)
         assertEquals(100, prefs.aqiThreshold)

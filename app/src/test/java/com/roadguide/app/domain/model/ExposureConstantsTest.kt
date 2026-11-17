@@ -24,7 +24,7 @@ class ExposureConstantsTest {
 
         // Test 1: Maximum exposure with stationary activity
         val maxExposure = calculateExposure(1800.0, // duration = 30 min = 1800s
-            exposureLevel = 1.0, // maximum pollution level
+            pollutionLevel = 1.0, // maximum pollution level
             skinFactor = defaultSkin,
             screenFactor = defaultScreen
         )
@@ -36,7 +36,6 @@ class ExposureConstantsTest {
 
         // Test 2: With higher pollution level
         val highPollution = calculateExposure(1800.0, 1.5)
-        // E = 5.0 × 1.5 × 0.5 × 0.7 = 2.625
         assertEquals(2.625, highPollution, 0.001)
 
         // Test 3: With longer duration (approaches T_max)

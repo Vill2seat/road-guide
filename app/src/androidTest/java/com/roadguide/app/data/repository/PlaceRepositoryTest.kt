@@ -6,6 +6,7 @@ import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import com.roadguide.app.data.local.db.RoadGuideDatabase
 import com.roadguide.app.data.local.entity.Place
+import com.roadguide.app.data.local.entity.PlaceCategory
 import kotlinx.coroutines.runBlocking
 import org.junit.After
 import org.junit.Assert.assertEquals

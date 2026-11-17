@@ -26,8 +26,11 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
+import com.roadguide.app.feature.dailyreport.DailyReportScreen
 import com.roadguide.app.feature.history.HistoryScreen
+import com.roadguide.app.feature.permissions.PermissionScreen
 import com.roadguide.app.feature.places.PlacesScreen
+import com.roadguide.app.feature.weather.WeatherScreen
 import com.roadguide.app.feature.planner.PlannerScreen
 import com.roadguide.app.feature.profile.ProfileScreen
 import com.roadguide.app.feature.timeline.TimelineScreen
@@ -110,6 +113,19 @@ fun AppNavHost() {
             }
             composable(ScreenRoutes.Settings) {
                 ProfileScreen()
+            }
+            composable(ScreenRoutes.Permission) {
+                PermissionScreen(
+                    onGrantPermissions = {
+                        navController.navigate(ScreenRoutes.Tracker)
+                    }
+                )
+            }
+            composable(ScreenRoutes.Weather) {
+                WeatherScreen()
+            }
+            composable(ScreenRoutes.DailyReport) {
+                DailyReportScreen()
             }
         }
     }

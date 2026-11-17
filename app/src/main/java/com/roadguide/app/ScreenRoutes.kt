@@ -13,6 +13,9 @@ object ScreenRoutes {
     const val Places = "places"
     const val Profile = "profile"
     const val Settings = "settings"
+    const val Permission = "permission"
+    const val Weather = "weather"
+    const val DailyReport = "daily_report"
 
     /**
      * Maps a bottom nav tab to its route string.

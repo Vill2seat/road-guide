@@ -32,7 +32,12 @@ class ExposureCalculationIntegrationTest {
             .build()
         pipeline = TrackingPipeline(
             locationPointDao = database.locationPointDao(),
-            routeDao = database.routeDao()
+            routeDao = database.routeDao(),
+            getEnvironmentalSample = object : com.roadguide.app.domain.usecase.GetEnvironmentalSample {
+                override suspend fun invoke(lat: Double, lon: Long): com.roadguide.app.data.local.entity.EnvironmentalSample? = null
+                override fun observeNearest(lat: Double, lon: Double, time: Long, delta: Double, window: Long): kotlinx.coroutines.flow.Flow<com.roadguide.app.data.local.entity.EnvironmentalSample?> =
+                    kotlinx.coroutines.flow.flow { emit(null) }
+            }
         )
     }
 

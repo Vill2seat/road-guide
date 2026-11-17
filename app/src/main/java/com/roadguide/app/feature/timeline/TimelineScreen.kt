@@ -1,10 +1,18 @@
 package com.roadguide.app.feature.timeline
 
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
@@ -13,6 +21,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.ViewModelProvider
@@ -20,6 +29,9 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.roadguide.app.core.common.ScreenState
 import com.roadguide.app.core.ui.theme.ErrorPlaceholder
 import com.roadguide.app.core.ui.theme.LoadingPlaceholder
+import com.roadguide.app.core.ui.theme.RgColor
+import com.roadguide.app.core.ui.theme.RgDimens
+import com.roadguide.app.core.ui.theme.RgIcon
 import com.roadguide.app.data.local.DataProvider
 import com.roadguide.app.data.local.db.RoadGuideDatabase
 import com.roadguide.app.data.local.settings.TrackingPrefs
@@ -58,16 +70,16 @@ fun TimelineScreen(
     val uiState by timelineViewModel.uiState.collectAsState()
     val routes by timelineViewModel.routes.collectAsState()
 
-    val currentUiState = uiState
+    val screenState = uiState
 
     Scaffold(
         modifier = modifier.fillMaxSize()
     ) { padding ->
         Box(modifier = Modifier.padding(padding)) {
-            when (currentUiState) {
+            when (screenState) {
                 ScreenState.Loading -> LoadingPlaceholder(modifier = Modifier.fillMaxSize())
                 is ScreenState.Error -> ErrorPlaceholder(
-                    message = currentUiState.message,
+                    message = screenState.message,
                     onRetry = { timelineViewModel.loadData() },
                     modifier = Modifier.fillMaxSize()
                 )
@@ -76,15 +88,27 @@ fun TimelineScreen(
                         modifier = Modifier.fillMaxSize()
                     ) {
                         Text(
-                            text = "${routes.size} routes",
-                            style = MaterialTheme.typography.bodyMedium
+                            text = "Daily Timeline",
+                            style = MaterialTheme.typography.headlineLarge,
+                            color = MaterialTheme.colorScheme.onSurface
                         )
-                        routes.forEach { route ->
-                            Card(modifier = Modifier.fillMaxSize()) {
-                                TimelineScreenRouteItem(
+                        Spacer(modifier = Modifier.height(RgDimens.Space2))
+                        Text(
+                            text = "${routes.size} маршрутов за сегодня",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        Spacer(modifier = Modifier.height(RgDimens.Space4))
+
+                        if (routes.isEmpty()) {
+                            EmptyTimelineState()
+                        } else {
+                            routes.forEach { route ->
+                                TimelineRouteItem(
                                     route = route,
-                                    modifier = Modifier.padding(12.dp)
+                                    modifier = Modifier.fillMaxWidth()
                                 )
+                                Spacer(modifier = Modifier.height(RgDimens.Space3))
                             }
                         }
                     }
@@ -95,21 +119,123 @@ fun TimelineScreen(
 }
 
 @Composable
-private fun TimelineScreenRouteItem(
+private fun EmptyTimelineState() {
+    Column(
+        modifier = Modifier.fillMaxSize(),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center
+    ) {
+        RgIcon.RgIconComposable(
+            icon = RgIcon.Timeline,
+            modifier = Modifier.size(64.dp)
+        )
+        Spacer(modifier = Modifier.height(RgDimens.Space3))
+        Text(
+            text = "Нет данных за сегодня",
+            style = MaterialTheme.typography.titleLarge,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+        Text(
+            text = "Начните запись в трекере, чтобы увидеть маршруты",
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+    }
+}
+
+@Composable
+private fun TimelineRouteItem(
     route: com.roadguide.app.domain.model.RouteSummary,
     modifier: Modifier = Modifier
 ) {
-    Column(
+    val exposureColor = exposureColorFor(route.averageAqi?.toInt(), MaterialTheme.colorScheme.onSurfaceVariant)
+
+    Card(
         modifier = modifier,
-        horizontalAlignment = Alignment.CenterHorizontally
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surface
+        )
     ) {
-        Text(
-            text = route.routeType,
-            style = MaterialTheme.typography.bodyLarge
-        )
-        Text(
-            text = "${route.distanceMeters} m",
-            style = MaterialTheme.typography.bodyMedium
-        )
+        Column(
+            modifier = Modifier.padding(16.dp)
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = route.routeType,
+                    style = MaterialTheme.typography.titleLarge,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(
+                    text = route.status,
+                    style = MaterialTheme.typography.labelSmall,
+                    color = RgColor.Success
+                )
+            }
+
+            Spacer(modifier = Modifier.height(RgDimens.Space3))
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Column() {
+                    Text(
+                        text = "${route.distanceMeters.toInt()} м",
+                        style = MaterialTheme.typography.titleMedium,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                    Text(
+                        text = "Дистанция",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+
+                Spacer(modifier = Modifier.width(RgDimens.Space4))
+
+                Column() {
+                    Text(
+                        text = "${route.durationSeconds / 60} мин",
+                        style = MaterialTheme.typography.titleMedium,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                    Text(
+                        text = "Длительность",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+
+                Spacer(modifier = Modifier.width(RgDimens.Space4))
+
+                Column(horizontalAlignment = Alignment.End) {
+                    Text(
+                        text = route.averageAqi?.let { "${it.toInt()} AQI" } ?: "—",
+                        style = MaterialTheme.typography.titleMedium,
+                        color = exposureColor
+                    )
+                    Text(
+                        text = "Воздействие",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+        }
+    }
+}
+
+private fun exposureColorFor(aqi: Int?, onSurfaceVariant: Color): Color {
+    return if (aqi == null) {
+        onSurfaceVariant
+    } else when (aqi) {
+        in 0..50 -> RgColor.ExposureGood
+        in 51..100 -> RgColor.ExposureModerate
+        in 101..150 -> RgColor.ExposureHigh
+        else -> RgColor.ExposureVeryHigh
     }
 }

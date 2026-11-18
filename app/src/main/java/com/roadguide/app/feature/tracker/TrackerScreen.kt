@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.width
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
@@ -26,22 +27,13 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
-import androidx.lifecycle.ViewModelProvider
-import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.hilt.navigation.compose.hiltViewModel
 import com.roadguide.app.R
 import com.roadguide.app.core.ui.theme.RgColor
 import com.roadguide.app.core.ui.theme.RgDimens
 import com.roadguide.app.core.ui.theme.ErrorPlaceholder
 import com.roadguide.app.core.ui.theme.LoadingPlaceholder
-import com.roadguide.app.data.local.DataProvider
 import com.roadguide.app.data.local.entity.EnvironmentalSample
-import com.roadguide.app.data.local.settings.TrackingPrefs
-import com.roadguide.app.data.repository.EnvironmentalSampleRepositoryImpl
-import com.roadguide.app.data.repository.TrackingSettingsRepositoryImpl
-import com.roadguide.app.domain.usecase.GetTrackingSettings
-import com.roadguide.app.domain.usecase.impl.GetTrackingSettingsImpl
-import com.roadguide.app.domain.usecase.ToggleTracking
-import com.roadguide.app.domain.usecase.impl.ToggleTrackingImpl
 import com.roadguide.app.feature.tracker.viewmodel.RecordingState
 import com.roadguide.app.feature.tracker.viewmodel.TrackerViewModel
 import com.roadguide.app.map.MapView
@@ -50,31 +42,14 @@ import com.roadguide.app.map.MapView
 fun TrackerScreen(
     modifier: Modifier = Modifier
 ) {
-    val context = LocalContext.current
-    val dataProvider = DataProvider.getInstance(context)
-    val trackingPrefs = TrackingPrefs(context)
-    val trackingSettingsRepository = TrackingSettingsRepositoryImpl(trackingPrefs)
-    val environmentalSampleRepository = EnvironmentalSampleRepositoryImpl(
-        dataProvider.environmentalSampleDao
-    )
-
-    val trackerViewModel: TrackerViewModel = viewModel(
-        factory = object : ViewModelProvider.Factory {
-            override fun <T : androidx.lifecycle.ViewModel> create(modelClass: Class<T>): T {
-                return TrackerViewModel(
-                    getTrackingSettings = GetTrackingSettingsImpl(trackingSettingsRepository),
-                    toggleTracking = ToggleTrackingImpl(trackingSettingsRepository),
-                    getEnvironmentalSample = com.roadguide.app.domain.usecase.impl.GetEnvironmentalSampleImpl(environmentalSampleRepository)
-                ) as T
-            }
-        }
-    )
+    val trackerViewModel: TrackerViewModel = hiltViewModel()
 
     val uiState by trackerViewModel.uiState.collectAsState()
     val trackingEnabled by trackerViewModel.trackingEnabled.collectAsState()
     val recordingState by trackerViewModel.recordingState.collectAsState()
     val currentRoutePoints by trackerViewModel.currentRoutePoints.collectAsState()
     val environmentalSample by trackerViewModel.environmentalSample.collectAsState()
+    val internetAvailableToday by trackerViewModel.internetAvailableToday.collectAsState()
 
     Scaffold(
         modifier = modifier.fillMaxSize()
@@ -106,6 +81,7 @@ fun TrackerScreen(
                                 recordingState = recordingState,
                                 currentRoutePoints = currentRoutePoints,
                                 environmentalSample = environmentalSample,
+                                internetAvailableToday = internetAvailableToday,
                                 onStart = { trackerViewModel.startTracking() },
                                 onStop = { trackerViewModel.stopTracking() },
                                 onToggle = { trackerViewModel.toggleTracking(!trackingEnabled) },
@@ -125,6 +101,7 @@ private fun TrackerScreenContent(
     recordingState: RecordingState,
     currentRoutePoints: List<com.roadguide.app.domain.model.LocationPointSummary>,
     environmentalSample: EnvironmentalSample?,
+    internetAvailableToday: Boolean?,
     onStart: () -> Unit,
     onStop: () -> Unit,
     onToggle: () -> Unit,
@@ -143,6 +120,44 @@ private fun TrackerScreenContent(
         )
 
         Spacer(modifier = Modifier.height(RgDimens.Space4))
+
+        if (internetAvailableToday == false) {
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.errorContainer
+                )
+            ) {
+                Column(
+                    modifier = Modifier.padding(12.dp)
+                ) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = "\u26A0",
+                            style = MaterialTheme.typography.titleLarge,
+                            color = MaterialTheme.colorScheme.onErrorContainer
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Column() {
+                            Text(
+                                text = "Интернет отсутствовал",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onErrorContainer
+                            )
+                            Text(
+                                text = "Данные о погоде и AQI недоступны. Показаны только точки маршрута.",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onErrorContainer
+                            )
+                        }
+                    }
+                }
+            }
+            Spacer(modifier = Modifier.height(RgDimens.Space4))
+        }
 
         ActionRow(
             recordingState = recordingState,

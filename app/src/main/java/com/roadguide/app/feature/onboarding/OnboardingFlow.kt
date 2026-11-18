@@ -1,5 +1,9 @@
 package com.roadguide.app.feature.onboarding
 
+import android.app.Activity
+import androidx.activity.result.ActivityResultLauncher
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Scaffold
@@ -7,37 +11,33 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
-import androidx.lifecycle.ViewModelProvider
-import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.hilt.navigation.compose.hiltViewModel
 import com.roadguide.app.core.ui.theme.LoadingPlaceholder
-import com.roadguide.app.data.source.PermissionSource
 import com.roadguide.app.feature.onboarding.viewmodel.OnboardingViewModel
 import com.roadguide.app.feature.permissions.PermissionScreen
 
-/**
- * Onboarding flow container.
- * Shows Welcome → Info → Permissions screens, then marks onboarding complete.
- *
- * @param onFinished callback invoked when onboarding is fully completed.
- */
 @Composable
 fun OnboardingFlow(
     onFinished: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val permissionSource = PermissionSource(androidx.compose.ui.platform.LocalContext.current)
-    val onboardingViewModel: OnboardingViewModel = viewModel(
-        factory = object : ViewModelProvider.Factory {
-            override fun <T : androidx.lifecycle.ViewModel> create(modelClass: Class<T>): T {
-                return OnboardingViewModel(
-                    permissionSource = permissionSource
-                ) as T
-            }
-        }
-    )
+    val context = LocalContext.current
+    val activity = context as? Activity
+    val onboardingViewModel: OnboardingViewModel = hiltViewModel()
+    val permissionSource = onboardingViewModel.permissionSource
 
     val currentPageState = onboardingViewModel.currentPage.collectAsState()
     val currentPage = currentPageState.value
+
+    val permissionLauncher: ActivityResultLauncher<Array<String>> = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestMultiplePermissions()
+    ) { granted ->
+        val allGranted = granted.values.all { it }
+        if (allGranted) {
+            onboardingViewModel.completeOnboarding()
+            onFinished()
+        }
+    }
 
     Scaffold(
         modifier = modifier.fillMaxSize()
@@ -55,8 +55,13 @@ fun OnboardingFlow(
                 )
                 2 -> PermissionScreen(
                     onGrantPermissions = {
-                        onboardingViewModel.completeOnboarding()
-                        onFinished()
+                        val missing = permissionSource.requestAllPermissions(activity!!)
+                        if (missing.isNotEmpty()) {
+                            permissionLauncher.launch(missing.toTypedArray())
+                        } else {
+                            onboardingViewModel.completeOnboarding()
+                            onFinished()
+                        }
                     },
                     modifier = Modifier.fillMaxSize()
                 )

@@ -5,16 +5,15 @@ import androidx.lifecycle.viewModelScope
 import com.roadguide.app.core.common.ScreenState
 import com.roadguide.app.data.local.entity.EnvironmentalSample
 import com.roadguide.app.domain.usecase.GetEnvironmentalSample
+import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import javax.inject.Inject
 
-/**
- * ViewModel for Weather screen.
- * Displays current weather and air quality data from environmental sources.
- */
-class WeatherViewModel(
+@HiltViewModel
+class WeatherViewModel @Inject constructor(
     private val getEnvironmentalSample: GetEnvironmentalSample
 ) : ViewModel() {
 
@@ -31,12 +30,9 @@ class WeatherViewModel(
     val lon: StateFlow<Double> = _lon.asStateFlow()
 
     init {
-        loadEnvironmentalData(55.7558, 37.6173) // Default: Moscow
+        loadEnvironmentalData(55.7558, 37.6173)
     }
 
-    /**
-     * Loads environmental data for given coordinates.
-     */
     fun loadEnvironmentalData(lat: Double, lon: Double) {
         _lat.value = lat
         _lon.value = lon
@@ -52,9 +48,6 @@ class WeatherViewModel(
         }
     }
 
-    /**
-     * Refreshes environmental data for current coordinates.
-     */
     fun refresh() {
         loadEnvironmentalData(_lat.value, _lon.value)
     }

@@ -2,10 +2,8 @@ package com.roadguide.app.data.repository
 
 import com.roadguide.app.data.local.dao.EnvironmentalSampleDao
 import com.roadguide.app.data.local.entity.EnvironmentalSample
-import com.roadguide.app.data.local.EnvironmentalValidator
-import com.roadguide.app.data.source.CamsSource
+import com.roadguide.app.data.local.settings.TrackingPrefs
 import com.roadguide.app.data.source.EnvironmentalDataFetcher
-import com.roadguide.app.data.source.OpenMeteoSource
 import kotlinx.coroutines.flow.Flow
 
 interface EnvironmentalSampleRepository {
@@ -19,21 +17,23 @@ interface EnvironmentalSampleRepository {
 
     /**
      * Fetches environmental data for given coordinates from remote sources,
-     * validates, and persists to local database.
+     * validates quality, and persists to local database.
      * Returns the saved sample or null if no data could be fetched.
      */
     suspend fun fetchAndSave(lat: Double, lon: Double): EnvironmentalSample?
+
+    /**
+     * Returns true if internet was available at least once today.
+     */
+    suspend fun wasInternetAvailableToday(): Boolean
 }
 
-class EnvironmentalSampleRepositoryImpl(private val dao: EnvironmentalSampleDao) :
+class EnvironmentalSampleRepositoryImpl(
+    private val dao: EnvironmentalSampleDao,
+    private val fetcher: EnvironmentalDataFetcher,
+    private val trackingPrefs: TrackingPrefs
+) :
     EnvironmentalSampleRepository {
-
-    private val fetcher = EnvironmentalDataFetcher(
-        openMeteoSource = OpenMeteoSource(),
-        camsSource = CamsSource(apiKey = null)
-    )
-
-    private val validator = EnvironmentalValidator()
 
     override suspend fun insert(sample: EnvironmentalSample): Long = dao.insert(sample)
 
@@ -43,23 +43,17 @@ class EnvironmentalSampleRepositoryImpl(private val dao: EnvironmentalSampleDao)
 
     override suspend fun deleteOlderThan(cutoff: Long): Int = dao.deleteOlderThan(cutoff)
 
-    override     suspend fun fetchAndSave(lat: Double, lon: Double): EnvironmentalSample? {
+    override suspend fun fetchAndSave(lat: Double, lon: Double): EnvironmentalSample? {
         val sample = fetcher.fetch(lat, lon) ?: return null
 
-        val validatedQuality = validator.validate(
-            sample = sample,
-            requestLat = lat,
-            requestLon = lon,
-            requestTime = sample.timestamp
-        )
+        // Mark internet as available since we successfully fetched data
+        trackingPrefs.markInternetAvailable()
 
-        val finalSample = if (validatedQuality != null && validatedQuality != sample.dataQuality) {
-            sample.copy(dataQuality = validatedQuality)
-        } else {
-            sample
-        }
+        val id = dao.insert(sample)
+        return sample.copy(id = id)
+    }
 
-        val id = dao.insert(finalSample)
-        return finalSample.copy(id = id)
+    override suspend fun wasInternetAvailableToday(): Boolean {
+        return trackingPrefs.wasInternetAvailableToday()
     }
 }

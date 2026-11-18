@@ -1,6 +1,5 @@
 package com.roadguide.app.feature.places
 
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -17,14 +16,10 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.FloatingActionButton
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
@@ -32,11 +27,9 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
-import androidx.lifecycle.ViewModelProvider
-import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.hilt.navigation.compose.hiltViewModel
 import com.roadguide.app.R
 import com.roadguide.app.core.common.ScreenState
 import com.roadguide.app.core.ui.theme.ErrorPlaceholder
@@ -44,10 +37,8 @@ import com.roadguide.app.core.ui.theme.LoadingPlaceholder
 import com.roadguide.app.core.ui.theme.RgColor
 import com.roadguide.app.core.ui.theme.RgDimens
 import com.roadguide.app.core.ui.theme.RgIcon
-import com.roadguide.app.data.local.DataProvider
 import com.roadguide.app.data.local.entity.Place
 import com.roadguide.app.data.local.entity.PlaceCategory
-import com.roadguide.app.data.repository.PlaceRepositoryImpl
 import com.roadguide.app.feature.places.viewmodel.PlacesViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -56,20 +47,7 @@ fun PlacesScreen(
     modifier: Modifier = Modifier,
     onPlaceClick: ((Place) -> Unit)? = null
 ) {
-    val context = LocalContext.current
-    val dataProvider = DataProvider.getInstance(context)
-    val placeRepository = PlaceRepositoryImpl(dataProvider.placeDao)
-
-    val placesViewModel: PlacesViewModel = viewModel(
-        factory = object : ViewModelProvider.Factory {
-            override fun <T : androidx.lifecycle.ViewModel> create(modelClass: Class<T>): T {
-                return PlacesViewModel(
-                    placeRepository = placeRepository,
-                    context = context
-                ) as T
-            }
-        }
-    )
+    val placesViewModel: PlacesViewModel = hiltViewModel()
 
     val uiState by placesViewModel.uiState.collectAsState()
     val places by placesViewModel.places.collectAsState()

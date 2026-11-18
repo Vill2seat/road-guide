@@ -4,20 +4,25 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.roadguide.app.core.common.ScreenState
 import com.roadguide.app.data.local.entity.EnvironmentalSample
+import com.roadguide.app.data.local.entity.LocationPoint
+import com.roadguide.app.data.repository.EnvironmentalSampleRepository
 import com.roadguide.app.domain.model.LocationPointSummary
 import com.roadguide.app.domain.usecase.GetEnvironmentalSample
 import com.roadguide.app.domain.usecase.GetTrackingSettings
 import com.roadguide.app.domain.usecase.ToggleTracking
+import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
-import com.roadguide.app.data.local.entity.LocationPoint
+import javax.inject.Inject
 
-class TrackerViewModel(
+@HiltViewModel
+class TrackerViewModel @Inject constructor(
     private val getTrackingSettings: GetTrackingSettings,
     private val toggleTracking: ToggleTracking,
-    private val getEnvironmentalSample: GetEnvironmentalSample
+    private val getEnvironmentalSample: GetEnvironmentalSample,
+    private val environmentalSampleRepository: EnvironmentalSampleRepository
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow<ScreenState>(ScreenState.Loading)
@@ -35,8 +40,12 @@ class TrackerViewModel(
     private val _environmentalSample = MutableStateFlow<EnvironmentalSample?>(null)
     val environmentalSample: StateFlow<EnvironmentalSample?> = _environmentalSample.asStateFlow()
 
+    private val _internetAvailableToday = MutableStateFlow<Boolean?>(null)
+    val internetAvailableToday: StateFlow<Boolean?> = _internetAvailableToday.asStateFlow()
+
     init {
         loadTrackingState()
+        loadInternetAvailability()
     }
 
     fun loadTrackingState() {
@@ -47,6 +56,17 @@ class TrackerViewModel(
                 _trackingEnabled.value = state.trackingEnabled
             } catch (e: Exception) {
                 _uiState.value = ScreenState.Error(e.message ?: "Unknown error")
+            }
+        }
+    }
+
+    fun loadInternetAvailability() {
+        viewModelScope.launch {
+            try {
+                val available = environmentalSampleRepository.wasInternetAvailableToday()
+                _internetAvailableToday.value = available
+            } catch (e: Exception) {
+                _internetAvailableToday.value = null
             }
         }
     }
@@ -86,16 +106,12 @@ class TrackerViewModel(
         )
     }
 
-    /**
-     * Loads environmental data for given coordinates (called when location updates arrive).
-     */
     fun loadEnvironmentalData(lat: Double, lon: Double) {
         viewModelScope.launch {
             try {
                 val sample = getEnvironmentalSample.invoke(lat, lon)
                 _environmentalSample.value = sample
             } catch (e: Exception) {
-                // Silently fail — environmental data is supplementary
             }
         }
     }

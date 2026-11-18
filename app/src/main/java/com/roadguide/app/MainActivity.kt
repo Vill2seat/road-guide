@@ -20,16 +20,13 @@ import com.roadguide.app.core.ui.theme.RoadGuideTheme
 import com.roadguide.app.data.source.PermissionSource
 import com.roadguide.app.feature.onboarding.OnboardingFlow
 import com.roadguide.app.feature.permissions.PermissionScreen
+import dagger.hilt.android.AndroidEntryPoint
+import javax.inject.Inject
 
-/**
- * Main entry point for Road Guide.
- *
- * Sets up the RoadGuideTheme (from Figma design tokens) and hosts the permission
- * gate or [AppNavHost] depending on whether required permissions are granted.
- */
+@AndroidEntryPoint
 class MainActivity : ComponentActivity() {
 
-    private val permissionSource = PermissionSource(this)
+    @Inject lateinit var permissionSource: PermissionSource
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -45,20 +42,11 @@ class MainActivity : ComponentActivity() {
         }
     }
 
-    /**
-     * Gates the app behind onboarding and runtime permissions.
-     *
-     * Flow:
-     * 1. Onboarding not completed → OnboardingFlow (Welcome → Info → Permissions)
-     * 2. Onboarding completed but permissions missing → PermissionScreen
-     * 3. All done → AppNavHost
-     */
     @Composable
     private fun PermissionGate() {
         val hasPermissions = remember { mutableStateOf(permissionSource.hasAllPermissions()) }
         val hasBeenAsked = remember { mutableStateOf(false) }
 
-        // Register the permission result launcher
         val permissionLauncher = rememberLauncherForActivityResult(
             ActivityResultContracts.RequestMultiplePermissions()
         ) { granted ->
@@ -67,14 +55,11 @@ class MainActivity : ComponentActivity() {
             hasBeenAsked.value = true
         }
 
-        // Check onboarding completion from DataStore
         val onboardingDone by permissionSource.hasCompletedOnboarding().collectAsState(initial = false)
 
         if (!onboardingDone) {
             OnboardingFlow(
                 onFinished = {
-                    // DataStore is updated by OnboardingViewModel.completeOnboarding();
-                    // recomposition will pick up the new value.
                 },
                 modifier = Modifier.fillMaxSize()
             )

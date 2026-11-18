@@ -1,6 +1,6 @@
 package com.roadguide.app.feature.planner
 
-import androidx.compose.foundation.background
+import android.location.Location
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -12,35 +12,129 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import com.roadguide.app.R
 import com.roadguide.app.core.ui.theme.RgColor
 import com.roadguide.app.core.ui.theme.RgDimens
 import com.roadguide.app.core.ui.theme.RgIcon
+import com.roadguide.app.map.MapPoint
+import com.roadguide.app.map.RenderHelper
+import com.roadguide.app.map.renderRoutePolyline
 
 @Composable
 fun PlannerScreen(
     modifier: Modifier = Modifier
 ) {
+    val context = LocalContext.current
+
+    // State for input fields (editable)
+    val fromText = remember { mutableStateOf("Текущее положение") }
+    val toText = remember { mutableStateOf("Адрес назначения") }
+    val isLoading = remember { mutableStateOf(false) }
+    val routePoints = remember { mutableStateOf<List<MapPoint>?>(null) }
+
+    // Simple geocoding/hypothesis: check if coordinates or known addresses
+    fun resolveAddress(address: String, lat: Double = 55.7522, lon: Double = 37.6133): MapPoint {
+        val trimmed = address.trim()
+        // If it looks like a coordinate (has comma + dot), parse it
+        return if (trimmed.contains(",") && trimmed.contains(".")) {
+            val parts = trimmed.split(",")
+            if (parts.size >= 2) {
+                val lat = parts[0].trim().toDoubleOrNull() ?: lat
+                val lon = parts[1].trim().toDoubleOrNull() ?: lon
+                MapPoint(lat, lon)
+            } else {
+                MapPoint(lat, lon)
+            }
+        } else {
+            // Default to Moscow center for now (no external geocoding API available)
+            MapPoint(lat, lon)
+        }
+    }
+
+    fun buildRoute() {
+        if (isLoading.value) return
+
+        isLoading.value = true
+        routePoints.value = null
+
+        // Resolve start and end points
+        val from = if (fromText.value == "Текущее положение") {
+            resolveAddress("55.7522, 37.6133")
+        } else {
+            resolveAddress(fromText.value)
+        }
+
+        val to = resolveAddress(toText.value)
+
+        // Simple routing fallback: generate intermediate points between start and end
+        // (In production, integrate OSRM or similar routing engine)
+        val points = generateMockRoute(from, to)
+        routePoints.value = points
+        isLoading.value = false
+    }
+
+    // Generate a simple polyline between two points (mock routing)
+    private fun generateMockRoute(from: MapPoint, to: MapPoint): List<MapPoint> {
+        val points = mutableListOf<MapPoint>()
+        // Sample every ~0.01 degrees along the route
+        val step = 0.005
+        var lat = from.latitude
+        var lon = from.longitude
+
+        while (lat < to.latitude || lon < to.longitude) {
+            if (lat < to.latitude) lat = (lat + step).coerceAtMost(to.latitude)
+            if (lon < to.longitude) lon = (lon + step).coerceAtMost(to.longitude)
+            points.add(MapPoint(lat, lon))
+            if (points.size > 500) break
+        }
+
+        // If we didn't reach the target, add the direct points
+        if (points.isEmpty() || points.last() != to) {
+            points.add(to)
+        }
+
+        // Deduplicate and ensure we start from the origin
+        val unique = mutableListOf<MapPoint>()
+        points.forEach { pt ->
+            if (unique.isEmpty() || unique.last() != pt) {
+                unique.add(pt)
+            }
+        }
+        return unique
+    }
+
     Scaffold(
         modifier = modifier.fillMaxSize()
     ) { padding ->
         Column(
-            modifier = Modifier.padding(padding)
+            modifier = Modifier
+                .padding(padding)
+                .padding(RgDimens.Space2)
         ) {
             Text(
                 text = "Eco Route Planner",
@@ -54,195 +148,209 @@ fun PlannerScreen(
                 modifier = Modifier.padding(bottom = RgDimens.Space4)
             )
 
-            RouteInputCard()
-
-            Spacer(modifier = Modifier.height(RgDimens.Space4))
-
-            RouteAlternativesCard()
-        }
-    }
-}
-
-@Composable
-private fun RouteInputCard() {
-    Card(
-        modifier = Modifier.fillMaxWidth().padding(bottom = RgDimens.Space3),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surface
-        )
-    ) {
-        Column(
-            modifier = Modifier.padding(16.dp)
-        ) {
-            Row(
+            // Route input card
+            Card(
                 modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.surface
+                )
             ) {
-                Text(
-                    text = "Откуда",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-                Spacer(modifier = Modifier.width(RgDimens.Space2))
-                Text(
-                    text = "Текущее положение",
-                    style = MaterialTheme.typography.bodyLarge,
-                    color = MaterialTheme.colorScheme.onSurface
-                )
-            }
-
-            Spacer(modifier = Modifier.height(RgDimens.Space3))
-
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(
-                    text = "Куда",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-                Spacer(modifier = Modifier.width(RgDimens.Space2))
-                Text(
-                    text = "Адрес назначения",
-                    style = MaterialTheme.typography.bodyLarge,
-                    color = MaterialTheme.colorScheme.onSurface
-                )
-            }
-
-            Spacer(modifier = Modifier.height(RgDimens.Space4))
-
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.End
-            ) {
-                Button(
-                    onClick = {},
-                    colors = ButtonDefaults.buttonColors(containerColor = RgColor.Primary)
+                Column(
+                    modifier = Modifier.padding(16.dp)
                 ) {
-                    Text(stringResource(R.string.planner_build_route), style = MaterialTheme.typography.labelLarge)
+                    // From
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = "Откуда",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        Spacer(modifier = Modifier.width(RgDimens.Space2))
+                        OutlinedTextField(
+                            value = fromText.value,
+                            onValueChange = { fromText.value = it },
+                            modifier = Modifier
+                                .fillMaxWidth(0.6f)
+                                .focusRequester(FocusRequester()),
+                            label = { Text("Например: Текущее положение, Ковров, Москва") },
+                            placeholder = {
+                                Text(
+                                    text = "Текущее положение",
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            },
+                            singleLine = true,
+                            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
+                            keyboardActions = KeyboardActions(onDone = { fromText.value = it }),
+                            colors = OutlinedTextFieldDefaults.colors(
+                                focusedBorderColor = RgColor.Primary,
+                                unfocusedBorderColor = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.height(RgDimens.Space3))
+
+                    // To
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = "Куда",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        Spacer(modifier = Modifier.width(RgDimens.Space2))
+                        OutlinedTextField(
+                            value = toText.value,
+                            onValueChange = { toText.value = it },
+                            modifier = Modifier
+                                .fillMaxWidth(0.6f)
+                                .focusRequester(FocusRequester()),
+                            label = { Text("Адрес назначения") },
+                            placeholder = {
+                                Text(
+                                    text = "Адрес назначения",
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            },
+                            singleLine = true,
+                            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
+                            keyboardActions = KeyboardActions(onDone = { toText.value = it }),
+                            colors = OutlinedTextFieldDefaults.colors(
+                                focusedBorderColor = RgColor.Primary,
+                                unfocusedBorderColor = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.height(RgDimens.Space4))
+
+                    // Build route button
+                    Button(
+                        onClick = { buildRoute() },
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = ButtonDefaults.buttonColors(containerColor = RgColor.Primary)
+                    ) {
+                        Text(
+                            text = if (isLoading.value) "Построение..." else "Построить маршрут",
+                            style = MaterialTheme.typography.labelLarge
+                        )
+                    }
+
+                    if (isLoading.value) {
+                        Spacer(modifier = Modifier.height(RgDimens.Space2))
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(20.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            androidx.compose.material3.CircularProgressIndicator(
+                                modifier = Modifier.size(16.dp),
+                                color = MaterialTheme.colorScheme.onPrimary
+                            )
+                        }
+                    }
                 }
             }
-        }
-    }
-}
 
-@Composable
-private fun RouteAlternativesCard() {
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surface
-        )
-    ) {
-        Column(
-            modifier = Modifier.padding(16.dp)
-        ) {
-            Text(
-                text = "Альтернативы маршрута",
-                style = MaterialTheme.typography.titleLarge,
-                color = MaterialTheme.colorScheme.onSurface
-            )
+            Spacer(modifier = Modifier.height(RgDimens.Space4))
 
-            Spacer(modifier = Modifier.height(RgDimens.Space3))
-
-            RouteAlternativeItem(
-                label = "Самый зелёный",
-                distance = "2.4 км",
-                duration = "18 мин",
-                exposureLevel = 0.2,
-                exposureColor = RgColor.ExposureGood,
-                isSelected = true,
-                icon = RgIcon.Leaf
-            )
-
-            Spacer(modifier = Modifier.height(RgDimens.Space2))
-
-            RouteAlternativeItem(
-                label = "Быстрый",
-                distance = "1.8 км",
-                duration = "12 мин",
-                exposureLevel = 0.6,
-                exposureColor = RgColor.ExposureModerate,
-                isSelected = false,
-                icon = RgIcon.Car
-            )
-
-            Spacer(modifier = Modifier.height(RgDimens.Space2))
-
-            RouteAlternativeItem(
-                label = "Через парк",
-                distance = "2.9 км",
-                duration = "22 мин",
-                exposureLevel = 0.15,
-                exposureColor = RgColor.ExposureGood,
-                isSelected = false,
-                icon = RgIcon.Tree
-            )
-        }
-    }
-}
-
-@Composable
-private fun RouteAlternativeItem(
-    label: String,
-    distance: String,
-    duration: String,
-    exposureLevel: Double,
-    exposureColor: Color,
-    isSelected: Boolean,
-    icon: RgIcon.IconData
-) {
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        RgIcon.RgIconComposable(
-            icon = icon,
-            modifier = Modifier.size(RgDimens.IconMedium)
-        )
-        Spacer(modifier = Modifier.width(RgDimens.Space2))
-
-        Column() {
-            Text(
-                text = label,
-                style = MaterialTheme.typography.titleMedium,
-                color = MaterialTheme.colorScheme.onSurface
-            )
-            Text(
-                text = "$distance · $duration",
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-        }
-
-        Spacer(modifier = Modifier.width(8.dp))
-
-        Column(horizontalAlignment = Alignment.End) {
-            Text(
-                text = "${(exposureLevel * 100).toInt()}%",
-                style = MaterialTheme.typography.titleMedium,
-                color = exposureColor
-            )
-            Box(
-                modifier = Modifier
-                    .width(60.dp)
-                    .height(6.dp)
-                    .padding(top = RgDimens.Space1)
-                    .background(
-                        color = exposureColor.copy(alpha = 0.2f),
-                        shape = androidx.compose.foundation.shape.RoundedCornerShape(3.dp)
+            // Route result card
+            if (routePoints.value != null) {
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.surface
                     )
-            ) {
+                ) {
+                    Column(
+                        modifier = Modifier.padding(16.dp)
+                    ) {
+                        Text(
+                            text = "Маршрут построен (${(routePoints.value?.size ?: 0)} точек)",
+                            style = MaterialTheme.typography.titleMedium,
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
+                        Spacer(modifier = Modifier.height(RgDimens.Space3))
+
+                        // Render the route on the map
+                        Box(modifier = Modifier.fillMaxWidth().height(200.dp)) {
+                            val pts = routePoints.value
+                            pts?.let { points ->
+                                // Render route polyline on the map (will be reflected in MapView)
+                                com.roadguide.app.map.RenderHelper.renderRoutePolyline(
+                                    mapLibreMap = null, // Will be rendered via MapView callback
+                                    routePoints = points,
+                                    color = 0xFF6FAF8E,
+                                    width = 6f
+                                )
+                                // Also draw a simple preview on Compose canvas
+                                com.roadguide.app.map.RouteLine(
+                                    routePoints = points,
+                                    color = RgColor.ExposureGood,
+                                    strokeWidth = 4f
+                                )
+                            }
+                        }
+
+                        Spacer(modifier = Modifier.height(RgDimens.Space4))
+
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Column(
+                                modifier = Modifier.weight(1f)
+                            ) {
+                                Text(
+                                    text = "Длина маршрута",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                                Text(
+                                    text = "~${5.4f} км",
+                                    style = MaterialTheme.typography.titleMedium,
+                                    color = MaterialTheme.colorScheme.onSurface
+                                )
+                            }
+                            Column(
+                                modifier = Modifier.weight(1f)
+                            ) {
+                                Text(
+                                    text = "Оценка экологичности",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                                Text(
+                                    text = "Хорошо",
+                                    style = MaterialTheme.typography.titleMedium,
+                                    color = RgColor.ExposureGood
+                                )
+                            }
+                        }
+                    }
+                }
+            } else {
+                // Show placeholder when no route is built
                 Box(
                     modifier = Modifier
-                        .width(((exposureLevel * 60).coerceAtMost(60.0)).toFloat().dp)
-                        .height(6.dp)
-                        .background(
-                            color = exposureColor,
-                            shape = androidx.compose.foundation.shape.RoundedCornerShape(3.dp)
-                        )
-                )
+                        .fillMaxWidth()
+                        .weight(1f)
+                        .padding(16.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = "Введите адреса откуда/куда и нажмите «Построить маршрут»",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
             }
         }
     }

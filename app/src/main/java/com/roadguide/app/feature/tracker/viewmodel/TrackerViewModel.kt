@@ -1,12 +1,15 @@
 package com.roadguide.app.feature.tracker.viewmodel
 
+import android.location.Location
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.roadguide.app.core.common.ScreenState
 import com.roadguide.app.data.local.entity.EnvironmentalSample
 import com.roadguide.app.data.local.entity.LocationPoint
 import com.roadguide.app.data.repository.EnvironmentalSampleRepository
+import com.roadguide.app.data.source.LocationSource
 import com.roadguide.app.domain.model.LocationPointSummary
+import com.roadguide.app.domain.model.TrackingSettingsState
 import com.roadguide.app.domain.usecase.GetEnvironmentalSample
 import com.roadguide.app.domain.usecase.GetTrackingSettings
 import com.roadguide.app.domain.usecase.ToggleTracking
@@ -22,7 +25,8 @@ class TrackerViewModel @Inject constructor(
     private val getTrackingSettings: GetTrackingSettings,
     private val toggleTracking: ToggleTracking,
     private val getEnvironmentalSample: GetEnvironmentalSample,
-    private val environmentalSampleRepository: EnvironmentalSampleRepository
+    private val environmentalSampleRepository: EnvironmentalSampleRepository,
+    private val locationSource: LocationSource
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow<ScreenState>(ScreenState.Loading)
@@ -43,9 +47,13 @@ class TrackerViewModel @Inject constructor(
     private val _internetAvailableToday = MutableStateFlow<Boolean?>(null)
     val internetAvailableToday: StateFlow<Boolean?> = _internetAvailableToday.asStateFlow()
 
+    private val _locationUpdates = MutableStateFlow<Location?>(null)
+    val locationUpdates: StateFlow<Location?> = _locationUpdates.asStateFlow()
+
     init {
         loadTrackingState()
         loadInternetAvailability()
+        collectLocationUpdates()
     }
 
     fun loadTrackingState() {
@@ -71,12 +79,44 @@ class TrackerViewModel @Inject constructor(
         }
     }
 
+    private fun collectLocationUpdates() {
+        viewModelScope.launch {
+            locationSource.locationUpdates.collect { location ->
+                _locationUpdates.value = location
+                // Only process points while recording
+                if (_recordingState.value == RecordingState.RECORDING) {
+                    processLocationPoint(
+                        LocationPoint(
+                            latitude = location.latitude,
+                            longitude = location.longitude,
+                            timestamp = location.time,
+                            accuracyMeters = location.accuracy,
+                            speedMetersPerSecond = location.speed.toFloat(),
+                            bearing = location.bearing.toFloat(),
+                            altitude = location.altitude,
+                            provider = location.provider,
+                            isMock = false,
+                            qualityFlags = 0,
+                            routeId = null,
+                            collectionDiagnostics = null
+                        )
+                    )
+                }
+            }
+        }
+    }
+
     fun toggleTracking(enabled: Boolean) {
         viewModelScope.launch {
             try {
                 val state = toggleTracking.invoke(enabled)
                 _trackingEnabled.value = state.trackingEnabled
                 _uiState.value = ScreenState.Success
+                if (enabled) {
+                    _recordingState.value = RecordingState.RECORDING
+                } else {
+                    _recordingState.value = RecordingState.IDLE
+                }
             } catch (e: Exception) {
                 _uiState.value = ScreenState.Error(e.message ?: "Unknown error")
             }

@@ -55,7 +55,8 @@ fun OnboardingFlow(
                 )
                 2 -> PermissionScreen(
                     onGrantPermissions = {
-                        val missing = permissionSource.requestAllPermissions(activity!!)
+                        val activity = context as? Activity ?: return@PermissionScreen
+                        val missing = permissionSource.getMissingPermissions()
                         if (missing.isNotEmpty()) {
                             permissionLauncher.launch(missing.toTypedArray())
                         } else {

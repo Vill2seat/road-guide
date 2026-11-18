@@ -79,11 +79,10 @@ class PermissionSource(private val context: Context) {
     }
 
     /**
-     * Requests all missing permissions from the calling Activity.
-     * The caller must register an ActivityResultLauncher for
-     * [RequestMultiplePermissions] to handle the result.
+     * Returns the list of missing permissions (without requesting).
+     * The caller MUST use ActivityResultLauncher to request them.
      */
-    fun requestAllPermissions(activity: Activity): java.util.ArrayList<String> {
+    fun getMissingPermissions(): java.util.ArrayList<String> {
         val missing = mutableListOf<String>()
 
         if (!hasLocationPermission()) {
@@ -92,14 +91,6 @@ class PermissionSource(private val context: Context) {
         }
         if (!hasNotificationsPermission()) {
             missing.add(Manifest.permission.POST_NOTIFICATIONS)
-        }
-
-        if (missing.isNotEmpty()) {
-            ActivityCompat.requestPermissions(
-                activity,
-                missing.toTypedArray(),
-                PERMISSION_REQUEST_CODE
-            )
         }
 
         return java.util.ArrayList(missing)

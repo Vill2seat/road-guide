@@ -12,6 +12,8 @@ import com.roadguide.app.data.local.entity.LocationPoint
 import com.roadguide.app.data.local.entity.Route
 import com.roadguide.app.data.local.entity.RouteStatus
 import com.roadguide.app.data.local.entity.RouteType
+import com.roadguide.app.data.repository.EnvironmentalSampleRepository
+import com.roadguide.app.data.repository.EnvironmentalSampleRepositoryImpl
 import com.roadguide.app.data.repository.LocationPointRepository
 import com.roadguide.app.data.repository.LocationPointRepositoryImpl
 import com.roadguide.app.data.repository.RouteRepository
@@ -46,6 +48,7 @@ class TrackingRecordingService : Service() {
     // Repositories (initialized via DataProvider)
     private var locationPointRepository: LocationPointRepository? = null
     private var routeRepository: RouteRepository? = null
+    private var environmentalSampleRepository: EnvironmentalSampleRepository? = null
 
     // Location source
     private var locationSource: LocationSource? = null
@@ -58,6 +61,7 @@ class TrackingRecordingService : Service() {
         val locationPointDao: LocationPointDao = dataProvider.locationPointDao
         routeRepository = RouteRepositoryImpl(routeDao)
         locationPointRepository = LocationPointRepositoryImpl(locationPointDao)
+        environmentalSampleRepository = EnvironmentalSampleRepositoryImpl(dataProvider.environmentalSampleDao)
 
         // Initialize location source
         locationSource = LocationSource(this)
@@ -166,6 +170,17 @@ class TrackingRecordingService : Service() {
         )
 
         locationPointRepository?.insert(point)
+
+        // Fetch environmental data for this location (supplementary, failures are silent)
+        environmentalSampleRepository?.let { repo ->
+            serviceScope.launch {
+                try {
+                    repo.fetchAndSave(location.latitude, location.longitude)
+                } catch (e: Exception) {
+                    // Environmental data is supplementary — silently fail
+                }
+            }
+        }
 
         // Update route distance using last known location
         currentRoute?.let { route ->

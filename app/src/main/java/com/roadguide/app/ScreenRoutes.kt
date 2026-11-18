@@ -16,6 +16,7 @@ object ScreenRoutes {
     const val Permission = "permission"
     const val Weather = "weather"
     const val DailyReport = "daily_report"
+    const val Onboarding = "onboarding"
 
     /**
      * Maps a bottom nav tab to its route string.

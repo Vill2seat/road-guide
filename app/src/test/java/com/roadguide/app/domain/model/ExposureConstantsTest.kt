@@ -29,26 +29,26 @@ class ExposureConstantsTest {
             screenFactor = defaultScreen
         )
 
-        // E = 5.0 × 1.0 × 1.0 × 0.7 × 1.0 × 1.0 × 1.0 = 3.5
-        // (T = 1800/3600 = 0.5, so T < T_max, so T = 0.5)
-        // E = 5.0 × 1.0 × 0.5 × 0.7 × 1.0 × 1.0 × 1.0 = 1.75
-        assertEquals(1.75, maxExposure, 0.001)
+        // E = 5.0 × 1.0 × 0.5 × 1.0 × 1.0 × 1.0 × 1.0 = 2.5
+        // (T = 1800/3600 = 0.5, so T < T_max, so T = 0.5; pollutionLevel >= 0.3 so activityFactor = 1.0)
+        assertEquals(2.5, maxExposure, 0.001)
 
         // Test 2: With higher pollution level
         val highPollution = calculateExposure(1800.0, 1.5)
-        assertEquals(2.625, highPollution, 0.001)
+        // E = 5.0 × 1.5 × 0.5 × 1.0 × 1.0 × 1.0 × 1.0 = 3.75
+        assertEquals(3.75, highPollution, 0.001)
 
         // Test 3: With longer duration (approaches T_max)
         val longDuration = calculateExposure(3600.0, 1.0) // 1 hour = 3600s
         // T = 3600/3600 = 1.0, which is < T_max (2.0)
-        // E = 5.0 × 1.0 × 1.0 × 0.7 = 3.5
-        assertEquals(3.5, longDuration, 0.001)
+        // E = 5.0 × 1.0 × 1.0 × 1.0 × 1.0 × 1.0 × 1.0 = 5.0
+        assertEquals(5.0, longDuration, 0.001)
 
         // Test 4: Verify T_max boundary
         val tMaxDuration = calculateExposure(7200.0, 1.0) // 2 hours = 7200s
         // T = min(7200/3600, 2.0) = 2.0
-        // E = 5.0 × 1.0 × 2.0 × 0.7 = 7.0
-        assertEquals(7.0, tMaxDuration, 0.001)
+        // E = 5.0 × 1.0 × 2.0 × 1.0 × 1.0 × 1.0 × 1.0 = 10.0
+        assertEquals(10.0, tMaxDuration, 0.001)
     }
 
     @Test

@@ -12,6 +12,8 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
+import com.roadguide.app.R
 
 @Composable
 fun EmptyPlaceholder(
@@ -79,7 +81,7 @@ fun ErrorPlaceholder(
                 onClick = onRetry,
                 modifier = Modifier.padding(top = RgDimens.Space2)
             ) {
-                Text("Retry")
+                Text(stringResource(R.string.common_retry))
             }
         }
     }

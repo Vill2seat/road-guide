@@ -19,15 +19,19 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.viewinterop.AndroidView
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
+import com.roadguide.app.R
 import com.roadguide.app.feature.dailyreport.DailyReportScreen
 import com.roadguide.app.feature.history.HistoryScreen
+import com.roadguide.app.feature.onboarding.OnboardingFlow
 import com.roadguide.app.feature.permissions.PermissionScreen
 import com.roadguide.app.feature.places.PlacesScreen
 import com.roadguide.app.feature.weather.WeatherScreen
@@ -38,7 +42,7 @@ import com.roadguide.app.feature.tracker.TrackerScreen
 
 private data class BottomNavItem(
     val route: String,
-    val label: String,
+    val label: Int,
     val icon: ImageVector
 )
 
@@ -47,11 +51,11 @@ private data class BottomNavItem(
 fun AppNavHost() {
     val navController = rememberNavController()
     val items = listOf(
-        BottomNavItem(ScreenRoutes.Tracker, "Map", Icons.Default.Place),
-        BottomNavItem(ScreenRoutes.Timeline, "Timeline", Icons.Default.Info),
-        BottomNavItem(ScreenRoutes.Planner, "Planner", Icons.Default.Search),
-        BottomNavItem(ScreenRoutes.History, "History", Icons.Default.Home),
-        BottomNavItem(ScreenRoutes.Places, "Places", Icons.Default.Person),
+        BottomNavItem(ScreenRoutes.Tracker, R.string.nav_map, Icons.Default.Place),
+        BottomNavItem(ScreenRoutes.Timeline, R.string.nav_timeline, Icons.Default.Info),
+        BottomNavItem(ScreenRoutes.Planner, R.string.nav_planner, Icons.Default.Search),
+        BottomNavItem(ScreenRoutes.History, R.string.nav_history, Icons.Default.Home),
+        BottomNavItem(ScreenRoutes.Places, R.string.nav_places, Icons.Default.Person),
     )
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = navBackStackEntry?.destination?.route
@@ -59,10 +63,10 @@ fun AppNavHost() {
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Road Guide") },
+                title = { Text(stringResource(R.string.app_name)) },
                 actions = {
                     TextButton(onClick = { navController.navigate(ScreenRoutes.Profile) }) {
-                        Text("Profile")
+                        Text(stringResource(R.string.nav_profile))
                     }
                 }
             )
@@ -81,8 +85,8 @@ fun AppNavHost() {
                                 restoreState = true
                             }
                         },
-                        icon = { Icon(item.icon, contentDescription = item.label) },
-                        label = { Text(item.label) }
+                        icon = { Icon(item.icon, contentDescription = stringResource(item.label)) },
+                        label = { Text(stringResource(item.label)) }
                     )
                 }
             }
@@ -126,6 +130,19 @@ fun AppNavHost() {
             }
             composable(ScreenRoutes.DailyReport) {
                 DailyReportScreen()
+            }
+            composable(ScreenRoutes.Onboarding) {
+                OnboardingFlow(
+                    onFinished = {
+                        navController.navigate(ScreenRoutes.Tracker) {
+                            popUpTo(navController.graph.findStartDestination().id) {
+                                saveState = true
+                            }
+                            launchSingleTop = true
+                            restoreState = true
+                        }
+                    }
+                )
             }
         }
     }

@@ -20,10 +20,14 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
+import com.roadguide.app.R
 import com.roadguide.app.core.ui.theme.RgColor
 import com.roadguide.app.core.ui.theme.RgDimens
 import com.roadguide.app.core.ui.theme.RgIcon
@@ -116,7 +120,7 @@ private fun RouteInputCard() {
                     onClick = {},
                     colors = ButtonDefaults.buttonColors(containerColor = RgColor.Primary)
                 ) {
-                    Text("Построить маршрут", style = MaterialTheme.typography.labelLarge)
+                    Text(stringResource(R.string.planner_build_route), style = MaterialTheme.typography.labelLarge)
                 }
             }
         }

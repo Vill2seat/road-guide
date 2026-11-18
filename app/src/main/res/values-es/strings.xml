@@ -1,0 +1,122 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Road Guide</string>
+
+    <!-- Bottom navigation -->
+    <string name="nav_map">Mapa</string>
+    <string name="nav_timeline">Cronología</string>
+    <string name="nav_planner">Planificador</string>
+    <string name="nav_history">Historia</string>
+    <string name="nav_places">Lugares</string>
+    <string name="nav_profile">Perfil</string>
+
+    <!-- Screen titles -->
+    <string name="screen_tracker">Rastreador</string>
+    <string name="screen_timeline">Cronología</string>
+    <string name="screen_planner">Planificador</string>
+    <string name="screen_history">Historia</string>
+    <string name="screen_places">Lugares</string>
+    <string name="screen_profile">Perfil</string>
+
+    <!-- Common -->
+    <string name="common_retry">Reintentar</string>
+    <string name="common_refresh">Actualizar</string>
+    <string name="common_add">Añadir</string>
+    <string name="common_next">Siguiente</string>
+    <string name="common_back">Atrás</string>
+    <string name="common_save">Guardar</string>
+    <string name="common_cancel">Cancelar</string>
+
+    <!-- Tracker screen -->
+    <string name="tracker_start">Iniciar</string>
+    <string name="tracker_stop">Detener</string>
+    <string name="tracker_resume">Reanudar</string>
+
+    <!-- Permission screen -->
+    <string name="permission_title">Permisos para Road Guide</string>
+    <string name="permission_description">
+        Road Guide necesita acceso a tu ubicación y notificaciones
+        para rastrear automáticamente tu exposición ambiental
+        en segundo plano, incluso cuando la app está cerrada.
+    </string>
+    <string name="permission_location_title">Ubicación</string>
+    <string name="permission_location_desc">
+        Para registro automático de rutas y cálculo de exposición en tiempo real
+    </string>
+    <string name="permission_notification_title">Notificaciones</string>
+    <string name="permission_notification_desc">
+        Para alertas de umbral de exposición y operación del rastreador en segundo plano
+    </string>
+    <string name="permission_grant">Conceder permisos</string>
+
+    <!-- Onboarding -->
+    <string name="onboarding_welcome_title">Bienvenido a Road Guide</string>
+    <string name="onboarding_welcome_desc">
+        Road Guide te ayuda a rastrear tu exposición ambiental durante el día.
+        La aplicación registra tus rutas, evalúa la calidad del aire y el ruido
+        en los lugares que visitas, y genera informes diarios.
+    </string>
+    <string name="onboarding_info_title">Cómo funciona</string>
+    <string name="onboarding_info_auto_title">Registro automático de rutas</string>
+    <string name="onboarding_info_auto_desc">
+        La aplicación registra tus movimientos en segundo plano y calcula la exposición ambiental.
+    </string>
+    <string name="onboarding_info_notif_title">Notificaciones</string>
+    <string name="onboarding_info_notif_desc">
+        Recibirás alertas cuando se excedan los niveles seguros de exposición.
+    </string>
+    <string name="onboarding_info_privacy_title">Privacidad</string>
+    <string name="onboarding_info_privacy_desc">
+        Todos los datos se almacenan localmente en tu dispositivo. Nada se envía a la nube sin tu consentimiento.
+    </string>
+
+    <!-- Places screen -->
+    <string name="places_title">Lugares</string>
+    <string name="places_empty_title">No hay lugares guardados</string>
+    <string name="places_empty_desc">
+        Añade lugares visitados con frecuencia para rastrear el tiempo pasado allí.
+    </string>
+    <string name="places_add_place">Añadir lugar</string>
+    <string name="places_radius">Radio</string>
+    <string name="places_visits">Visitas</string>
+    <string name="places_time">Tiempo</string>
+    <string name="places_private">Lugar privado</string>
+
+    <!-- Daily Report screen -->
+    <string name="daily_report_title">Informe diario</string>
+    <string name="daily_report_empty_title">No hay informe para este día</string>
+    <string name="daily_report_empty_desc">
+        Completa un día de seguimiento para ver el informe detallado.
+    </string>
+    <string name="daily_report_score_title">Puntuación del día</string>
+    <string name="daily_report_stats_title">Estadísticas diarias</string>
+    <string name="daily_report_recommendations_title">Recomendaciones</string>
+    <string name="daily_report_recent_title">Informes recientes</string>
+    <string name="daily_report_refresh">Actualizar</string>
+
+    <!-- Weather screen -->
+    <string name="weather_refresh">Actualizar datos</string>
+
+    <!-- Planner screen -->
+    <string name="planner_build_route">Construir ruta</string>
+
+    <!-- History screen -->
+    <string name="history_empty_title">Sin historial</string>
+
+    <!-- Profile screen -->
+    <string name="profile_title">Perfil</string>
+
+    <!-- Placeholders -->
+    <string name="placeholder_empty">Estado vacío</string>
+
+    <!-- Place categories -->
+    <string name="place_category_home">Hogar</string>
+    <string name="place_category_work">Trabajo</string>
+    <string name="place_category_school">Escuela</string>
+    <string name="place_category_gym">Gimnasio</string>
+    <string name="place_category_park">Parque</string>
+    <string name="place_category_shop">Tienda</string>
+    <string name="place_category_restaurant">Restaurante</string>
+    <string name="place_category_transit">Transporte</string>
+    <string name="place_category_other">Otro</string>
+</resources>

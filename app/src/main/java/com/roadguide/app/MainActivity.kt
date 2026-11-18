@@ -11,12 +11,14 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import com.roadguide.app.core.ui.theme.RoadGuideTheme
 import com.roadguide.app.data.source.PermissionSource
+import com.roadguide.app.feature.onboarding.OnboardingFlow
 import com.roadguide.app.feature.permissions.PermissionScreen
 
 /**
@@ -44,8 +46,12 @@ class MainActivity : ComponentActivity() {
     }
 
     /**
-     * Gates the app behind runtime permissions.
-     * Shows PermissionScreen until all permissions are granted, then AppNavHost.
+     * Gates the app behind onboarding and runtime permissions.
+     *
+     * Flow:
+     * 1. Onboarding not completed → OnboardingFlow (Welcome → Info → Permissions)
+     * 2. Onboarding completed but permissions missing → PermissionScreen
+     * 3. All done → AppNavHost
      */
     @Composable
     private fun PermissionGate() {
@@ -61,7 +67,18 @@ class MainActivity : ComponentActivity() {
             hasBeenAsked.value = true
         }
 
-        if (!hasPermissions.value) {
+        // Check onboarding completion from DataStore
+        val onboardingDone by permissionSource.hasCompletedOnboarding().collectAsState(initial = false)
+
+        if (!onboardingDone) {
+            OnboardingFlow(
+                onFinished = {
+                    // DataStore is updated by OnboardingViewModel.completeOnboarding();
+                    // recomposition will pick up the new value.
+                },
+                modifier = Modifier.fillMaxSize()
+            )
+        } else if (!hasPermissions.value) {
             PermissionScreen(
                 onGrantPermissions = {
                     val missing = permissionSource.requestAllPermissions(this@MainActivity)

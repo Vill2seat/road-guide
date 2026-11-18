@@ -18,16 +18,18 @@ import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import com.roadguide.app.R
 import com.roadguide.app.core.common.ScreenState
 import com.roadguide.app.core.ui.theme.ErrorPlaceholder
 import com.roadguide.app.core.ui.theme.LoadingPlaceholder
@@ -79,7 +81,7 @@ fun DailyReportScreen(
                         modifier = Modifier.fillMaxSize()
                     ) {
                         Text(
-                            text = "Daily Report",
+                            text = stringResource(R.string.daily_report_title),
                             style = MaterialTheme.typography.headlineLarge,
                             color = MaterialTheme.colorScheme.onSurface
                         )
@@ -108,7 +110,7 @@ fun DailyReportScreen(
                             colors = ButtonDefaults.buttonColors(containerColor = RgColor.Primary),
                             modifier = Modifier.fillMaxWidth()
                         ) {
-                            Text("Обновить", style = MaterialTheme.typography.labelLarge)
+                            Text(stringResource(R.string.daily_report_refresh), style = MaterialTheme.typography.labelLarge)
                         }
                     }
                 }

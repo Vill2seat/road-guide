@@ -80,6 +80,22 @@ class PermissionSource(private val context: Context) {
     }
 
     /**
+     * Returns true if the user has completed the onboarding flow.
+     */
+    fun hasCompletedOnboarding(): Flow<Boolean> {
+        return context.permissionDataStore.data.map {
+            it[ONBOARDING_COMPLETED] ?: false
+        }
+    }
+
+    /**
+     * Marks the onboarding flow as completed.
+     */
+    suspend fun markOnboardingCompleted() {
+        context.permissionDataStore.edit { it[ONBOARDING_COMPLETED] = true }
+    }
+
+    /**
      * Requests all missing permissions from the calling Activity.
      * The caller must register an ActivityResultLauncher for
      * [RequestMultiplePermissions] to handle the result.
@@ -109,5 +125,6 @@ class PermissionSource(private val context: Context) {
     companion object {
         const val PERMISSION_REQUEST_CODE = 1003
         private val PERMISSIONS_ASKED = booleanPreferencesKey("permissions_asked")
+        private val ONBOARDING_COMPLETED = booleanPreferencesKey("onboarding_completed")
     }
 }

@@ -28,11 +28,11 @@ object RouteSegmentationEngine {
             val point = points[i]
             val activity = determineActivityType(point)
             if (current == null) {
-                current = makeSegment(routeId, routeStartTime, point, activity, i)
+                current = makeSegment(routeId, routeStartTime, points, activity, i)
                 currentActivity = activity
             } else if (activity != currentActivity) {
                 closeSegment(current, points, i)
-                current = makeSegment(routeId, routeStartTime, point, activity, i)
+                current = makeSegment(routeId, routeStartTime, points, activity, i)
                 currentActivity = activity
             } else {
                 extendSegment(current, point)

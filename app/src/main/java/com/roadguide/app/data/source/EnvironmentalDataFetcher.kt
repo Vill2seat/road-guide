@@ -1,6 +1,7 @@
 package com.roadguide.app.data.source
 
 import com.roadguide.app.data.local.EnvironmentalValidator
+import com.roadguide.app.data.local.entity.DataQuality
 import com.roadguide.app.data.local.entity.DataSource
 import com.roadguide.app.data.local.entity.EnvironmentalSample
 import com.roadguide.app.domain.model.ExposureConstants

@@ -1,5 +1,6 @@
 package com.roadguide.app.feature.places
 
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -57,7 +58,7 @@ fun PlacesScreen(
     val places by placesViewModel.places.collectAsState()
 
     // Search state
-    val searchQuery = remember { mutableStateOf("")
+    val searchQuery = remember { mutableStateOf("") }
 
     // Filter places by search query
     val filteredPlaces = remember(places, searchQuery) {
@@ -67,8 +68,7 @@ fun PlacesScreen(
             val query = searchQuery.value.lowercase()
             places.filter { place ->
                 place.name.lowercase().contains(query) ||
-                        place.description?.lowercase().contains(query) == true ||
-                        place.category.displayName.lowercase().contains(query)
+                place.address?.let { it.lowercase().contains(query) } == true
             }
         }
     }
@@ -100,7 +100,7 @@ fun PlacesScreen(
                     )
                 },
                 singleLine = true,
-                decoration = androidx.compose.foundation.shape.RoundedCornerShape(8.dp),
+                shape = androidx.compose.foundation.shape.RoundedCornerShape(8.dp),
                 colors = OutlinedTextFieldDefaults.colors(
                     focusedBorderColor = RgColor.Primary,
                     unfocusedBorderColor = MaterialTheme.colorScheme.onSurfaceVariant
@@ -240,7 +240,7 @@ private fun PlaceCard(
                         color = MaterialTheme.colorScheme.onSurface
                     )
                     Text(
-                        text = place.description ?: "",
+                        text = place.address ?: "",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -266,7 +266,7 @@ private fun PlaceCard(
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                     Text(
-                        text = place.category.displayName,
+                        text = place.category.name,
                         style = MaterialTheme.typography.bodySmall,
                         color = categoryColorFor(place.category)
                     )

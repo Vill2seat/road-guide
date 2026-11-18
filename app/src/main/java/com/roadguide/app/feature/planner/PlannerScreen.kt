@@ -42,8 +42,6 @@ import com.roadguide.app.core.ui.theme.RgColor
 import com.roadguide.app.core.ui.theme.RgDimens
 import com.roadguide.app.core.ui.theme.RgIcon
 import com.roadguide.app.map.MapPoint
-import com.roadguide.app.map.RenderHelper
-import com.roadguide.app.map.renderRoutePolyline
 
 @Composable
 fun PlannerScreen(
@@ -76,30 +74,8 @@ fun PlannerScreen(
         }
     }
 
-    fun buildRoute() {
-        if (isLoading.value) return
-
-        isLoading.value = true
-        routePoints.value = null
-
-        // Resolve start and end points
-        val from = if (fromText.value == "Текущее положение") {
-            resolveAddress("55.7522, 37.6133")
-        } else {
-            resolveAddress(fromText.value)
-        }
-
-        val to = resolveAddress(toText.value)
-
-        // Simple routing fallback: generate intermediate points between start and end
-        // (In production, integrate OSRM or similar routing engine)
-        val points = generateMockRoute(from, to)
-        routePoints.value = points
-        isLoading.value = false
-    }
-
     // Generate a simple polyline between two points (mock routing)
-    private fun generateMockRoute(from: MapPoint, to: MapPoint): List<MapPoint> {
+    fun generateMockRoute(from: MapPoint, to: MapPoint): List<MapPoint> {
         val points = mutableListOf<MapPoint>()
         // Sample every ~0.01 degrees along the route
         val step = 0.005
@@ -126,6 +102,28 @@ fun PlannerScreen(
             }
         }
         return unique
+    }
+
+    fun buildRoute() {
+        if (isLoading.value) return
+
+        isLoading.value = true
+        routePoints.value = null
+
+        // Resolve start and end points
+        val from = if (fromText.value == "Текущее положение") {
+            resolveAddress("55.7522, 37.6133")
+        } else {
+            resolveAddress(fromText.value)
+        }
+
+        val to = resolveAddress(toText.value)
+
+        // Simple routing fallback: generate intermediate points between start and end
+        // (In production, integrate OSRM or similar routing engine)
+        val points = generateMockRoute(from, to)
+        routePoints.value = points
+        isLoading.value = false
     }
 
     Scaffold(
@@ -184,7 +182,7 @@ fun PlannerScreen(
                             },
                             singleLine = true,
                             keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
-                            keyboardActions = KeyboardActions(onDone = { fromText.value = it }),
+                            keyboardActions = KeyboardActions(onDone = { fromText.value = fromText.value }),
                             colors = OutlinedTextFieldDefaults.colors(
                                 focusedBorderColor = RgColor.Primary,
                                 unfocusedBorderColor = MaterialTheme.colorScheme.onSurfaceVariant
@@ -220,7 +218,7 @@ fun PlannerScreen(
                             },
                             singleLine = true,
                             keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
-                            keyboardActions = KeyboardActions(onDone = { toText.value = it }),
+                            keyboardActions = KeyboardActions(onDone = { toText.value = toText.value }),
                             colors = OutlinedTextFieldDefaults.colors(
                                 focusedBorderColor = RgColor.Primary,
                                 unfocusedBorderColor = MaterialTheme.colorScheme.onSurfaceVariant
@@ -283,19 +281,12 @@ fun PlannerScreen(
                         Box(modifier = Modifier.fillMaxWidth().height(200.dp)) {
                             val pts = routePoints.value
                             pts?.let { points ->
-                                // Render route polyline on the map (will be reflected in MapView)
-                                com.roadguide.app.map.RenderHelper.renderRoutePolyline(
-                                    mapLibreMap = null, // Will be rendered via MapView callback
-                                    routePoints = points,
-                                    color = 0xFF6FAF8E,
-                                    width = 6f
-                                )
-                                // Also draw a simple preview on Compose canvas
-                                com.roadguide.app.map.RouteLine(
-                                    routePoints = points,
-                                    color = RgColor.ExposureGood,
-                                    strokeWidth = 4f
-                                )
+                        // Draw a simple preview on Compose canvas
+                        com.roadguide.app.map.RouteLine(
+                            routePoints = points,
+                            color = RgColor.ExposureGood,
+                            strokeWidth = 4f
+                        )
                             }
                         }
 

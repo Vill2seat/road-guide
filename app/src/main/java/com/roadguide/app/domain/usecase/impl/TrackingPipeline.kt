@@ -7,7 +7,6 @@ import com.roadguide.app.data.local.entity.RouteType
 import com.roadguide.app.data.repository.LocationPointRepository
 import com.roadguide.app.data.repository.RouteRepository
 import com.roadguide.app.data.source.LocationSource
-import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -39,9 +38,12 @@ class TrackingPipeline @Inject constructor(
         initialValue = PipelineEvent.Idle
     )
 
+    private var currentRouteId: Long = 0
+
     suspend fun startTracking(routeId: Long = 0): Route? {
+        currentRouteId = routeId
         locationSource.requestLocationUpdates(intervalSeconds = 10)
-        _event.value = PipelineEvent.Started(routeId)
+        _event.value = PipelineEvent.Started
         return null
     }
 
@@ -52,7 +54,7 @@ class TrackingPipeline @Inject constructor(
     }
 
     fun onLocationReceived(point: LocationPoint) {
-        _event.value = PipelineEvent.LocationReceived(point)
+        _event.value = PipelineEvent.LocationReceived
     }
 
     fun pauseTracking() {
@@ -65,12 +67,12 @@ class TrackingPipeline @Inject constructor(
 
     enum class PipelineEvent {
         Idle,
-        Started(Long),
+        Started,
         Stopped,
         Paused,
         Resumed,
-        LocationReceived(LocationPoint),
-        RouteCompleted(Route),
+        LocationReceived,
+        RouteCompleted,
         ExposureCalculated
     }
 }

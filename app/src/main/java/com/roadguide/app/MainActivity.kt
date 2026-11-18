@@ -62,11 +62,6 @@ class MainActivity : ComponentActivity() {
                 onFinished = {
                     hasPermissions.value = true
                     hasBeenAsked.value = true
-                    navController.navigate(ScreenRoutes.Tracker) {
-                        popUpTo(ScreenRoutes.Permission) {
-                            inclusive = true
-                        }
-                    }
                 },
                 modifier = Modifier.fillMaxSize()
             )

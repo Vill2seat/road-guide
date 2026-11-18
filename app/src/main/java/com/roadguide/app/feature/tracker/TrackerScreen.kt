@@ -37,7 +37,8 @@ import com.roadguide.app.data.local.entity.EnvironmentalSample
 import com.roadguide.app.feature.tracker.viewmodel.RecordingState
 import com.roadguide.app.feature.tracker.viewmodel.TrackerViewModel
 import com.roadguide.app.map.MapView
-import com.roadguide.app.map.renderLocationMarker
+import com.roadguide.app.map.MapPoint
+import com.roadguide.app.map.RouteLine
 
 @Composable
 fun TrackerScreen(
@@ -76,31 +77,21 @@ fun TrackerScreen(
                     MapView(
                         modifier = Modifier.fillMaxSize(),
                         onMapReady = { mapLibreMap ->
-                            // Show the latest known location marker
-                            location?.let { loc ->
-                                // Remove old marker if exists
-                                mapLibreMap.removeMarker("location_marker")
-                                // Add new marker
-                                renderLocationMarker(
-                                    mapLibreMap = mapLibreMap,
-                                    lat = loc.latitude,
-                                    lng = loc.longitude,
-                                    title = "Текущее положение"
-                                )
-                            }
-                            // Show route line if points exist
-                            if (currentRoutePoints.isNotEmpty()) {
-                                mapLibreMap.removePolyline("route_polyline")
-                                val points = currentRoutePoints.map { it.toMapPoint() }
-                                com.roadguide.app.map.RenderHelper.renderRoutePolyline(
-                                    mapLibreMap = mapLibreMap,
-                                    routePoints = points,
-                                    color = 0xFF6FAF8E,
-                                    width = 6f
-                                )
-                            }
+                            // Map is ready - route line rendered via RouteLine composable below
                         }
                     )
+
+                    // Route line overlay (Compose Canvas)
+                    val routePoints = currentRoutePoints.map { p ->
+                        MapPoint(latitude = p.latitude, longitude = p.longitude)
+                    }
+                    if (routePoints.isNotEmpty()) {
+                        RouteLine(
+                            routePoints = routePoints,
+                            color = RgColor.Primary,
+                            strokeWidth = 5f
+                        )
+                    }
 
                     Column(
                         modifier = Modifier

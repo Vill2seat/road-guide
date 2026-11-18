@@ -3,7 +3,7 @@ package com.roadguide.app.domain.usecase.impl
 import com.roadguide.app.data.local.entity.ActivityType
 import com.roadguide.app.data.local.entity.EnvironmentalSample
 import com.roadguide.app.domain.model.ExposureConstants
-import com.roadguide.app.domain.model.RouteSegment
+import com.roadguide.app.data.local.entity.RouteSegment
 
 /**
  * Implementation of [com.roadguide.app.domain.usecase.ExposureCalculation]

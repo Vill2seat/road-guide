@@ -2,7 +2,6 @@ package com.roadguide.app.util
 
 import android.content.Context
 import android.content.ContextWrapper
-import kotlin.concurrent.volatile
 
 /**
  * Helper class to provide test context for Robolectric tests.
@@ -10,7 +9,7 @@ import kotlin.concurrent.volatile
  */
 object TestAppContext {
 
-    @volatile
+    @Volatile
     private var applicationContext: Context? = null
 
     fun setApplicationContext(context: Context) {

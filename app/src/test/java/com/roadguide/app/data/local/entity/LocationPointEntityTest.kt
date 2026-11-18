@@ -45,6 +45,7 @@ class LocationPointEntityTest {
             latitude = 0.0,
             longitude = 0.0,
             timestamp = 0L,
+            accuracyMeters = 0f,
             provider = "mock"
         )
 

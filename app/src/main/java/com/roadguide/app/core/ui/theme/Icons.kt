@@ -48,6 +48,10 @@ object RgIcon {
     val Motorcycle = IconData("motorcycle", Color(0xFF5A8FCF))
     val Ferry = IconData("ferry", Color(0xFF5A8FCF))
 
+    // Places
+    val School = IconData("school", Color(0xFF8FC9A8))
+    val Bag = IconData("bag", Color(0xFF5A8FCF))
+
     // Environment
     val Tree = IconData("tree", Color(0xFF8FC9A8))
     val Wind = IconData("wind", Color(0xFF5A8FCF))

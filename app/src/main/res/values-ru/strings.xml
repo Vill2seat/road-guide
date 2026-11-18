@@ -1,0 +1,122 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Road Guide</string>
+
+    <!-- Bottom navigation -->
+    <string name="nav_map">Карта</string>
+    <string name="nav_timeline">Хронология</string>
+    <string name="nav_planner">Планировщик</string>
+    <string name="nav_history">История</string>
+    <string name="nav_places">Места</string>
+    <string name="nav_profile">Профиль</string>
+
+    <!-- Screen titles -->
+    <string name="screen_tracker">Трекер</string>
+    <string name="screen_timeline">Хронология</string>
+    <string name="screen_planner">Планировщик</string>
+    <string name="screen_history">История</string>
+    <string name="screen_places">Места</string>
+    <string name="screen_profile">Профиль</string>
+
+    <!-- Common -->
+    <string name="common_retry">Повторить</string>
+    <string name="common_refresh">Обновить</string>
+    <string name="common_add">Добавить</string>
+    <string name="common_next">Далее</string>
+    <string name="common_back">Назад</string>
+    <string name="common_save">Сохранить</string>
+    <string name="common_cancel">Отмена</string>
+
+    <!-- Tracker screen -->
+    <string name="tracker_start">Старт</string>
+    <string name="tracker_stop">Стоп</string>
+    <string name="tracker_resume">Возобновить</string>
+
+    <!-- Permission screen -->
+    <string name="permission_title">Разрешения для Road Guide</string>
+    <string name="permission_description">
+        Road Guide нуждается в доступе к вашему местоположению и уведомлениям,
+        чтобы автоматически отслеживать ваше воздействие на окружающую среду
+        в фоновом режиме, даже когда приложение свернуто.
+    </string>
+    <string name="permission_location_title">Местоположение</string>
+    <string name="permission_location_desc">
+        Для автоматической записи маршрутов и расчёта воздействия в реальном времени
+    </string>
+    <string name="permission_notification_title">Уведомления</string>
+    <string name="permission_notification_desc">
+        Для оповещений о превышении порога воздействия и фоновой работы трекера
+    </string>
+    <string name="permission_grant">Дать разрешения</string>
+
+    <!-- Onboarding -->
+    <string name="onboarding_welcome_title">Добро пожаловать в Road Guide</string>
+    <string name="onboarding_welcome_desc">
+        Road Guide помогает отслеживать ваше воздействие на окружающую среду
+        в течение дня. Приложение записывает ваши маршруты, оценивает качество
+        воздуха и шума по местам пребывания и формирует дневные отчёты.
+    </string>
+    <string name="onboarding_info_title">Как это работает</string>
+    <string name="onboarding_info_auto_title">Автозапись маршрутов</string>
+    <string name="onboarding_info_auto_desc">
+        Приложение записывает ваши перемещения в фоне и рассчитывает воздействие на окружающую среду.
+    </string>
+    <string name="onboarding_info_notif_title">Уведомления</string>
+    <string name="onboarding_info_notif_desc">
+        Вы будете получать оповещения при превышении безопасного уровня воздействия.
+    </string>
+    <string name="onboarding_info_privacy_title">Конфиденциальность</string>
+    <string name="onboarding_info_privacy_desc">
+        Все данные хранятся локально на вашем устройстве. Ничего не отправляется в облако без вашего согласия.
+    </string>
+
+    <!-- Places screen -->
+    <string name="places_title">Места</string>
+    <string name="places_empty_title">Нет сохраненных мест</string>
+    <string name="places_empty_desc">
+        Добавьте часто посещаемые места, чтобы отслеживать время пребывания.
+    </string>
+    <string name="places_add_place">Добавить место</string>
+    <string name="places_radius">Радиус</string>
+    <string name="places_visits">Посещений</string>
+    <string name="places_time">Время</string>
+    <string name="places_private">Приватное место</string>
+
+    <!-- Daily Report screen -->
+    <string name="daily_report_title">Дневной отчёт</string>
+    <string name="daily_report_empty_title">Нет отчёта за этот день</string>
+    <string name="daily_report_empty_desc">
+        Завершите день трекинга, чтобы увидеть детальный отчёт.
+    </string>
+    <string name="daily_report_score_title">Оценка дня</string>
+    <string name="daily_report_stats_title">Статистика дня</string>
+    <string name="daily_report_recommendations_title">Рекомендации</string>
+    <string name="daily_report_recent_title">Недавние отчёты</string>
+    <string name="daily_report_refresh">Обновить</string>
+
+    <!-- Weather screen -->
+    <string name="weather_refresh">Обновить данные</string>
+
+    <!-- Planner screen -->
+    <string name="planner_build_route">Построить маршрут</string>
+
+    <!-- History screen -->
+    <string name="history_empty_title">Нет истории</string>
+
+    <!-- Profile screen -->
+    <string name="profile_title">Профиль</string>
+
+    <!-- Placeholders -->
+    <string name="placeholder_empty">Пустое состояние</string>
+
+    <!-- Place categories -->
+    <string name="place_category_home">Дом</string>
+    <string name="place_category_work">Работа</string>
+    <string name="place_category_school">Школа</string>
+    <string name="place_category_gym">Тренажерный зал</string>
+    <string name="place_category_park">Парк</string>
+    <string name="place_category_shop">Магазин</string>
+    <string name="place_category_restaurant">Ресторан</string>
+    <string name="place_category_transit">Транспорт</string>
+    <string name="place_category_other">Другое</string>
+</resources>

@@ -47,6 +47,7 @@ kotlin {
     jvmToolchain(17)
     compilerOptions {
         jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17)
+        freeCompilerArgs = listOf("-Xskip-metadata-version-check")
     }
 }
 
@@ -67,6 +68,7 @@ dependencies {
     implementation(platform(libs.androidx.compose.bom))
     implementation(libs.androidx.compose.ui)
     implementation(libs.androidx.compose.ui.graphics)
+    implementation("androidx.compose.ui:ui-android")
     implementation(libs.androidx.compose.ui.tooling.preview)
     implementation(libs.androidx.compose.material3)
     implementation(libs.androidx.compose.material.icons.extended)
@@ -78,8 +80,8 @@ dependencies {
     implementation(libs.androidx.datastore.preferences)
     implementation(libs.play.services.location)
 
-    // MapLibre Native Android — разблокировать когда maven.maplibre.org будет доступен по DNS:
-    // implementation(libs.maplibre.android)
+    // MapLibre Native Android — локальный AAR из app/libs (maven.maplibre.org недоступен по DNS):
+    implementation(files("libs/maplibre-android-13.5.4.aar"))
 
     debugImplementation(libs.androidx.compose.ui.tooling)
     debugImplementation(libs.androidx.compose.ui.test.manifest)

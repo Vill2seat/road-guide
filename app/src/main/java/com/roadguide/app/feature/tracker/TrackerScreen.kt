@@ -24,9 +24,11 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.roadguide.app.R
 import com.roadguide.app.core.ui.theme.RgColor
 import com.roadguide.app.core.ui.theme.RgDimens
 import com.roadguide.app.core.ui.theme.ErrorPlaceholder
@@ -90,8 +92,7 @@ fun TrackerScreen(
                 com.roadguide.app.core.common.ScreenState.Empty -> {
                     Column(modifier = Modifier.fillMaxSize()) {
                         MapView(
-                            modifier = Modifier.fillMaxWidth(),
-                            testTag = "tracker_map"
+                            modifier = Modifier.fillMaxWidth()
                         )
 
                         Card(
@@ -235,7 +236,7 @@ private fun ActionRow(
                     onClick = onStop,
                     colors = ButtonDefaults.buttonColors(containerColor = RgColor.Error)
                 ) {
-                    Text("Стоп", style = MaterialTheme.typography.labelLarge)
+                    Text(stringResource(R.string.tracker_stop), style = MaterialTheme.typography.labelLarge)
                 }
             }
             RecordingState.IDLE -> {
@@ -243,7 +244,7 @@ private fun ActionRow(
                     onClick = onStart,
                     colors = ButtonDefaults.buttonColors(containerColor = RgColor.Primary)
                 ) {
-                    Text("Старт", style = MaterialTheme.typography.labelLarge)
+                    Text(stringResource(R.string.tracker_start), style = MaterialTheme.typography.labelLarge)
                 }
             }
             RecordingState.PAUSED -> {
@@ -251,7 +252,7 @@ private fun ActionRow(
                     onClick = onStart,
                     colors = ButtonDefaults.buttonColors(containerColor = RgColor.Primary)
                 ) {
-                    Text("Возобновить", style = MaterialTheme.typography.labelLarge)
+                    Text(stringResource(R.string.tracker_resume), style = MaterialTheme.typography.labelLarge)
                 }
             }
         }

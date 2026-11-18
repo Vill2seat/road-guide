@@ -13,11 +13,13 @@ import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
+import org.robolectric.RuntimeEnvironment
 import org.robolectric.annotation.Config
 import java.io.File
+import kotlinx.coroutines.flow.first
 
 @RunWith(RobolectricTestRunner::class)
-@Config(sdk = [35])
+@Config(sdk = [33])
 class RouteDaoTest {
 
     private lateinit var database: RoadGuideDatabase
@@ -25,8 +27,7 @@ class RouteDaoTest {
 
     @Before
     fun setUp() {
-        val context = com.roadguide.app.util.TestAppContext.getApplicationContext()
-        val dbFile = File(context.cacheDir, "test-routing.db")
+        val context: Context = RuntimeEnvironment.application
         database = Room.inMemoryDatabaseBuilder(
             context,
             RoadGuideDatabase::class.java
@@ -61,7 +62,7 @@ class RouteDaoTest {
         val fetched = dao.getById(insertedId).first()
         assertNotNull(fetched)
         assertEquals(route.startTime, fetched?.startTime)
-        assertEquals(route.distanceMeters, fetched?.distanceMeters, 0.0)
+        assertEquals(route.distanceMeters, fetched!!.distanceMeters, 0.0)
         assertEquals(route.status, fetched?.status)
     }
 

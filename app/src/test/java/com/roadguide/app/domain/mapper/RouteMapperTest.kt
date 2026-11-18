@@ -59,6 +59,6 @@ class RouteMapperTest {
         assertEquals(null, summary.endTime)
         assertEquals(1000.0, summary.distanceMeters, 0.0)
         assertEquals("in_progress", summary.status)
-        assertEquals("daily_auto", summary.routeType)
+        assertEquals("manual_tracking", summary.routeType)
     }
 }

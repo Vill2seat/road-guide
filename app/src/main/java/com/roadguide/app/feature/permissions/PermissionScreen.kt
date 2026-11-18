@@ -20,7 +20,9 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import com.roadguide.app.R
 import com.roadguide.app.core.ui.theme.RgColor
 import com.roadguide.app.core.ui.theme.RgDimens
 import com.roadguide.app.core.ui.theme.RgIcon
@@ -65,7 +67,7 @@ fun PermissionScreen(
 
             // Title
             Text(
-                text = "Разрешения для Road Guide",
+                text = stringResource(R.string.permission_title),
                 style = MaterialTheme.typography.headlineLarge,
                 color = MaterialTheme.colorScheme.onSurface
             )
@@ -76,11 +78,7 @@ fun PermissionScreen(
 
             // Description
             Text(
-                text = """
-                    Road Guide нуждается в доступе к вашему местоположению и уведомлениям,
-                    чтобы автоматически отслеживать ваше дневное воздействие на окружающую среду
-                    в фоновом режиме, даже когда приложение свернуто.
-                """.trimIndent(),
+                text = stringResource(R.string.permission_description),
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.padding(horizontal = 32.dp)
@@ -93,8 +91,8 @@ fun PermissionScreen(
             // Permission cards
             PermissionCard(
                 icon = RgIcon.MapPin,
-                title = "Местоположение",
-                description = "Для автоматической записи маршрутов и расчёта воздействия в реальном времени"
+                title = stringResource(R.string.permission_location_title),
+                description = stringResource(R.string.permission_location_desc)
             )
 
             androidx.compose.foundation.layout.Spacer(
@@ -103,8 +101,8 @@ fun PermissionScreen(
 
             PermissionCard(
                 icon = RgIcon.Bell,
-                title = "Уведомления",
-                description = "Для оповещений о превышении порога воздействия и фоновой работы трекера"
+                title = stringResource(R.string.permission_notification_title),
+                description = stringResource(R.string.permission_notification_desc)
             )
 
             androidx.compose.foundation.layout.Spacer(
@@ -117,7 +115,7 @@ fun PermissionScreen(
                 colors = ButtonDefaults.buttonColors(containerColor = RgColor.Primary),
                 modifier = Modifier.fillMaxWidth()
             ) {
-                Text("Дать разрешения", style = MaterialTheme.typography.labelLarge)
+                Text(stringResource(R.string.permission_grant), style = MaterialTheme.typography.labelLarge)
             }
         }
     }

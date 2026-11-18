@@ -21,8 +21,10 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import com.roadguide.app.R
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -104,7 +106,7 @@ fun WeatherScreen(
                                 colors = ButtonDefaults.buttonColors(containerColor = RgColor.Primary),
                                 modifier = Modifier.fillMaxWidth()
                             ) {
-                                Text("Обновить данные", style = MaterialTheme.typography.labelLarge)
+                                Text(stringResource(R.string.weather_refresh), style = MaterialTheme.typography.labelLarge)
                             }
                         }
                     }

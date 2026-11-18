@@ -1,9 +1,10 @@
 package com.roadguide.app.domain.usecase
 
-import com.roadguide.app.domain.model.TrackingSettingsState
+import com.roadguide.app.data.local.settings.TrackingPreferences
 import com.roadguide.app.domain.usecase.impl.ToggleTrackingImpl
 import com.roadguide.app.data.repository.TrackingSettingsRepository
 import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.flow.first
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue

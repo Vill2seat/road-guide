@@ -1,19 +1,34 @@
 package com.roadguide.app.data.source
 
-import java.io.InputStream
-import java.net.HttpURLConnection
-import java.net.URL
+import android.content.Context
+import android.net.ConnectivityManager
+import okhttp3.OkHttpClient
+import okhttp3.Request
 import java.text.SimpleDateFormat
 import java.util.Locale
 import java.util.TimeZone
 import kotlin.math.roundToLong
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.withTimeout
 
 /**
  * Open-Meteo weather and air quality client.
  * Endpoint: https://api.open-meteo.com/v1/forecast
  * No API key required.
+ *
+ * Features:
+ * - Network connectivity check before each request
+ * - Retry logic (3 attempts with 2 second delay)
+ * - Explicit timeout handling
+ * - Connection pooling via OkHttpClient
  */
-class OpenMeteoSource(private val timeoutMs: Int = 10_000) {
+class OpenMeteoSource(
+    private val context: Context,
+    private val okHttpClient: OkHttpClient,
+    private val timeoutMs: Int = 10_000,
+    private val maxRetries: Int = 3,
+    private val retryDelayMs: Int = 2_000
+) {
 
     private val dateFormat: ThreadLocal<SimpleDateFormat> = ThreadLocal.withInitial {
         SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss", Locale.ROOT).apply {
@@ -22,16 +37,38 @@ class OpenMeteoSource(private val timeoutMs: Int = 10_000) {
     }
 
     /**
+     * Checks if network connectivity is available.
+     */
+    private fun isNetworkAvailable(): Boolean {
+        val cm = context.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
+        return cm.activeNetworkInfo?.isConnected == true
+    }
+
+    /**
      * Fetches current weather and air quality for given coordinates.
+     * Returns null if network is unavailable or all retries fail.
      */
     suspend fun fetch(lat: Double, lon: Double): OpenMeteoWeather? {
-        return try {
-            val url = buildUrl(lat, lon)
-            val response = httpGet(url)
-            parseOpenMeteo(response, lat, lon)
-        } catch (e: Exception) {
-            null
+        if (!isNetworkAvailable()) {
+            return null
         }
+
+        var lastException: Exception? = null
+        for (attempt in 1..maxRetries) {
+            try {
+                return withTimeout(timeoutMs.toLong()) {
+                    val url = buildUrl(lat, lon)
+                    val response = httpGet(url)
+                    parseOpenMeteo(response, lat, lon)
+                }
+            } catch (e: Exception) {
+                lastException = e
+                if (attempt < maxRetries) {
+                    delay(retryDelayMs.toLong())
+                }
+            }
+        }
+        return null
     }
 
     private fun buildUrl(lat: Double, lon: Double): String {
@@ -47,21 +84,14 @@ class OpenMeteoSource(private val timeoutMs: Int = 10_000) {
     }
 
     private fun httpGet(urlString: String): String {
-        val url = URL(urlString)
-        val connection = url.openConnection() as HttpURLConnection
-        connection.requestMethod = "GET"
-        connection.connectTimeout = timeoutMs
-        connection.readTimeout = timeoutMs
-        connection.instanceFollowRedirects = true
-
-        val input: InputStream
-        if (connection.responseCode >= 400) {
-            input = connection.errorStream
-        } else {
-            input = connection.inputStream
+        val request = Request.Builder()
+            .url(urlString)
+            .build()
+        val response = okHttpClient.newCall(request).execute()
+        if (!response.isSuccessful) {
+            throw java.io.IOException("Unexpected code $response")
         }
-
-        return input.bufferedReader().use { it.readText() }
+        return response.body!!.string()
     }
 
     private fun parseOpenMeteo(json: String, lat: Double, lon: Double): OpenMeteoWeather? {

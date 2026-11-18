@@ -5,17 +5,16 @@ import androidx.lifecycle.viewModelScope
 import com.roadguide.app.core.common.ScreenState
 import com.roadguide.app.data.local.entity.DailyReport
 import com.roadguide.app.domain.usecase.GetDailyReport
+import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
+import javax.inject.Inject
 
-/**
- * ViewModel for Daily Report screen.
- * Displays daily exposure summary with score, statistics, and recommendations.
- */
-class DailyReportViewModel(
+@HiltViewModel
+class DailyReportViewModel @Inject constructor(
     private val getDailyReport: GetDailyReport
 ) : ViewModel() {
 
@@ -35,9 +34,6 @@ class DailyReportViewModel(
         loadRecentReports()
     }
 
-    /**
-     * Loads the report for a specific date.
-     */
     fun loadReportForDate(date: String) {
         _selectedDate.value = date
         viewModelScope.launch {
@@ -52,24 +48,16 @@ class DailyReportViewModel(
         }
     }
 
-    /**
-     * Loads recent reports (last N days).
-     */
     fun loadRecentReports(limit: Int = 7) {
         viewModelScope.launch {
             try {
-                // Collect recent reports as a one-shot flow
                 val reports = getDailyReport.observeRecent(limit).first()
                 _recentReports.value = reports
             } catch (e: Exception) {
-                // Silent failure for recent reports
             }
         }
     }
 
-    /**
-     * Refreshes the currently selected date report.
-     */
     fun refresh() {
         _selectedDate.value?.let { loadReportForDate(it) }
     }

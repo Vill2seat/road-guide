@@ -20,12 +20,10 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.unit.dp
-import androidx.lifecycle.ViewModelProvider
-import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -36,29 +34,14 @@ import com.roadguide.app.core.ui.theme.LoadingPlaceholder
 import com.roadguide.app.core.ui.theme.RgColor
 import com.roadguide.app.core.ui.theme.RgDimens
 import com.roadguide.app.core.ui.theme.RgIcon
-import com.roadguide.app.data.local.DataProvider
 import com.roadguide.app.data.local.entity.DailyReport
-import com.roadguide.app.data.repository.DailyReportRepositoryImpl
-import com.roadguide.app.domain.usecase.impl.GetDailyReportImpl
 import com.roadguide.app.feature.dailyreport.viewmodel.DailyReportViewModel
 
 @Composable
 fun DailyReportScreen(
     modifier: Modifier = Modifier
 ) {
-    val context = LocalContext.current
-    val dataProvider = DataProvider.getInstance(context)
-    val repository = DailyReportRepositoryImpl(dataProvider.dailyReportDao)
-
-    val dailyReportViewModel: DailyReportViewModel = viewModel(
-        factory = object : ViewModelProvider.Factory {
-            override fun <T : androidx.lifecycle.ViewModel> create(modelClass: Class<T>): T {
-                return DailyReportViewModel(
-                    getDailyReport = GetDailyReportImpl(repository)
-                ) as T
-            }
-        }
-    )
+    val dailyReportViewModel: DailyReportViewModel = hiltViewModel()
 
     val uiState by dailyReportViewModel.uiState.collectAsState()
     val report by dailyReportViewModel.report.collectAsState()
@@ -433,8 +416,6 @@ private fun qualityColorFor(value: Double): Color {
 }
 
 private fun parseRecommendations(json: String): List<String> {
-    // Simple JSON array parsing for recommendations
-    // Format: ["rec1", "rec2", ...]
     val trimmed = json.trim()
     if (trimmed == "[]" || trimmed.isEmpty()) return emptyList()
     val content = trimmed.removeSurrounding("[", "]")

@@ -100,7 +100,7 @@ class LocationSource(private val context: Context) {
                 priority = Priority.PRIORITY_HIGH_ACCURACY
             }
 
-            locationCallback = object : LocationCallback() {
+            val callback = object : LocationCallback() {
                 override fun onLocationResult(result: LocationResult) {
                     result.lastLocation?.let { loc ->
                         try {
@@ -112,9 +112,11 @@ class LocationSource(private val context: Context) {
                 }
             }
 
+            locationCallback = callback
+
             fusedLocationClient.requestLocationUpdates(
                 locationRequest,
-                locationCallback!!,
+                callback,
                 Looper.getMainLooper()
             )
             isUpdating = true

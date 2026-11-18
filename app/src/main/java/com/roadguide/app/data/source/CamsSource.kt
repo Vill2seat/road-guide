@@ -1,20 +1,33 @@
 package com.roadguide.app.data.source
 
-import java.io.InputStream
-import java.net.HttpURLConnection
-import java.net.URL
+import android.content.Context
+import android.net.ConnectivityManager
+import okhttp3.OkHttpClient
+import okhttp3.Request
 import java.text.SimpleDateFormat
 import java.util.Locale
 import java.util.TimeZone
 import kotlin.math.roundToLong
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.withTimeout
 
 /**
  * CAMS (Copernicus Atmosphere Monitoring Service) air quality client.
  * Requires a valid API key for production use.
+ *
+ * Features:
+ * - Network connectivity check before each request
+ * - Retry logic (3 attempts with 2 second delay)
+ * - Explicit timeout handling
+ * - Connection pooling via OkHttpClient
  */
 class CamsSource(
+    private val context: Context,
+    private val okHttpClient: OkHttpClient,
     private val apiKey: String? = null,
-    private val timeoutMs: Int = 10_000
+    private val timeoutMs: Int = 10_000,
+    private val maxRetries: Int = 3,
+    private val retryDelayMs: Int = 2_000
 ) {
 
     private val dateFormat: ThreadLocal<SimpleDateFormat> = ThreadLocal.withInitial {
@@ -24,20 +37,42 @@ class CamsSource(
     }
 
     /**
+     * Checks if network connectivity is available.
+     */
+    private fun isNetworkAvailable(): Boolean {
+        val cm = context.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
+        return cm.activeNetworkInfo?.isConnected == true
+    }
+
+    /**
      * Fetches AQI and atmospheric composition for given coordinates.
-     * Returns null if API key is missing or request fails.
+     * Returns null if API key is missing, network is unavailable, or all retries fail.
      */
     suspend fun fetch(lat: Double, lon: Double): CamsAqis? {
         if (apiKey == null || apiKey.isBlank()) {
             return null
         }
-        return try {
-            val url = buildUrl(lat, lon)
-            val response = httpGet(url)
-            parseCams(response)
-        } catch (e: Exception) {
-            null
+
+        if (!isNetworkAvailable()) {
+            return null
         }
+
+        var lastException: Exception? = null
+        for (attempt in 1..maxRetries) {
+            try {
+                return withTimeout(timeoutMs.toLong()) {
+                    val url = buildUrl(lat, lon)
+                    val response = httpGet(url)
+                    parseCams(response)
+                }
+            } catch (e: Exception) {
+                lastException = e
+                if (attempt < maxRetries) {
+                    delay(retryDelayMs.toLong())
+                }
+            }
+        }
+        return null
     }
 
     private fun buildUrl(lat: Double, lon: Double): String {
@@ -50,22 +85,15 @@ class CamsSource(
     }
 
     private fun httpGet(urlString: String): String {
-        val url = URL(urlString)
-        val connection = url.openConnection() as HttpURLConnection
-        connection.requestMethod = "GET"
-        connection.connectTimeout = timeoutMs
-        connection.readTimeout = timeoutMs
-        connection.addRequestProperty("Authorization", "Bearer $apiKey")
-        connection.instanceFollowRedirects = true
-
-        val input: InputStream
-        if (connection.responseCode >= 400) {
-            input = connection.errorStream
-        } else {
-            input = connection.inputStream
+        val request = Request.Builder()
+            .url(urlString)
+            .addHeader("Authorization", "Bearer $apiKey")
+            .build()
+        val response = okHttpClient.newCall(request).execute()
+        if (!response.isSuccessful) {
+            throw java.io.IOException("Unexpected code $response")
         }
-
-        return input.bufferedReader().use { it.readText() }
+        return response.body!!.string()
     }
 
     private fun parseCams(json: String): CamsAqis? {

@@ -23,53 +23,38 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.LocalContext
-import com.roadguide.app.R
 import androidx.compose.ui.unit.dp
-import androidx.lifecycle.ViewModelProvider
-import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.hilt.navigation.compose.hiltViewModel
+import com.roadguide.app.R
 import com.roadguide.app.core.common.ScreenState
 import com.roadguide.app.core.ui.theme.ErrorPlaceholder
 import com.roadguide.app.core.ui.theme.LoadingPlaceholder
 import com.roadguide.app.core.ui.theme.RgColor
 import com.roadguide.app.core.ui.theme.RgDimens
 import com.roadguide.app.core.ui.theme.RgIcon
-import com.roadguide.app.data.local.DataProvider
 import com.roadguide.app.data.local.entity.DataQuality
 import com.roadguide.app.data.local.entity.EnvironmentalSample
-import com.roadguide.app.data.repository.EnvironmentalSampleRepositoryImpl
-import com.roadguide.app.domain.usecase.impl.GetEnvironmentalSampleImpl
 import com.roadguide.app.feature.weather.viewmodel.WeatherViewModel
 
 @Composable
 fun WeatherScreen(
     modifier: Modifier = Modifier
 ) {
-    val context = LocalContext.current
-    val dataProvider = DataProvider.getInstance(context)
-    val repository = EnvironmentalSampleRepositoryImpl(dataProvider.environmentalSampleDao)
+    val weatherViewModel: WeatherViewModel = hiltViewModel()
 
-    val weatherViewModel: WeatherViewModel = viewModel(
-        factory = object : ViewModelProvider.Factory {
-            override fun <T : androidx.lifecycle.ViewModel> create(modelClass: Class<T>): T {
-                return WeatherViewModel(
-                    getEnvironmentalSample = GetEnvironmentalSampleImpl(repository)
-                ) as T
-            }
-        }
-    )
+    val uiState by weatherViewModel.uiState.collectAsState()
+    val sample by weatherViewModel.sample.collectAsState()
 
-    val uiState = weatherViewModel.uiState.collectAsState().value
-    val sample = weatherViewModel.sample.collectAsState().value
+    val uiStateValue = uiState
 
     Scaffold(
         modifier = modifier.fillMaxSize()
     ) { padding ->
         androidx.compose.foundation.layout.Box(modifier = Modifier.padding(padding)) {
-            when (uiState) {
+            when (uiStateValue) {
                 ScreenState.Loading -> LoadingPlaceholder(modifier = Modifier.fillMaxSize())
                 is ScreenState.Error -> ErrorPlaceholder(
-                    message = uiState.message,
+                    message = uiStateValue.message,
                     onRetry = { weatherViewModel.refresh() },
                     modifier = Modifier.fillMaxSize()
                 )
@@ -90,10 +75,7 @@ fun WeatherScreen(
                         )
                         Spacer(modifier = Modifier.height(RgDimens.Space4))
 
-                        if (sample == null) {
-                            EmptyWeatherState()
-                        } else {
-                            val currentSample = sample
+                        sample?.let { currentSample ->
                             WeatherHeaderCard(sample = currentSample)
                             Spacer(modifier = Modifier.height(RgDimens.Space4))
                             PollutantsCard(sample = currentSample)

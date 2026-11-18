@@ -11,7 +11,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.drawscope.Stroke
-import kotlin.math.min
 
 /**
  * Simple map point for route rendering without MapLibre SDK dependency.
@@ -32,8 +31,7 @@ fun RouteLine(
     modifier: Modifier = Modifier,
     color: Color = Color(0xFF6FAF8E),
     strokeWidth: Float = 6f,
-    showProgress: Boolean = false,
-    totalPoints: Int = 0
+    showProgress: Boolean = false
 ) {
     val path = remember { Path() }
     val animatedProgress = remember { Animatable(0f) }

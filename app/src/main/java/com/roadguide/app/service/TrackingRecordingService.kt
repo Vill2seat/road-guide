@@ -1,70 +1,70 @@
 package com.roadguide.app.service
 
 import android.app.Service
+import android.app.NotificationChannel
+import android.app.NotificationManager
 import android.content.Context
 import android.content.Intent
+import android.os.Build
 import android.os.IBinder
 import androidx.core.app.ServiceCompat
-import com.roadguide.app.data.local.DataProvider
-import com.roadguide.app.data.local.dao.LocationPointDao
-import com.roadguide.app.data.local.dao.RouteDao
 import com.roadguide.app.data.local.entity.LocationPoint
 import com.roadguide.app.data.local.entity.Route
 import com.roadguide.app.data.local.entity.RouteStatus
 import com.roadguide.app.data.local.entity.RouteType
 import com.roadguide.app.data.repository.EnvironmentalSampleRepository
-import com.roadguide.app.data.repository.EnvironmentalSampleRepositoryImpl
 import com.roadguide.app.data.repository.LocationPointRepository
-import com.roadguide.app.data.repository.LocationPointRepositoryImpl
 import com.roadguide.app.data.repository.RouteRepository
-import com.roadguide.app.data.repository.RouteRepositoryImpl
 import com.roadguide.app.data.source.LocationSource
+import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.withTimeout
 import com.roadguide.app.data.local.settings.TrackingPrefs
 import java.time.Instant
 import java.time.ZoneId
+import javax.inject.Inject
 
-/**
- * Foreground service for continuous location tracking.
- * Collects locations at the configured interval via FusedLocationProviderClient
- * and saves to Room.
- */
+@AndroidEntryPoint
 class TrackingRecordingService : Service() {
+
+    @Inject lateinit var locationPointRepository: LocationPointRepository
+    @Inject lateinit var routeRepository: RouteRepository
+    @Inject lateinit var environmentalSampleRepository: EnvironmentalSampleRepository
+    @Inject lateinit var locationSource: LocationSource
+    @Inject lateinit var trackingPrefs: TrackingPrefs
 
     private var trackingJob: Job? = null
     private var routeId: Long? = null
     private var currentRoute: Route? = null
     private var lastLocation: android.location.Location? = null
     private val serviceJob = Job()
-    private val serviceScope = CoroutineScope(Dispatchers.Main + serviceJob)
+    private val serviceScope = CoroutineScope(Dispatchers.Default + serviceJob)
 
     private var isRecording = false
     private var lastLocationTime = 0L
 
-    // Repositories (initialized via DataProvider)
-    private var locationPointRepository: LocationPointRepository? = null
-    private var routeRepository: RouteRepository? = null
-    private var environmentalSampleRepository: EnvironmentalSampleRepository? = null
-
-    // Location source
-    private var locationSource: LocationSource? = null
-
     override fun onCreate() {
         super.onCreate()
-        // Initialize repositories via DataProvider
-        val dataProvider = DataProvider.getInstance(this)
-        val routeDao: RouteDao = dataProvider.routeDao
-        val locationPointDao: LocationPointDao = dataProvider.locationPointDao
-        routeRepository = RouteRepositoryImpl(routeDao)
-        locationPointRepository = LocationPointRepositoryImpl(locationPointDao)
-        environmentalSampleRepository = EnvironmentalSampleRepositoryImpl(dataProvider.environmentalSampleDao)
+        createNotificationChannel()
+    }
 
-        // Initialize location source
-        locationSource = LocationSource(this)
+    private fun createNotificationChannel() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            val channel = NotificationChannel(
+                "tracking_channel",
+                "Road Guide Tracking",
+                NotificationManager.IMPORTANCE_DEFAULT
+            )
+            channel.description = "Used for background location tracking notifications"
+            channel.enableLights(false)
+            channel.enableVibration(false)
+            val manager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+            manager.createNotificationChannel(channel)
+        }
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
@@ -83,31 +83,26 @@ class TrackingRecordingService : Service() {
 
     override fun onDestroy() {
         super.onDestroy()
-        serviceScope.launch {
-            stopRecording()
-        }
+        trackingJob?.cancel()
         serviceJob.cancel()
     }
 
     private suspend fun startRecording() {
         if (isRecording) return
 
-        val locationSource = locationSource ?: return
+        val locationSource = this.locationSource
 
-        // Check permissions before starting
         if (!locationSource.hasLocationPermission()) {
-            // Cannot start without permissions
             return
         }
 
-        // 1. Create a new route in Room
         val now = System.currentTimeMillis()
         val date = Instant.ofEpochMilli(now)
             .atZone(ZoneId.systemDefault())
             .toLocalDate()
             .toString()
 
-        currentRoute = Route(
+        val newRoute = Route(
             id = 0,
             startTime = now,
             endTime = null,
@@ -120,21 +115,22 @@ class TrackingRecordingService : Service() {
             calculationVersion = 1
         )
 
-        routeId = routeRepository?.insert(currentRoute!!) ?: 0
+        currentRoute = newRoute
+        routeId = routeRepository.insert(newRoute)
 
-        // 2. Read tracking interval from prefs
-        val trackingPrefs = TrackingPrefs(this)
-        val settings = trackingPrefs.preferencesFlow.first()
-        val intervalSeconds = settings.intervalSeconds.coerceAtLeast(30).coerceAtMost(3600).toLong()
+        val intervalSeconds: Long = try {
+            withTimeout(5000) {
+                trackingPrefs.preferencesFlow.first().intervalSeconds.coerceAtLeast(30).coerceAtMost(3600).toLong()
+            }
+        } catch (e: Exception) {
+            60L
+        }
 
-        // 3. Start location collection
         isRecording = true
         lastLocationTime = System.currentTimeMillis()
 
-        // Start location updates
         locationSource.requestLocationUpdates(intervalSeconds)
 
-        // Collect locations from the flow
         trackingJob = serviceScope.launch {
             locationSource.locationUpdates.collect { loc ->
                 if (!isRecording) return@collect
@@ -143,12 +139,11 @@ class TrackingRecordingService : Service() {
             }
         }
 
-        // Start foreground service
         ServiceCompat.startForeground(
             this,
             NOTIFICATION_ID,
             createNotification(),
-            0
+            4
         )
     }
 
@@ -169,20 +164,17 @@ class TrackingRecordingService : Service() {
             routeId = routeId
         )
 
-        locationPointRepository?.insert(point)
+        locationPointRepository.insert(point)
 
-        // Fetch environmental data for this location (supplementary, failures are silent)
-        environmentalSampleRepository?.let { repo ->
+        environmentalSampleRepository.let { repo ->
             serviceScope.launch {
                 try {
                     repo.fetchAndSave(location.latitude, location.longitude)
                 } catch (e: Exception) {
-                    // Environmental data is supplementary — silently fail
                 }
             }
         }
 
-        // Update route distance using last known location
         currentRoute?.let { route ->
             val distanceDelta = lastLocation?.let { prev ->
                 calculateDistanceMeters(
@@ -196,7 +188,7 @@ class TrackingRecordingService : Service() {
                 totalDurationSeconds = (System.currentTimeMillis() - route.startTime) / 1000
             )
             currentRoute = updatedRoute
-            routeRepository?.update(updatedRoute)
+            routeRepository.update(updatedRoute)
         }
 
         lastLocation = location
@@ -205,7 +197,7 @@ class TrackingRecordingService : Service() {
     private suspend fun calculateDistanceMeters(
         lat1: Double, lon1: Double, lat2: Double, lon2: Double
     ): Double {
-        val R = 6371000.0 // Earth radius in meters
+        val R = 6371000.0
         val dLat = Math.toRadians(lat2 - lat1)
         val dLon = Math.toRadians(lon2 - lon1)
         val a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
@@ -221,20 +213,17 @@ class TrackingRecordingService : Service() {
         isRecording = false
         trackingJob?.cancel()
 
-        // Stop location updates
-        locationSource?.removeLocationUpdates()
+        locationSource.removeLocationUpdates()
 
-        // Finalize the route
         currentRoute?.let { route ->
             val updatedRoute = route.copy(
                 status = RouteStatus.COMPLETED,
                 endTime = System.currentTimeMillis()
             )
             currentRoute = updatedRoute
-            routeRepository?.update(updatedRoute)
+            routeRepository.update(updatedRoute)
         }
 
-        // Stop foreground service
         ServiceCompat.stopForeground(this, ServiceCompat.STOP_FOREGROUND_REMOVE)
     }
 

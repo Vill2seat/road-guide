@@ -6,16 +6,15 @@ import com.roadguide.app.core.common.ScreenState
 import com.roadguide.app.domain.model.TrackingSettingsState
 import com.roadguide.app.domain.usecase.GetTrackingSettings
 import com.roadguide.app.domain.usecase.ToggleTracking
+import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import javax.inject.Inject
 
-/**
- * ViewModel for Profile screen.
- * Displays and manages tracking settings.
- */
-class ProfileViewModel(
+@HiltViewModel
+class ProfileViewModel @Inject constructor(
     private val getTrackingSettings: GetTrackingSettings,
     private val toggleTracking: ToggleTracking
 ) : ViewModel() {
@@ -42,9 +41,6 @@ class ProfileViewModel(
         }
     }
 
-    /**
-     * Toggle tracking enabled.
-     */
     fun toggleTracking(enabled: Boolean) {
         viewModelScope.launch {
             try {

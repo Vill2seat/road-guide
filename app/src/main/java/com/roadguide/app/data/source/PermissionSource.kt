@@ -63,23 +63,6 @@ class PermissionSource(private val context: Context) {
     }
 
     /**
-     * Returns true if the user has already been asked for permissions (even if denied).
-     * Used to skip the onboarding on subsequent launches.
-     */
-    fun hasBeenAsked(): Flow<Boolean> {
-        return context.permissionDataStore.data.map {
-            it[PERMISSIONS_ASKED] ?: false
-        }
-    }
-
-    /**
-     * Marks that permissions have been requested at least once.
-     */
-    suspend fun markAsAsked() {
-        context.permissionDataStore.edit { it[PERMISSIONS_ASKED] = true }
-    }
-
-    /**
      * Returns true if the user has completed the onboarding flow.
      */
     fun hasCompletedOnboarding(): Flow<Boolean> {
@@ -124,7 +107,6 @@ class PermissionSource(private val context: Context) {
 
     companion object {
         const val PERMISSION_REQUEST_CODE = 1003
-        private val PERMISSIONS_ASKED = booleanPreferencesKey("permissions_asked")
         private val ONBOARDING_COMPLETED = booleanPreferencesKey("onboarding_completed")
     }
 }

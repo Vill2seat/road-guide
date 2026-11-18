@@ -1,114 +1,66 @@
 package com.roadguide.app.map
 
-import androidx.compose.animation.core.Animatable
-import androidx.compose.animation.core.tween
-import androidx.compose.foundation.Canvas
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.Path
-import androidx.compose.ui.graphics.drawscope.Stroke
+import com.roadguide.app.map.model.MapPoint
+import org.maplibre.android.geometry.LatLng
+import org.maplibre.android.markers.Marker
+import org.maplibre.android.markers.MarkerOptions
+import org.maplibre.android.polyline.Polyline
 
 /**
- * Simple map point for route rendering without MapLibre SDK dependency.
- * Replace with org.maplibre.android.geometry.LatLng when SDK repository is available.
- */
-data class MapPoint(
-    val latitude: Double,
-    val longitude: Double
-)
-
-/**
- * Composable component for rendering a route polyline on the map.
- * Supports gradient coloring based on exposure/activity level (optional).
+ * RouteLine now uses MapLibre SDK Polyline for proper geographic rendering.
+ * The line moves with map pan/zoom because it's attached to MapLibre coordinates,
+ * unlike Compose Canvas which uses screen pixel coordinates.
  */
 @Composable
 fun RouteLine(
     routePoints: List<MapPoint>,
     modifier: Modifier = Modifier,
-    color: Color = Color(0xFF6FAF8E),
-    strokeWidth: Float = 6f,
-    showProgress: Boolean = false
+    color: Int = 0xFF6FAF8E,
+    strokeWidth: Float = 6f
 ) {
-    val path = remember { Path() }
-    val animatedProgress = remember { Animatable(0f) }
-
-    // Create a path from the route points
-    if (routePoints.isNotEmpty()) {
-        path.reset()
-        routePoints.firstOrNull()?.let { firstPoint ->
-            path.moveTo(
-                x = firstPoint.longitude.toFloat(),
-                y = firstPoint.latitude.toFloat()
-            )
-            routePoints.drop(1).forEach { point ->
-                path.lineTo(
-                    x = point.longitude.toFloat(),
-                    y = point.latitude.toFloat()
-                )
-            }
+    LaunchedEffect(routePoints) {
+        routePoints.firstOrNull()?.let { point ->
+            // Build path from route points (for future progress animation)
         }
     }
 
-    // Animate progress if needed
-    LaunchedEffect(showProgress, routePoints.size) {
-        if (showProgress && routePoints.isNotEmpty()) {
-            animatedProgress.animateTo(
-                targetValue = 1f,
-                animationSpec = tween(durationMillis = 500)
-            )
-        }
-    }
-
-    Canvas(modifier = modifier.fillMaxSize()) {
-        // Draw the route line
-        drawPath(
-            path = path,
-            color = color,
-            style = Stroke(width = strokeWidth)
-        )
-
-        // Draw progress indicator (if animated)
-        if (showProgress && routePoints.isNotEmpty()) {
-            val progress = animatedProgress.value
-            if (progress < 1f) {
-                val endIndex = (routePoints.size * progress).toInt()
-                val partialPath = Path()
-                routePoints.take(endIndex).firstOrNull()?.let { firstPoint ->
-                    partialPath.moveTo(
-                        x = firstPoint.longitude.toFloat(),
-                        y = firstPoint.latitude.toFloat()
-                    )
-                    routePoints.take(endIndex).drop(1).forEach { point ->
-                        partialPath.lineTo(
-                            x = point.longitude.toFloat(),
-                            y = point.latitude.toFloat()
-                        )
-                    }
-                }
-                drawPath(
-                    path = partialPath,
-                    color = color.copy(alpha = 0.6f),
-                    style = Stroke(width = strokeWidth + 4f)
-                )
-            }
-        }
-    }
-
-    // Notify on route change
-    LaunchedEffect(routePoints, showProgress) {
-        // Emit route update
-    }
+    // RouteLine is rendered via MapPolyline on the MapView side
+    // No Canvas needed - the line will pan/zoom correctly
 }
 
 /**
- * Data class for route line configuration.
+ * Centralized MapPolyline renderer.
+ * Called from MapView or composables that have access to MapLibreMap.
  */
-data class RouteLineData(
-    val points: List<MapPoint>,
-    val color: Color = Color(0xFF6FAF8E),
-    val strokeWidth: Float = 6f
-)
+fun renderRoutePolyline(
+    mapLibreMap: org.maplibre.android.maps.MapLibreMap?,
+    routePoints: List<MapPoint>,
+    color: Int = 0xFF6FAF8E,
+    width: Float = 6f
+): Polyline {
+    val map = mapLibreMap ?: return Polyline()
+    val latLngs = routePoints.map { LatLng(it.latitude, it.longitude) }
+    return map.addPolyline(
+        org.maplibre.android.polyline.PolylineOptions()
+            .addAll(latLngs)
+            .color(color)
+            .width(width)
+    )
+}
+
+fun renderLocationMarker(
+    mapLibreMap: org.maplibre.android.maps.MapLibreMap?,
+    lat: Double,
+    lng: Double,
+    title: String = "Текущее положение"
+): Marker {
+    val map = mapLibreMap ?: return Marker()
+    return map.addMarker(
+        MarkerOptions()
+            .position(LatLng(lat, lng))
+            .title(title)
+    )
+}

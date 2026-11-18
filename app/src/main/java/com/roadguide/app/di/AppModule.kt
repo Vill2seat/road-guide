@@ -44,7 +44,7 @@ import com.roadguide.app.data.repository.TrackingSettingsRepositoryImpl
 import com.roadguide.app.data.source.CamsSource
 import com.roadguide.app.data.source.EnvironmentalDataFetcher
 import com.roadguide.app.data.source.LocationSource
-import com.roadguide.app.data.source.OpenMeteoSource
+import com.roadguide.app.data.source.OpenMeteoWeatherSource
 import com.roadguide.app.data.source.PermissionSource
 import com.roadguide.app.domain.usecase.GetDailyReport
 import com.roadguide.app.domain.usecase.GetEnvironmentalSample
@@ -141,8 +141,8 @@ object AppModule {
     fun provideOpenMeteoSource(
         @ApplicationContext context: Context,
         okHttpClient: OkHttpClient
-    ): OpenMeteoSource =
-        OpenMeteoSource(context, okHttpClient)
+    ): OpenMeteoWeatherSource =
+        OpenMeteoWeatherSource(context, okHttpClient)
 
     @Provides
     @Singleton
@@ -155,7 +155,7 @@ object AppModule {
     @Provides
     @Singleton
     fun provideEnvironmentalDataFetcher(
-        openMeteo: OpenMeteoSource,
+        openMeteo: OpenMeteoWeatherSource,
         cams: CamsSource,
         validator: EnvironmentalValidator
     ): EnvironmentalDataFetcher =

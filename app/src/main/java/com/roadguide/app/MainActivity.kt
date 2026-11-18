@@ -60,13 +60,20 @@ class MainActivity : ComponentActivity() {
         if (!onboardingDone) {
             OnboardingFlow(
                 onFinished = {
+                    hasPermissions.value = true
+                    hasBeenAsked.value = true
+                    navController.navigate(ScreenRoutes.Tracker) {
+                        popUpTo(ScreenRoutes.Permission) {
+                            inclusive = true
+                        }
+                    }
                 },
                 modifier = Modifier.fillMaxSize()
             )
         } else if (!hasPermissions.value) {
             PermissionScreen(
                 onGrantPermissions = {
-                    val missing = permissionSource.requestAllPermissions(this@MainActivity)
+                    val missing = permissionSource.getMissingPermissions()
                     if (missing.isNotEmpty()) {
                         permissionLauncher.launch(missing.toTypedArray())
                     } else {
@@ -77,7 +84,10 @@ class MainActivity : ComponentActivity() {
                 modifier = Modifier.fillMaxSize()
             )
         } else {
-            AppNavHost()
+            AppNavHost(
+                permissionSource = permissionSource,
+                permissionLauncher = permissionLauncher
+            )
         }
     }
 }

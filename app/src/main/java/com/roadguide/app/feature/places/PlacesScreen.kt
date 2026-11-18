@@ -16,18 +16,22 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.roadguide.app.R
@@ -52,6 +56,23 @@ fun PlacesScreen(
     val uiState by placesViewModel.uiState.collectAsState()
     val places by placesViewModel.places.collectAsState()
 
+    // Search state
+    val searchQuery = remember { mutableStateOf("")
+
+    // Filter places by search query
+    val filteredPlaces = remember(places, searchQuery) {
+        if (searchQuery.value.isEmpty()) {
+            places
+        } else {
+            val query = searchQuery.value.lowercase()
+            places.filter { place ->
+                place.name.lowercase().contains(query) ||
+                        place.description?.lowercase().contains(query) == true ||
+                        place.category.displayName.lowercase().contains(query)
+            }
+        }
+    }
+
     Scaffold(
         modifier = modifier.fillMaxSize(),
         topBar = {
@@ -60,7 +81,34 @@ fun PlacesScreen(
             )
         }
     ) { padding ->
-        androidx.compose.foundation.layout.Box(modifier = Modifier.padding(padding)) {
+        Column(
+            modifier = Modifier
+                .padding(padding)
+                .padding(RgDimens.Space2)
+        ) {
+            // Search bar
+            OutlinedTextField(
+                value = searchQuery.value,
+                onValueChange = { searchQuery.value = it },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp),
+                placeholder = {
+                    Text(
+                        text = "Поиск места (дом, работа, парк, школа...)",
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                },
+                singleLine = true,
+                decoration = androidx.compose.foundation.shape.RoundedCornerShape(8.dp),
+                colors = OutlinedTextFieldDefaults.colors(
+                    focusedBorderColor = RgColor.Primary,
+                    unfocusedBorderColor = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            )
+
+            Spacer(modifier = Modifier.height(RgDimens.Space4))
+
             when (val state = uiState) {
                 ScreenState.Loading -> LoadingPlaceholder(modifier = Modifier.fillMaxSize())
                 is ScreenState.Error -> ErrorPlaceholder(
@@ -69,23 +117,89 @@ fun PlacesScreen(
                     modifier = Modifier.fillMaxSize()
                 )
                 ScreenState.Success, ScreenState.Empty -> {
-                    val state = uiState
-                    if (places.isEmpty()) {
-                        EmptyPlacesState()
+                    if (filteredPlaces.isEmpty()) {
+                        // Show empty state (no results or empty search)
+                        if (searchQuery.value.isEmpty()) {
+                            // Initial empty state
+                            Box(
+                                modifier = Modifier.fillMaxSize(),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Column(
+                                    horizontalAlignment = Alignment.CenterHorizontally
+                                ) {
+                                    RgIcon.RgIconComposable(
+                                        icon = RgIcon.MapPin,
+                                        modifier = Modifier.size(RgDimens.IconLarge)
+                                    )
+                                    Spacer(modifier = Modifier.height(RgDimens.Space3))
+                                    Text(
+                                        text = "Места не найдены",
+                                        style = MaterialTheme.typography.titleMedium,
+                                        color = MaterialTheme.colorScheme.onSurface
+                                    )
+                                    Spacer(modifier = Modifier.height(RgDimens.Space2))
+                                    Text(
+                                        text = "Чтобы добавить место, откройте меню и выберите "+
+                                        "«Добавить место»",
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                }
+                            }
+                        } else {
+                            // Search returned no results
+                            Card(
+                                modifier = Modifier.fillMaxWidth(),
+                                colors = CardDefaults.cardColors(
+                                    containerColor = MaterialTheme.colorScheme.surface
+                                )
+                            ) {
+                                Column(
+                                    modifier = Modifier
+                                        .padding(16.dp)
+                                        .fillMaxWidth(),
+                                    horizontalAlignment = Alignment.CenterHorizontally
+                                ) {
+                                    Text(
+                                        text = "Ничего не найдено",
+                                        style = MaterialTheme.typography.titleMedium,
+                                        color = MaterialTheme.colorScheme.onSurface
+                                    )
+                                    Spacer(modifier = Modifier.height(RgDimens.Space3))
+                                    Text(
+                                        text = "По запросу «${searchQuery.value}» ничего не найдено. "+
+                                        "Попробуйте другой запрос.",
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                    Spacer(modifier = Modifier.height(RgDimens.Space4))
+                                    Button(
+                                        onClick = { searchQuery.value = "" },
+                                        colors = ButtonDefaults.buttonColors(
+                                            containerColor = RgColor.Primary
+                                        )
+                                    ) {
+                                        Text("Очистить поиск")
+                                    }
+                                }
+                            }
+                        }
                     } else {
+                        // Results found
                         LazyColumn(
                             modifier = Modifier.fillMaxSize()
                         ) {
                             items(
-                                items = places,
+                                items = filteredPlaces,
                                 key = { it.id }
                             ) { place ->
                                 PlaceCard(
                                     place = place,
-                                    onClick = { onPlaceClick?.invoke(place) },
                                     modifier = Modifier
                                         .fillMaxWidth()
-                                        .padding(bottom = RgDimens.Space3)
+                                        .padding(horizontal = 16.dp, vertical = 4.dp),
+                                    onPlaceClick = onPlaceClick
                                 )
                             }
                         }
@@ -97,58 +211,25 @@ fun PlacesScreen(
 }
 
 @Composable
-private fun EmptyPlacesState() {
-    Column(
-        modifier = Modifier.fillMaxSize(),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center
-    ) {
-        RgIcon.RgIconComposable(
-            icon = RgIcon.MapPin,
-            modifier = Modifier.size(64.dp)
-        )
-        Spacer(modifier = Modifier.height(RgDimens.Space3))
-        Text(
-            text = stringResource(R.string.places_empty_title),
-            style = MaterialTheme.typography.titleLarge,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
-        )
-        Spacer(modifier = Modifier.height(RgDimens.Space2))
-        Text(
-            text = stringResource(R.string.places_empty_desc),
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
-        )
-        Spacer(modifier = Modifier.height(RgDimens.Space4))
-        Button(
-            onClick = { /* TODO: open add place dialog */ },
-            colors = ButtonDefaults.buttonColors(containerColor = RgColor.Primary)
-        ) {
-            Text(stringResource(R.string.places_add_place))
-        }
-    }
-}
-
-@Composable
 private fun PlaceCard(
     place: Place,
-    onClick: (() -> Unit)? = null,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    onPlaceClick: ((Place) -> Unit)? = null
 ) {
-    val categoryColor = categoryColorFor(place.category)
-
     Card(
         modifier = modifier,
+        onClick = { onPlaceClick?.invoke(place) },
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surface
         )
     ) {
         Column(
-            modifier = Modifier.padding(16.dp)
+            modifier = Modifier.padding(12.dp)
         ) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.Top
             ) {
                 Column(
                     modifier = Modifier.weight(1f)
@@ -158,100 +239,47 @@ private fun PlaceCard(
                         style = MaterialTheme.typography.titleMedium,
                         color = MaterialTheme.colorScheme.onSurface
                     )
-                    if (place.address != null) {
-                        Spacer(modifier = Modifier.height(2.dp))
-                        Text(
-                            text = place.address,
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-                }
-
-                Column(
-                    horizontalAlignment = Alignment.End
-                ) {
                     Text(
-                        text = place.category.displayName,
-                        style = MaterialTheme.typography.labelLarge,
-                        color = categoryColor
-                    )
-                    Spacer(modifier = Modifier.height(4.dp))
-                    RgIcon.RgIconComposable(
-                        icon = categoryIconFor(place.category),
-                        modifier = Modifier.size(20.dp)
+                        text = place.description ?: "",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
+                RgIcon.RgIconComposable(
+                    icon = categoryIconFor(place.category),
+                    modifier = Modifier.size(RgDimens.IconMedium)
+                )
             }
 
-            Spacer(modifier = Modifier.height(12.dp))
+            Spacer(modifier = Modifier.height(RgDimens.Space3))
 
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = androidx.compose.foundation.layout.Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
+                horizontalArrangement = Arrangement.SpaceBetween
             ) {
-                PlaceStatItem(
-                    label = "Радиус",
-                    value = "${place.radiusMeters.toInt()} м"
-                )
-                PlaceStatItem(
-                    label = "Посещений",
-                    value = place.visitCount.toString()
-                )
-                PlaceStatItem(
-                    label = "Время",
-                    value = formatDuration(place.totalDurationSeconds)
-                )
-            }
-
-            if (place.isPrivate) {
-                Spacer(modifier = Modifier.height(8.dp))
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically
+                Column(
+                    modifier = Modifier.weight(1f)
                 ) {
+                    Text(
+                        text = "Посещений: ${place.visitCount}",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Text(
+                        text = place.category.displayName,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = categoryColorFor(place.category)
+                    )
+                }
+                if (place.isPrivate) {
                     RgIcon.RgIconComposable(
                         icon = RgIcon.Shield,
                         modifier = Modifier.size(16.dp)
-                    )
-                    Spacer(modifier = Modifier.width(4.dp))
-                    Text(
-                        text = "Приватное место",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
             }
         }
     }
-}
-
-@Composable
-private fun PlaceStatItem(label: String, value: String) {
-    Column(
-        horizontalAlignment = Alignment.CenterHorizontally
-    ) {
-        Text(
-            text = value,
-            style = MaterialTheme.typography.titleMedium,
-            color = MaterialTheme.colorScheme.onSurface
-        )
-        Spacer(modifier = Modifier.height(2.dp))
-        Text(
-            text = label,
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
-        )
-    }
-}
-
-private fun formatDuration(seconds: Long): String {
-    if (seconds < 60) return "${seconds} с"
-    val minutes = seconds / 60
-    if (minutes < 60) return "${minutes} мин"
-    val hours = minutes / 60
-    return "${hours} ч ${minutes % 60} мин"
 }
 
 private fun categoryIconFor(category: PlaceCategory): RgIcon.IconData {
@@ -268,29 +296,16 @@ private fun categoryIconFor(category: PlaceCategory): RgIcon.IconData {
     }
 }
 
-private fun categoryColorFor(category: PlaceCategory): Color {
+private fun categoryColorFor(category: PlaceCategory): androidx.compose.ui.graphics.Color {
     return when (category) {
-        PlaceCategory.HOME -> RgColor.Primary
-        PlaceCategory.WORK -> RgColor.Secondary
-        PlaceCategory.SCHOOL -> Color(0xFF8FC9A8)
-        PlaceCategory.GYM -> Color(0xFFE7D18B)
-        PlaceCategory.PARK -> RgColor.ExposureGood
-        PlaceCategory.SHOP -> Color(0xFFE8A77F)
-        PlaceCategory.RESTAURANT -> Color(0xFFD98787)
-        PlaceCategory.TRANSIT -> RgColor.Info
-        PlaceCategory.OTHER -> RgColor.OnSurfaceVariant
+        PlaceCategory.HOME -> com.roadguide.app.core.ui.theme.RgColor.Primary
+        PlaceCategory.WORK -> com.roadguide.app.core.ui.theme.RgColor.Secondary
+        PlaceCategory.SCHOOL -> androidx.compose.ui.graphics.Color(0xFF8FC9A8)
+        PlaceCategory.GYM -> androidx.compose.ui.graphics.Color(0xFFE7D18B)
+        PlaceCategory.PARK -> com.roadguide.app.core.ui.theme.RgColor.ExposureGood
+        PlaceCategory.SHOP -> androidx.compose.ui.graphics.Color(0xFFE8A77F)
+        PlaceCategory.RESTAURANT -> androidx.compose.ui.graphics.Color(0xFFD98787)
+        PlaceCategory.TRANSIT -> com.roadguide.app.core.ui.theme.RgColor.Info
+        PlaceCategory.OTHER -> com.roadguide.app.core.ui.theme.RgColor.OnSurfaceVariant
     }
 }
-
-private val PlaceCategory.displayName: String
-    get() = when (this) {
-        PlaceCategory.HOME -> "Дом"
-        PlaceCategory.WORK -> "Работа"
-        PlaceCategory.SCHOOL -> "Школа"
-        PlaceCategory.GYM -> "Тренажерный зал"
-        PlaceCategory.PARK -> "Парк"
-        PlaceCategory.SHOP -> "Магазин"
-        PlaceCategory.RESTAURANT -> "Ресторан"
-        PlaceCategory.TRANSIT -> "Транспорт"
-        PlaceCategory.OTHER -> "Другое"
-    }

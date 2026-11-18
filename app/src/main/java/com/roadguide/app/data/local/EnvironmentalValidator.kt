@@ -25,28 +25,28 @@ class EnvironmentalValidator(
         requestTime: Long,
         now: Long = System.currentTimeMillis()
     ): DataQuality? {
-        // Age check
+        // Age check: data older than maxAgeHours -> STALE
         val ageHours = (now - sample.fetchedAt) / (1000.0 * 60 * 60)
         if (ageHours > maxAgeHours) {
             return DataQuality.STALE
         }
 
-        // Distance check (haversine approximation)
+        // Distance check: too far away -> null (reject sample)
         val distanceKm = haversineKm(
             sample.latitude, sample.longitude,
             requestLat, requestLon
         )
         if (distanceKm > maxDistanceKm) {
-            return null // too far away
+            return null
         }
 
-        // Time window check
+        // Time window check: too far from requested time -> null (reject sample)
         val timeDiffMinutes = abs(sample.timestamp - requestTime) / (1000.0 * 60)
-        if (timeDiffMinutes > maxFutureOffsetMinutes * 2) {
-            return null // too far from requested time
+        if (timeDiffMinutes > maxFutureOffsetMinutes) {
+            return null
         }
 
-        // Future offset check
+        // Future offset check: if the sample was fetched in the future (cyber attack etc.)
         val futureOffset = (sample.fetchedAt - now) / (1000.0 * 60)
         if (futureOffset > maxFutureOffsetMinutes) {
             return DataQuality.OUT_OF_RANGE
@@ -61,8 +61,8 @@ class EnvironmentalValidator(
         val dLat = Math.toRadians(lat2 - lat1)
         val dLon = Math.toRadians(lon2 - lon1)
         val a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-            Math.cos(Math.toRadians(lat1)) * Math.cos(Math.toRadians(lat2)) *
-            Math.sin(dLon / 2) * Math.sin(dLon / 2)
+                Math.cos(Math.toRadians(lat1)) * Math.cos(Math.toRadians(lat2)) *
+                        Math.sin(dLon / 2) * Math.sin(dLon / 2)
         val c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a))
         return R * c
     }

@@ -1,5 +1,12 @@
 package com.roadguide.app
 
+import android.Manifest
+import android.os.Bundle
+import androidx.activity.ComponentActivity
+import androidx.activity.compose.setContent
+import androidx.activity.result.ActivityResultLauncher
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Home
@@ -29,6 +36,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import com.roadguide.app.R
+import com.roadguide.app.data.source.PermissionSource
 import com.roadguide.app.feature.dailyreport.DailyReportScreen
 import com.roadguide.app.feature.history.HistoryScreen
 import com.roadguide.app.feature.onboarding.OnboardingFlow
@@ -36,7 +44,7 @@ import com.roadguide.app.feature.permissions.PermissionScreen
 import com.roadguide.app.feature.places.PlacesScreen
 import com.roadguide.app.feature.weather.WeatherScreen
 import com.roadguide.app.feature.planner.PlannerScreen
-import com.roadguide.app.feature.profile.ProfileScreen
+import com.roadguide.app.feature.settings.SettingsScreen
 import com.roadguide.app.feature.timeline.TimelineScreen
 import com.roadguide.app.feature.tracker.TrackerScreen
 
@@ -48,7 +56,10 @@ private data class BottomNavItem(
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun AppNavHost() {
+fun AppNavHost(
+    permissionSource: PermissionSource,
+    permissionLauncher: ActivityResultLauncher<Array<String>>
+) {
     val navController = rememberNavController()
     val items = listOf(
         BottomNavItem(ScreenRoutes.Tracker, R.string.nav_map, Icons.Default.Place),
@@ -116,12 +127,23 @@ fun AppNavHost() {
                 ProfileScreen()
             }
             composable(ScreenRoutes.Settings) {
-                ProfileScreen()
+                SettingsScreen()
             }
             composable(ScreenRoutes.Permission) {
                 PermissionScreen(
                     onGrantPermissions = {
-                        navController.navigate(ScreenRoutes.Tracker)
+                        val missing = permissionSource.getMissingPermissions()
+                        if (missing.isNotEmpty()) {
+                            permissionLauncher.launch(missing.toTypedArray())
+                        } else {
+                            navController.navigate(ScreenRoutes.Tracker) {
+                                popUpTo(navController.graph.findStartDestination().id) {
+                                    saveState = true
+                                }
+                                launchSingleTop = true
+                                restoreState = true
+                            }
+                        }
                     }
                 )
             }

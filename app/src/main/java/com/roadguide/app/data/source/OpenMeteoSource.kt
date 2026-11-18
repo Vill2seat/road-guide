@@ -91,6 +91,13 @@ class OpenMeteoWeatherSource(
             rainMm = extractDouble(current, "\"rain\""),
             cloudCoverPercent = extractDouble(current, "\"cloud_cover\""),
             uvIndex = extractDouble(current, "\"uv_index\""),
+            pm2_5 = null,
+            pm10 = null,
+            nitrogenDioxide = null,
+            ozone = null,
+            sulphurDioxide = null,
+            carbonMonoxide = null,
+            europeanAqi = null,
             timestamp = timestamp
         )
     }

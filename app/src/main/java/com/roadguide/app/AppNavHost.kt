@@ -44,6 +44,7 @@ import com.roadguide.app.feature.permissions.PermissionScreen
 import com.roadguide.app.feature.places.PlacesScreen
 import com.roadguide.app.feature.weather.WeatherScreen
 import com.roadguide.app.feature.planner.PlannerScreen
+import com.roadguide.app.feature.profile.ProfileScreen
 import com.roadguide.app.feature.settings.SettingsScreen
 import com.roadguide.app.feature.timeline.TimelineScreen
 import com.roadguide.app.feature.tracker.TrackerScreen

@@ -4,57 +4,17 @@ import android.content.Context
 import android.os.Bundle
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.MutableState
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.lifecycle.DefaultLifecycleObserver
 import androidx.lifecycle.LifecycleOwner
-import org.maplibre.android.geometry.LatLng
 import org.maplibre.android.maps.MapLibreMap
+import org.maplibre.android.maps.MapView
 import org.maplibre.android.maps.OnMapReadyCallback
-import org.maplibre.android.markers.Marker
-import org.maplibre.android.markers.MarkerOptions
-import org.maplibre.android.polyline.Polyline
-
-/**
- * Holds a reference to the native MapLibre MapView instance so that
- * lifecycle callbacks can be forwarded from the Compose lifecycle.
- */
-private class MapViewHolder(
-    var view: org.maplibre.android.maps.MapView? = null
-) {
-    /**
-     * Provides access to the MapLibreMap instance.
-     */
-    var mapLibreMap: MapLibreMap? = null
-
-    /**
-     * Adds a location marker to the map.
-     */
-    fun addLocationMarker(lat: Double, lng: Double, title: String = "Текущее положение"): Marker {
-        val map = mapLibreMap ?: return Marker()
-        return map.addMarker(
-            MarkerOptions()
-                .position(LatLng(lat, lng))
-                .title(title)
-        )
-    }
-
-    /**
-     * Adds a route polyline to the map.
-     */
-    fun addRoutePolyline(points: List<MapPoint>, color: Int = 0xFF6FAF8E, width: Float = 6f): Polyline {
-        val map = mapLibreMap ?: return Polyline()
-        val latLngs = points.map { LatLng(it.latitude, it.longitude) }
-        return map.addPolyline(
-            PolylineOptions()
-                .addAll(latLngs)
-                .color(color)
-                .width(width)
-        )
-    }
-}
 
 /**
  * Composable wrapper for MapLibre Android SDK map view.
@@ -76,57 +36,56 @@ fun MapView(
     val lifecycleOwner = context as? LifecycleOwner
     val lifecycle = lifecycleOwner?.lifecycle
 
-    val holder = remember { MapViewHolder() }
+    val mapRef = remember { mutableStateOf<MapLibreMap?>(null) }
 
     AndroidView(
         modifier = modifier,
         factory = { ctx ->
-            val mv = org.maplibre.android.maps.MapView(ctx).apply {
+            val mv = MapView(ctx).apply {
                 onCreate(Bundle())
             }
             mv.getMapAsync(object : OnMapReadyCallback {
                 override fun onMapReady(mapLibreMap: MapLibreMap) {
-                    mapLibreMap.setStyle("https://demotiles.maplibre.org/style.json") {
-                        holder.mapLibreMap = mapLibreMap
-                        onMapReady(mapLibreMap)
-                    }
+                    mapLibreMap.setStyle("https://demotiles.maplibre.org/style.json")
+                    mapRef.value = mapLibreMap
+                    onMapReady(mapLibreMap)
                 }
             })
-            holder.view = mv
             mv
         }
     )
 
-    DisposableEffect(lifecycle, holder) {
+    DisposableEffect(lifecycle) {
         val observer = object : DefaultLifecycleObserver {
             override fun onStart(owner: LifecycleOwner) {
-                holder.view?.let { it.onStart() }
             }
 
             override fun onResume(owner: LifecycleOwner) {
-                holder.view?.let { it.onResume() }
             }
 
             override fun onPause(owner: LifecycleOwner) {
-                holder.view?.let { it.onPause() }
             }
 
             override fun onStop(owner: LifecycleOwner) {
-                holder.view?.let { it.onStop() }
             }
 
             override fun onDestroy(owner: LifecycleOwner) {
-                holder.view?.let { it.onDestroy() }
             }
         }
         lifecycle?.addObserver(observer)
         onDispose {
             lifecycle?.removeObserver(observer)
-            holder.view?.let { it.onLowMemory() }
-            holder.view?.let { it.onDestroy() }
         }
     }
 }
+
+/**
+ * Data class representing a map point.
+ */
+data class MapPoint(
+    val latitude: Double,
+    val longitude: Double
+)
 
 /**
  * Data class representing a location marker on the map.
@@ -157,12 +116,3 @@ data class LocationPointSummary(
 ) {
     fun toMapPoint() = MapPoint(latitude, longitude)
 }
-
-/**
- * Data class representing a route line for MapLibre.
- */
-data class RouteLineData(
-    val points: List<MapPoint>,
-    val color: Int = 0xFF6FAF8E,
-    val strokeWidth: Float = 6f
-)

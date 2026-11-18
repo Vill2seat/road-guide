@@ -94,7 +94,7 @@ class TrackerViewModel @Inject constructor(
                             speedMetersPerSecond = location.speed.toFloat(),
                             bearing = location.bearing.toFloat(),
                             altitude = location.altitude,
-                            provider = location.provider,
+                            provider = location.provider ?: "fused",
                             isMock = false,
                             qualityFlags = 0,
                             routeId = null,

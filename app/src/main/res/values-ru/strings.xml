@@ -32,6 +32,22 @@
     <string name="tracker_stop">Стоп</string>
     <string name="tracker_resume">Возобновить</string>
 
+    <!-- Notification -->
+    <string name="notification_recording">Запись локации...</string>
+
+    <!-- Tracking status -->
+    <string name="tracking_status_on">ВКЛ</string>
+    <string name="tracking_status_off">ВЫКЛ</string>
+
+    <!-- Tracker screen -->
+    <string name="points">Точек</string>
+
+    <!-- AQI -->
+    <string name="aqi">AQI: </string>
+
+    <!-- Weather -->
+    <string name="weather">Погода</string>
+
     <!-- Permission screen -->
     <string name="permission_title">Разрешения для Road Guide</string>
     <string name="permission_description">

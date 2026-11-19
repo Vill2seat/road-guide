@@ -19,7 +19,8 @@ object RouteSegmentationEngine {
     ): List<RouteSegment> {
         if (points.isEmpty()) return emptyList()
         if (points.size < 2) {
-            return listOf(stayFromPoint(routeId, points.first(), routeStartTime))
+            // Single point - treat as potential stay
+            return stayFromPoint(routeId, listOf(points.first()), routeStartTime)
         }
         val segments = mutableListOf<RouteSegment>()
         var current: RouteSegment? = null
@@ -114,11 +115,83 @@ object RouteSegmentationEngine {
         return R * c
     }
 
-    private fun stayFromPoint(routeId: Long, point: LocationPointSummary, routeStartTime: Long): RouteSegment {
-        return RouteSegment(routeId = routeId, startTime = point.timestamp,
-            endTime = System.currentTimeMillis(), activityType = ActivityType.STATIONARY,
-            distanceMeters = 0.0, startLatitude = point.latitude, startLongitude = point.longitude,
-            endLatitude = point.latitude, endLongitude = point.longitude, confidence = 0.8)
+    private fun stayFromPoint(routeId: Long, points: List<LocationPointSummary>, routeStartTime: Long): List<RouteSegment> {
+        // Use MovementDetectionEngine.detectStationary to find stationary periods
+        // Default threshold is 300_000 ms (5 minutes) of speed < 0.5 m/s
+        val segments = mutableListOf<RouteSegment>()
+
+        // Need at least 3 points for detectStationary to work
+        if (points.size < 3) {
+            // Single or double point - treat as potential stay if speed is very low
+            val slowPoints = points.filter { it.speedMps < 0.5 }
+            if (slowPoints.isNotEmpty()) {
+                return listOf(RouteSegment(
+                    routeId = routeId,
+                    startTime = slowPoints.first().timestamp,
+                    endTime = if (slowPoints.size > 1) slowPoints.last().timestamp else System.currentTimeMillis(),
+                    activityType = ActivityType.STATIONARY,
+                    distanceMeters = 0.0,
+                    startLatitude = slowPoints.first().latitude,
+                    startLongitude = slowPoints.first().longitude,
+                    endLatitude = if (slowPoints.size > 1) slowPoints.last().latitude else slowPoints.first().latitude,
+                    endLongitude = if (slowPoints.size > 1) slowPoints.last().longitude else slowPoints.first().longitude,
+                    confidence = 0.8
+                ))
+            }
+            return emptyList()
+        }
+
+        // Check sliding windows of 3 points for stationary periods
+        for (i in points.indices if i >= 2) {
+            val window = points.slice(i - 2..i)
+            if (MovementDetectionEngine.detectStationary(window)) {
+                // This point is part of a stay - find the start and end of the stay
+                val stayStart = findStayStart(points, i)
+                val stayEnd = findStayEnd(points, i)
+                if (stayStart <= stayEnd && stayStart >= 0 && stayEnd < points.size) {
+                    val startPoint = points[stayStart]
+                    val endPoint = points[stayEnd]
+                    segments.add(RouteSegment(
+                        routeId = routeId,
+                        startTime = startPoint.timestamp,
+                        endTime = endPoint.timestamp,
+                        activityType = ActivityType.STATIONARY,
+                        distanceMeters = 0.0,
+                        startLatitude = startPoint.latitude,
+                        startLongitude = startPoint.longitude,
+                        endLatitude = endPoint.latitude,
+                        endLongitude = endPoint.longitude,
+                        confidence = 0.8
+                    ))
+                    // Skip past this stay to avoid duplicates
+                    i = stayEnd + 2
+                }
+            }
+        }
+
+        return segments
+    }
+
+    /** Find the start index of a stationary period ending at or before point index */
+    private fun findStayStart(points: List<LocationPointSummary>, endIndex: Int): Int {
+        for (i in endIndex downTo 0) {
+            if (i + 2 <= points.size) {
+                val window = points.slice(i until i + 3)
+                if (MovementDetectionEngine.detectStationary(window)) return i
+            }
+        }
+        return endIndex
+    }
+
+    /** Find the end index of a stationary period starting at or after point index */
+    private fun findStayEnd(points: List<LocationPointSummary>, startIndex: Int): Int {
+        for (i in startIndex until points.size) {
+            if (i + 2 < points.size) {
+                val window = points.slice(i until i + 3)
+                if (MovementDetectionEngine.detectStationary(window)) return i
+            }
+        }
+        return startIndex
     }
 
     private fun extendSegment(segment: RouteSegment, point: LocationPointSummary) {

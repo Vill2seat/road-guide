@@ -1,7 +1,5 @@
 package com.roadguide.app.map.model
 
-import com.roadguide.app.map.MapPoint
-
 /**
  * Data class representing a location marker on the map.
  * Wraps location + metadata for UI/composables.

@@ -37,14 +37,17 @@ import com.roadguide.app.data.local.entity.EnvironmentalSample
 import com.roadguide.app.feature.tracker.viewmodel.RecordingState
 import com.roadguide.app.feature.tracker.viewmodel.TrackerViewModel
 import com.roadguide.app.map.MapView
-import com.roadguide.app.map.MapPoint
-import com.roadguide.app.map.RouteLine
+import com.roadguide.app.map.addLocationMarker
+import com.roadguide.app.map.addRoutePolyline
+import com.roadguide.app.map.focusCameraOnPoints
+import com.roadguide.app.map.model.MapPoint
 
 @Composable
 fun TrackerScreen(
     modifier: Modifier = Modifier
 ) {
     val trackerViewModel: TrackerViewModel = hiltViewModel()
+    val context = LocalContext.current
 
     val uiState by trackerViewModel.uiState.collectAsState()
     val trackingEnabled by trackerViewModel.trackingEnabled.collectAsState()
@@ -77,21 +80,19 @@ fun TrackerScreen(
                     MapView(
                         modifier = Modifier.fillMaxSize(),
                         onMapReady = { mapLibreMap ->
-                            // Map is ready - route line rendered via RouteLine composable below
+                            val ctx = context
+                            location?.let { loc ->
+                                mapLibreMap.addLocationMarker(ctx, loc.latitude, loc.longitude)
+                            }
+                            val routePoints = currentRoutePoints.map { p ->
+                                MapPoint(latitude = p.latitude, longitude = p.longitude)
+                            }
+                            if (routePoints.isNotEmpty()) {
+                                mapLibreMap.addRoutePolyline(routePoints)
+                                mapLibreMap.focusCameraOnPoints(routePoints)
+                            }
                         }
                     )
-
-                    // Route line overlay (Compose Canvas)
-                    val routePoints = currentRoutePoints.map { p ->
-                        MapPoint(latitude = p.latitude, longitude = p.longitude)
-                    }
-                    if (routePoints.isNotEmpty()) {
-                        RouteLine(
-                            routePoints = routePoints,
-                            color = RgColor.Primary,
-                            strokeWidth = 5f
-                        )
-                    }
 
                     Column(
                         modifier = Modifier

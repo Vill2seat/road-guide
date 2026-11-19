@@ -105,7 +105,7 @@ fun TrackerScreen(
                             )
                     ) {
                         Text(
-                            text = "Улицы.ру — городской сервис",
+                            text = stringResource(R.string.screen_tracker),
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -135,7 +135,7 @@ fun TrackerScreen(
                                         )
                                     )
                                     Text(
-                                        text = if (trackingEnabled) "ВКЛ" else "ВЫКЛ",
+                                        text = if (trackingEnabled) stringResource(R.string.tracking_status_on) else stringResource(R.string.tracking_status_off),
                                         style = MaterialTheme.typography.bodySmall,
                                         color = if (trackingEnabled) RgColor.Success else MaterialTheme.colorScheme.onSurfaceVariant
                                     )
@@ -148,7 +148,7 @@ fun TrackerScreen(
                                     horizontalArrangement = Arrangement.SpaceBetween
                                 ) {
                                     Text(
-                                        text = "Точек: $pointCount",
+                                        text = "${stringResource(R.string.points)}: $pointCount",
                                         style = MaterialTheme.typography.bodySmall,
                                         color = MaterialTheme.colorScheme.onSurfaceVariant
                                     )
@@ -168,12 +168,12 @@ fun TrackerScreen(
                                         horizontalArrangement = Arrangement.SpaceBetween
                                     ) {
                                         Text(
-                                            text = "AQI: $aqi",
+                                            text = "${stringResource(R.string.aqi)} $aqi",
                                             style = MaterialTheme.typography.bodySmall,
                                             color = aqiColor
                                         )
                                         Text(
-                                            text = "Погода: ${sample.temperatureCelsius?.toInt()}°C",
+                                            text = stringResource(R.string.weather) + ": " + (sample.temperatureCelsius?.toInt() ?: 0) + "°C",
                                             style = MaterialTheme.typography.bodySmall,
                                             color = MaterialTheme.colorScheme.onSurfaceVariant
                                         )

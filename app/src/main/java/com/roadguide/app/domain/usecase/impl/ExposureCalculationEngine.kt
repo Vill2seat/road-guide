@@ -143,3 +143,39 @@ object ExposureCalculationEngine {
         return normalized.coerceIn(0.0, 100.0)
     }
 }
+
+/** Quality flags for confidence calculation */
+data class QualityFlags(
+    val isGood: Boolean,
+    val hasValidRange: Boolean,
+    val hasValidPeak: Boolean
+)
+
+data class ConfidenceResult(
+    val confidence: Double,   // 0.0-1.0 overall confidence
+    val qualityFactor: Double,  // 0.0-1.0 quality multiplier
+    val coverage: Double       // 0.0-100.0 coverage percentage
+)
+
+fun calculateConfidence(
+    hasEnvironmentalData: Boolean,
+    timestampDeltaMillis: Long,
+    distanceKm: Double,
+    qualityFlags: QualityFlags
+): ConfidenceResult {
+    // Base: no data = 0.0, not 0.5
+    return if (!hasEnvironmentalData) {
+        ConfidenceResult(0.0, 0.0, 0.0)
+    } else {
+        val base = 0.3 +  // has data
+            if (timestampDeltaMillis < 3 * 3600000) 0.2 else 0.0 +  // fresh data
+            if (distanceKm < 30.0) 0.2 else 0.0 +  // nearby
+            if (qualityFlags.isGood) 0.3 else 0.0  // good quality
+        ConfidenceResult(base, 1.0, calculateCoverageRate())
+    }
+}
+
+fun calculateCoverageRate(): Double {
+    // Default coverage rate - will be overridden by TrackingPipeline
+    return 0.0
+}

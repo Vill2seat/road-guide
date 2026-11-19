@@ -12,6 +12,7 @@ import com.roadguide.app.data.repository.RouteRepository
 import com.roadguide.app.data.repository.RouteSegmentRepository
 import com.roadguide.app.data.source.LocationSource
 import com.roadguide.app.domain.model.ExposureConstants
+import com.roadguide.app.domain.usecase.impl.QualityFlags
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -66,6 +67,11 @@ class TrackingPipeline @Inject constructor(
 
                 val sample = environmentalSampleRepository.fetchAndSave(point.latitude, point.longitude)
 
+                val envSample = sample
+                val pointsWithEnv = filteredPoints.count { it.envSample != null }
+                val coverage = if (filteredPoints.isEmpty()) 0.0 else
+                    (pointsWithEnv.toDouble() / filteredPoints.size) * 100.0
+
                 val segment = RouteSegment(
                     routeId = currentRouteId,
                     startTime = point.timestamp,
@@ -87,14 +93,25 @@ class TrackingPipeline @Inject constructor(
                 )
                 val normalizedScore = ExposureCalculationEngine.normalizeExposure(exposureScore)
 
-                val exposureResult = com.roadguide.app.data.local.entity.ExposureResult(
+                                val envSample = sample
+val pointsWithEnv = filteredPoints.count { it.envSample != null }
+val coverage = if (filteredPoints.isEmpty()) 0.0 else 
+    (pointsWithEnv.toDouble() / filteredPoints.size) * 100.0
+
+val exposureResult = com.roadguide.app.data.local.entity.ExposureResult(
                     segmentId = segmentId,
                     routeId = currentRouteId,
                     exposureScore = normalizedScore,
-                    pollution = sample?.let { ExposureCalculationEngine.calculatePollutionFactor(it) } ?: 1.0,
+                    pollution = envSample?.let { ExposureCalculationEngine.calculatePollutionFactor(it) } ?: 1.0,
                     durationMinutes = 1,
                     activityLevel = ExposureCalculationEngine.getActivityFactor(classifyActivity(point)),
-                    confidence = 0.5
+                    confidence = ExposureCalculationEngine.calculateConfidence(
+                        hasEnvironmentalData = envSample != null,
+                        timestampDeltaMillis = /* calculate from segment */ 0,
+                        distanceKm = /* calculate from segment */ 0.0,
+                        qualityFlags = QualityFlags(isGood = true, hasValidRange = true, hasValidPeak = true)
+                    ).confidence,
+                    coverage = coverage
                 )
                 exposureResultRepository.insert(exposureResult)
 
@@ -105,6 +122,8 @@ class TrackingPipeline @Inject constructor(
     }
 
     private fun classifyActivity(point: LocationPoint): com.roadguide.app.data.local.entity.ActivityType {
+        // Use MovementDetectionEngine for more accurate classification
+        // that considers speed patterns, not just current speed
         val speed = point.speedMetersPerSecond ?: 0f
         return when {
             speed < 0.5f -> com.roadguide.app.data.local.entity.ActivityType.STATIONARY

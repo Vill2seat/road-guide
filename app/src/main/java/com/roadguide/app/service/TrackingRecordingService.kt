@@ -70,7 +70,12 @@ class TrackingRecordingService : Service() {
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         when (intent?.action) {
             ACTION_START_RECORDING -> {
-                serviceScope.launch { startRecording() }
+                serviceScope.launch {
+                    if (locationSource.hasLocationPermission()) {
+                        startForeground(NOTIFICATION_ID, createNotification())
+                        startRecording()
+                    }
+                }
             }
             ACTION_STOP_RECORDING -> {
                 serviceScope.launch { stopRecording() }
@@ -93,6 +98,7 @@ class TrackingRecordingService : Service() {
         val locationSource = this.locationSource
 
         if (!locationSource.hasLocationPermission()) {
+            // Cannot start recording without location permissions
             return
         }
 
@@ -215,6 +221,8 @@ class TrackingRecordingService : Service() {
 
         locationSource.removeLocationUpdates()
 
+        ServiceCompat.stopForeground(this, ServiceCompat.STOP_FOREGROUND_REMOVE)
+
         currentRoute?.let { route ->
             val updatedRoute = route.copy(
                 status = RouteStatus.COMPLETED,
@@ -230,7 +238,7 @@ class TrackingRecordingService : Service() {
     private fun createNotification(): android.app.Notification {
         return android.app.Notification.Builder(this, "tracking_channel")
             .setContentTitle("Road Guide")
-            .setContentText("Запись локации...")
+            .setContentText(stringResource(R.string.notification_recording))
             .setSmallIcon(android.R.drawable.ic_notification_overlay)
             .setOngoing(true)
             .build()

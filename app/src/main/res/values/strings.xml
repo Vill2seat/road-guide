@@ -32,6 +32,22 @@
     <string name="tracker_stop">Stop</string>
     <string name="tracker_resume">Resume</string>
 
+    <!-- Notification -->
+    <string name="notification_recording">Recording location...</string>
+
+    <!-- Tracking status -->
+    <string name="tracking_status_on">ON</string>
+    <string name="tracking_status_off">OFF</string>
+
+    <!-- Tracker screen -->
+    <string name="points">Points</string>
+
+    <!-- AQI -->
+    <string name="aqi">AQI: </string>
+
+    <!-- Weather -->
+    <string name="weather">Weather</string>
+
     <!-- Permission screen -->
     <string name="permission_title">Permissions for Road Guide</string>
     <string name="permission_description">

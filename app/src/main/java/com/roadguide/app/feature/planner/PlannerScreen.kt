@@ -41,7 +41,7 @@ import com.roadguide.app.R
 import com.roadguide.app.core.ui.theme.RgColor
 import com.roadguide.app.core.ui.theme.RgDimens
 import com.roadguide.app.core.ui.theme.RgIcon
-import com.roadguide.app.map.MapPoint
+import com.roadguide.app.map.model.MapPoint
 
 @Composable
 fun PlannerScreen(
@@ -277,16 +277,26 @@ fun PlannerScreen(
                         )
                         Spacer(modifier = Modifier.height(RgDimens.Space3))
 
-                        // Render the route on the map
+                        // Route summary (visual route rendered on map in TrackerScreen)
                         Box(modifier = Modifier.fillMaxWidth().height(200.dp)) {
                             val pts = routePoints.value
                             pts?.let { points ->
-                        // Draw a simple preview on Compose canvas
-                        com.roadguide.app.map.RouteLine(
-                            routePoints = points,
-                            color = RgColor.ExposureGood,
-                            strokeWidth = 4f
-                        )
+                                Column(
+                                    modifier = Modifier.fillMaxSize().padding(16.dp),
+                                    horizontalAlignment = Alignment.Center
+                                ) {
+                                    Text(
+                                        text = "Маршрут построен (${points.size} точек)",
+                                        style = MaterialTheme.typography.titleMedium,
+                                        color = MaterialTheme.colorScheme.onSurface
+                                    )
+                                    Spacer(modifier = Modifier.height(8.dp))
+                                    Text(
+                                        text = "Трасса отображается на карте при навигации",
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                }
                             }
                         }
 

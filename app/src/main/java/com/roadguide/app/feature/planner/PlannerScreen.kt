@@ -41,6 +41,10 @@ import com.roadguide.app.R
 import com.roadguide.app.core.ui.theme.RgColor
 import com.roadguide.app.core.ui.theme.RgDimens
 import com.roadguide.app.core.ui.theme.RgIcon
+import com.roadguide.app.map.MapView
+import com.roadguide.app.map.addLocationMarker
+import com.roadguide.app.map.addRoutePolyline
+import com.roadguide.app.map.focusCameraOnPoints
 import com.roadguide.app.map.model.MapPoint
 
 @Composable
@@ -54,6 +58,8 @@ fun PlannerScreen(
     val toText = remember { mutableStateOf("Адрес назначения") }
     val isLoading = remember { mutableStateOf(false) }
     val routePoints = remember { mutableStateOf<List<MapPoint>?>(null) }
+    val fromPointState = remember { mutableStateOf<MapPoint?>(null) }
+    val toPointState = remember { mutableStateOf<MapPoint?>(null) }
 
     // Simple geocoding/hypothesis: check if coordinates or known addresses
     fun resolveAddress(address: String, lat: Double = 55.7522, lon: Double = 37.6133): MapPoint {
@@ -118,6 +124,8 @@ fun PlannerScreen(
         }
 
         val to = resolveAddress(toText.value)
+        fromPointState.value = from
+        toPointState.value = to
 
         // Simple routing fallback: generate intermediate points between start and end
         // (In production, integrate OSRM or similar routing engine)
@@ -277,28 +285,26 @@ fun PlannerScreen(
                         )
                         Spacer(modifier = Modifier.height(RgDimens.Space3))
 
-                        // Route summary (visual route rendered on map in TrackerScreen)
-                        Box(modifier = Modifier.fillMaxWidth().height(200.dp)) {
-                            val pts = routePoints.value
-                            pts?.let { points ->
-                                Column(
-                                    modifier = Modifier.fillMaxSize().padding(16.dp),
-                                    horizontalAlignment = Alignment.Center
-                                ) {
-                                    Text(
-                                        text = "Маршрут построен (${points.size} точек)",
-                                        style = MaterialTheme.typography.titleMedium,
-                                        color = MaterialTheme.colorScheme.onSurface
-                                    )
-                                    Spacer(modifier = Modifier.height(8.dp))
-                                    Text(
-                                        text = "Трасса отображается на карте при навигации",
-                                        style = MaterialTheme.typography.bodySmall,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                                    )
+                        // Route summary (visual route rendered on map)
+                        MapView(
+                            modifier = Modifier.fillMaxSize().height(300.dp),
+                            onMapReady = { mapLibreMap ->
+                                val ctx = context
+                                // Add location markers for from/to points
+                                fromPointState.value?.let { fromPt ->
+                                    mapLibreMap.addLocationMarker(ctx, fromPt.latitude, fromPt.longitude, com.roadguide.app.R.drawable.ic_launcher_background)
+                                }
+                                toPointState.value?.let { toPt ->
+                                    mapLibreMap.addLocationMarker(ctx, toPt.latitude, toPt.longitude, com.roadguide.app.R.drawable.ic_launcher_background)
+                                }
+                                // Add route polyline
+                                val routePts = routePoints.value
+                                routePts?.let { points ->
+                                    mapLibreMap.addRoutePolyline(points)
+                                    mapLibreMap.focusCameraOnPoints(points)
                                 }
                             }
-                        }
+                        )
 
                         Spacer(modifier = Modifier.height(RgDimens.Space4))
 

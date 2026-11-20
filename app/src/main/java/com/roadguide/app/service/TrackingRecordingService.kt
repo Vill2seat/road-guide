@@ -25,6 +25,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.withTimeout
 import com.roadguide.app.data.local.settings.TrackingPrefs
+import com.roadguide.app.data.source.ActivityRecognitionSource
 import java.time.Instant
 import java.time.ZoneId
 import javax.inject.Inject
@@ -37,6 +38,7 @@ class TrackingRecordingService : Service() {
     @Inject lateinit var environmentalSampleRepository: EnvironmentalSampleRepository
     @Inject lateinit var locationSource: LocationSource
     @Inject lateinit var trackingPrefs: TrackingPrefs
+    @Inject lateinit var activityRecognitionSource: ActivityRecognitionSource
 
     private var trackingJob: Job? = null
     private var routeId: Long? = null
@@ -103,6 +105,30 @@ class TrackingRecordingService : Service() {
             // Cannot start recording without location permissions
             return
         }
+
+        // Subscribe to activity recognition updates
+        try {
+            activityRecognitionSource.startUpdates { activityType ->
+                // Update current segment with activity type
+                if (currentRoute != null && currentRoute.segments.isNotEmpty()) {
+                    val lastSegment = currentRoute.segments.last()
+                    // Update activity type on the last segment
+                    val updatedSegment = lastSegment.copy(
+                        activityType = activityType
+                    )
+                    // We'll handle the repository update separately
+                    currentRoute = currentRoute?.copy(
+                        segments = currentRoute.segments
+                            .map { if (it.id == lastSegment.id) updatedSegment else it }
+                    )
+                }
+            }
+        } catch (e: Exception) {
+            // Graceful degradation - Google Play Services not available
+            // Continue with speed-based classification only
+            // Log warning but don't crash
+        }
+    }
 
         val now = System.currentTimeMillis()
         val date = Instant.ofEpochMilli(now)
@@ -173,13 +199,14 @@ class TrackingRecordingService : Service() {
         )
 
         locationPointRepository.insert(point)
+        Log.d("TrackingService", "point saved, routeId=$routeId")
 
         environmentalSampleRepository.let { repo ->
             serviceScope.launch {
                 try {
                     repo.fetchAndSave(location.latitude, location.longitude)
                 } catch (e: Exception) {
-                }
+                    Log.w("TrackingService", "env fetch failed", e)
             }
         }
 
@@ -222,6 +249,13 @@ class TrackingRecordingService : Service() {
         trackingJob?.cancel()
 
         locationSource.removeLocationUpdates()
+
+        // Unsubscribe from activity recognition
+        try {
+            activityRecognitionSource.stopUpdates()
+        } catch (e: Exception) {
+            // Ignore - might not have been subscribed
+        }
 
         ServiceCompat.stopForeground(this, ServiceCompat.STOP_FOREGROUND_REMOVE)
 

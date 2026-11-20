@@ -27,6 +27,7 @@ data class ExposureResult(
     val durationMinutes: Int,
     val activityLevel: Double, // 0-1
     val confidence: Double = 0.0,
+    val coverage: Double = 0.0, // 0-100% — процент точек с env-данными
     val createdTimestamp: Long = System.currentTimeMillis(),
     val updatedTimestamp: Long = System.currentTimeMillis()
 ) {

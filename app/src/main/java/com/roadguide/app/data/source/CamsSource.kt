@@ -4,6 +4,7 @@ import android.content.Context
 import android.net.ConnectivityManager
 import okhttp3.OkHttpClient
 import okhttp3.Request
+import android.util.Log
 import java.text.SimpleDateFormat
 import java.util.Locale
 import java.util.TimeZone
@@ -50,10 +51,12 @@ class CamsSource(
      */
     suspend fun fetch(lat: Double, lon: Double): CamsAqis? {
         if (apiKey == null || apiKey.isBlank()) {
+            Log.w("CamsSource", "api key missing")
             return null
         }
 
         if (!isNetworkAvailable()) {
+            Log.w("CamsSource", "network unavailable")
             return null
         }
 
@@ -72,6 +75,7 @@ class CamsSource(
                 }
             }
         }
+        Log.e("CamsSource", "failed after $maxRetries attempts for lat=$lat, lon=$lon", lastException)
         return null
     }
 
@@ -91,7 +95,8 @@ class CamsSource(
             .build()
         val response = okHttpClient.newCall(request).execute()
         if (!response.isSuccessful) {
-            throw java.io.IOException("Unexpected code $response")
+            Log.e("CamsSource", "HTTP ${response.code}: ${response.message}")
+            throw java.io.IOException("Unexpected code ${response.code}")
         }
         return response.body!!.string()
     }

@@ -4,6 +4,7 @@ import android.content.Context
 import android.net.ConnectivityManager
 import okhttp3.OkHttpClient
 import okhttp3.Request
+import android.util.Log
 import java.text.SimpleDateFormat
 import java.util.Locale
 import java.util.TimeZone
@@ -35,7 +36,10 @@ class OpenMeteoWeatherSource(
     }
 
     suspend fun fetch(lat: Double, lon: Double): OpenMeteoWeather? {
-        if (!isNetworkAvailable()) return null
+        if (!isNetworkAvailable()) {
+            Log.w("OpenMeteoSource", "network unavailable")
+            return null
+        }
         var lastException: Exception? = null
         for (attempt in 1..maxRetries) {
             try {
@@ -51,6 +55,7 @@ class OpenMeteoWeatherSource(
                 }
             }
         }
+        Log.e("OpenMeteoSource", "failed after $maxRetries attempts for lat=$lat, lon=$lon", lastException)
         return null
     }
 
@@ -69,7 +74,8 @@ class OpenMeteoWeatherSource(
         val request = Request.Builder().url(urlString).build()
         val response = okHttpClient.newCall(request).execute()
         if (!response.isSuccessful) {
-            throw java.io.IOException("Unexpected code $response")
+            Log.e("OpenMeteoSource", "HTTP ${response.code}: ${response.message}")
+            throw java.io.IOException("Unexpected code ${response.code}")
         }
         return response.body!!.string()
     }
@@ -81,7 +87,13 @@ class OpenMeteoWeatherSource(
         val time = extractString(current, "\"time\"")
         val timestamp = if (time != null) dateFormat.get().parse(time)?.time ?: System.currentTimeMillis() else System.currentTimeMillis()
 
+        try {
         return OpenMeteoWeather(
+        } catch (e: Exception) {
+            Log.e("OpenMeteoSource", "parse failed for lat=$lat, lon=$lon", e)
+            return null
+        }
+        try {
             temperatureCelsius = extractDouble(current, "\"temperature_2m\""),
             apparentTemperatureCelsius = extractDouble(current, "\"apparent_temperature\""),
             relativeHumidityPercent = extractDouble(current, "\"relative_humidity_2m\""),

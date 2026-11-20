@@ -1,5 +1,6 @@
 package com.roadguide.app.data.source
 
+import android.util.Log
 import com.roadguide.app.data.local.EnvironmentalValidator
 import com.roadguide.app.data.local.entity.DataQuality
 import com.roadguide.app.data.local.entity.DataSource
@@ -17,6 +18,7 @@ class EnvironmentalDataFetcher(
 ) {
 
     suspend fun fetch(lat: Double, lon: Double): EnvironmentalSample? {
+        Log.d("EnvFetcher", "fetching for lat=$lat, lon=$lon")
         val now = System.currentTimeMillis()
         val weather = openMeteoSource.fetch(lat, lon)
         val aqis = camsSource.fetch(lat, lon)
@@ -27,7 +29,19 @@ class EnvironmentalDataFetcher(
             fetchTimestamp = now
         )
 
-        return buildSample(lat, lon, result, now)
+        val sample = buildSample(lat, lon, result, now)
+
+        if (sample != null) {
+            val source = when {
+                weather != null && aqis != null -> DataSource.OPEN_METEO
+                weather != null -> DataSource.OPEN_METEO
+                aqis != null -> DataSource.CAMS
+                else -> return null
+            }
+            Log.d("EnvFetcher", "validation result: $source")
+        }
+
+        return sample
     }
 
     private fun buildSample(

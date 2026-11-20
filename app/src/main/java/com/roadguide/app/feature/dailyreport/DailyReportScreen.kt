@@ -223,6 +223,14 @@ private fun StatisticsCard(report: DailyReport) {
                     label = "Места",
                     value = report.visitedPlacesCount.toString()
                 )
+                StatItem(
+                    label = "Coverage",
+                    value = "${report.averageCoverage?.toInt() ?: 0}%"
+                )
+                StatItem(
+                    label = "Coverage",
+                    value = "${report.averageCoverage?.toInt() ?: 0}%"
+                )
             }
 
             Spacer(modifier = Modifier.height(RgDimens.Space3))

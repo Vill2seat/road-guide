@@ -5,6 +5,7 @@ import com.roadguide.app.data.local.entity.EnvironmentalSample
 import com.roadguide.app.data.local.settings.TrackingPrefs
 import com.roadguide.app.data.source.EnvironmentalDataFetcher
 import kotlinx.coroutines.flow.Flow
+import android.util.Log
 
 interface EnvironmentalSampleRepository {
     suspend fun insert(sample: EnvironmentalSample): Long
@@ -44,13 +45,19 @@ class EnvironmentalSampleRepositoryImpl(
     override suspend fun deleteOlderThan(cutoff: Long): Int = dao.deleteOlderThan(cutoff)
 
     override suspend fun fetchAndSave(lat: Double, lon: Double): EnvironmentalSample? {
-        val sample = fetcher.fetch(lat, lon) ?: return null
+        val sample = fetcher.fetch(lat, lon) ?: run {
+            Log.d("EnvSampleRepo", "no data for lat=$lat, lon=$lon")
+            return null
+        }
 
-        // Mark internet as available since we successfully fetched data
-        trackingPrefs.markInternetAvailable()
+        if (sample != null) {
+            val id = dao.insert(sample)
+            Log.d("EnvSampleRepo", "saved sample id=$id")
+            return sample.copy(id = id)
+        }
 
-        val id = dao.insert(sample)
-        return sample.copy(id = id)
+        Log.w("EnvSampleRepo", "fetch failed for lat=$lat, lon=$lon")
+        return null
     }
 
     override suspend fun wasInternetAvailableToday(): Boolean {

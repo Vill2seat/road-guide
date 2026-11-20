@@ -28,5 +28,5 @@ class PlaceRepositoryImpl(private val dao: PlaceDao) : PlaceRepository {
     override fun observeByCategory(category: PlaceCategory): Flow<List<Place>> =
         dao.observeByCategory(category)
 
-    override fun observePublicPlaces(): Flow<List<Place>> = dao.observePublicPlaces()
+    override fun observePublicPlaces(): Flow<List<Place>> = dao.observeAll()
 }

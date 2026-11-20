@@ -225,11 +225,11 @@ private fun StatisticsCard(report: DailyReport) {
                 )
                 StatItem(
                     label = "Coverage",
-                    value = "${report.averageCoverage?.toInt() ?: 0}%"
+                    value = "${(report.coverage * 100).toInt()}%"
                 )
                 StatItem(
                     label = "Coverage",
-                    value = "${report.averageCoverage?.toInt() ?: 0}%"
+                    value = "${(report.coverage * 100).toInt()}%"
                 )
             }
 

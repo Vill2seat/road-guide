@@ -4,6 +4,7 @@ import android.location.Location
 import android.location.LocationManager
 import android.util.Log
 
+import com.roadguide.app.data.local.entity.ActivityType
 import com.roadguide.app.data.local.entity.LocationPoint
 import com.roadguide.app.data.local.entity.Route
 import com.roadguide.app.data.local.entity.RouteSegment
@@ -14,6 +15,7 @@ import com.roadguide.app.data.repository.ExposureResultRepository
 import com.roadguide.app.data.repository.LocationPointRepository
 import com.roadguide.app.data.repository.RouteRepository
 import com.roadguide.app.data.repository.RouteSegmentRepository
+import com.roadguide.app.data.repository.StayRepository
 import com.roadguide.app.data.repository.PrivacyZoneRepository
 import com.roadguide.app.data.source.ActivityRecognitionSource
 import com.roadguide.app.data.source.LocationSource
@@ -28,6 +30,7 @@ import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -115,10 +118,6 @@ class TrackingPipeline @Inject constructor(
                     currentSegmentPointsWithEnv = 0
                 }
 
-                val sample = environmentalSampleRepository.fetchAndSave(point.latitude, point.longitude)
-
-                val envSample = sample
-
                 val segment = RouteSegment(
                     routeId = currentRouteId,
                     startTime = point.timestamp,
@@ -135,7 +134,7 @@ class TrackingPipeline @Inject constructor(
 
                 val exposureScore = ExposureCalculationEngine.calculateSegmentExposure(
                     segment = segment,
-                    sample = sample,
+                    sample = envSample,
                     roadFactor = 1.0
                 )
                 val normalizedScore = ExposureCalculationEngine.normalizeExposure(exposureScore)
@@ -171,7 +170,7 @@ val exposureResult = com.roadguide.app.data.local.entity.ExposureResult(
                         endTime = stayEndTime,
                         centerLatitude = point.latitude,
                         centerLongitude = point.longitude,
-                        durationSeconds = stayDurationSeconds,
+                        // durationSeconds calculated from startTime/endTime
                         confidence = MovementDetectionEngine.calculateConfidence(ActivityType.STATIONARY, currentSegmentSampleCount)
                     )
                     val stayId = stayRepository.insert(stay)
@@ -202,7 +201,7 @@ val exposureResult = com.roadguide.app.data.local.entity.ExposureResult(
                             stayId = stayId,
                             exposureScore = normalizedStayScore,
                             pollution = ExposureCalculationEngine.calculatePollutionFactor(envSampleForStay),
-                            durationMinutes = stayDurationSeconds / 60,
+                            durationMinutes = (stayDurationSeconds / 60).toInt(),
                             activityLevel = ExposureCalculationEngine.getActivityFactor(ActivityType.STATIONARY),
                             confidence = MovementDetectionEngine.calculateConfidence(ActivityType.STATIONARY, currentSegmentSampleCount)
                         )
@@ -214,7 +213,7 @@ val exposureResult = com.roadguide.app.data.local.entity.ExposureResult(
                             stayId = stayId,
                             exposureScore = 0.0,
                             pollution = 1.0,
-                            durationMinutes = stayDurationSeconds / 60,
+                            durationMinutes = (stayDurationSeconds / 60).toInt(),
                             activityLevel = ExposureCalculationEngine.getActivityFactor(ActivityType.STATIONARY),
                             confidence = MovementDetectionEngine.calculateConfidence(ActivityType.STATIONARY, currentSegmentSampleCount)
                         )

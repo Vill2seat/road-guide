@@ -227,10 +227,6 @@ private fun StatisticsCard(report: DailyReport) {
                     label = "Coverage",
                     value = "${(report.coverage * 100).toInt()}%"
                 )
-                StatItem(
-                    label = "Coverage",
-                    value = "${(report.coverage * 100).toInt()}%"
-                )
             }
 
             Spacer(modifier = Modifier.height(RgDimens.Space3))

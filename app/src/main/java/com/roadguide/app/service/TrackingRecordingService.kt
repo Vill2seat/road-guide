@@ -190,6 +190,16 @@ class TrackingRecordingService : Service() {
         locationPointRepository.insert(point)
         Log.d("TrackingService", "point saved, routeId=$routeId")
 
+        // Adaptive GPS interval based on speed
+        val speed = location.speedMetersPerSecond ?: 0f
+        if (speed < 0.3f) {
+            locationSource.updateInterval(300)
+        } else if (speed <= 1.0f) {
+            locationSource.updateInterval(30)
+        } else {
+            locationSource.updateInterval(10)
+        }
+
         environmentalSampleRepository.let { repo ->
             serviceScope.launch {
                 try {

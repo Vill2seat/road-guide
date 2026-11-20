@@ -43,7 +43,7 @@ object RouteSegmentationEngine {
             }
         }
         current?.let { closeSegment(it, points, points.size) }
-        segments.add(current!!)
+        current?.let { segments.add(it) }
         return segments.filter { it.endTime > it.startTime }
     }
 

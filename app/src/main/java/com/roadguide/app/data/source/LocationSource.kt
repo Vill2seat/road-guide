@@ -145,4 +145,15 @@ class LocationSource(private val context: Context) {
         if (!hasLocationPermission()) return null
         return Tasks.await(fusedLocationClient.lastLocation)
     }
+    /**
+     * Updates the location update interval.
+     * Removes existing updates and starts with the new interval.
+     */
+    suspend fun updateInterval(intervalSeconds: Long) {
+        locationMutex.withLock {
+            locationCallback?.let { removeLocationUpdates() }
+        locationCallback = null
+            requestLocationUpdates(intervalSeconds)
+        }
+    }
 }

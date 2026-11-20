@@ -34,6 +34,8 @@
 
     <!-- Notification -->
     <string name="notification_recording">Grabando ubicación...</string>
+    <string name="notification_paused">Grabación pausada</string>
+    <string name="notification_stopped">Grabación detenida</string>
 
     <!-- Tracking status -->
     <string name="tracking_status_on">ENCENDIDO</string>

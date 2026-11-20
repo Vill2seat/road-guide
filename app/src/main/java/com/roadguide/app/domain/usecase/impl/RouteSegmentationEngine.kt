@@ -142,7 +142,9 @@ object RouteSegmentationEngine {
         }
 
         // Check sliding windows of 3 points for stationary periods
-        for (i in points.indices if i >= 2) {
+        var i = 0
+        while (i < points.size) {
+            if (i < 2) { i++; continue }
             val window = points.slice(i - 2..i)
             if (MovementDetectionEngine.detectStationary(window)) {
                 // This point is part of a stay - find the start and end of the stay
@@ -167,6 +169,7 @@ object RouteSegmentationEngine {
                     i = stayEnd + 2
                 }
             }
+            i++
         }
 
         return segments

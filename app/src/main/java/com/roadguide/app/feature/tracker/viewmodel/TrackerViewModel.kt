@@ -50,6 +50,9 @@ class TrackerViewModel @Inject constructor(
     private val _locationUpdates = MutableStateFlow<Location?>(null)
     val locationUpdates: StateFlow<Location?> = _locationUpdates.asStateFlow()
 
+    private val _isPaused = MutableStateFlow(false)
+    val isPaused: StateFlow<Boolean> = _isPaused.asStateFlow()
+
     init {
         loadTrackingState()
         loadInternetAvailability()
@@ -144,6 +147,14 @@ class TrackerViewModel @Inject constructor(
             speedMps = point.speedMetersPerSecond?.toDouble() ?: 0.0,
             activityType = activityTypeToString(point)
         )
+    }
+
+    fun pauseTracking() {
+        _isPaused.value = true
+    }
+
+    fun resumeTracking() {
+        _isPaused.value = false
     }
 
     fun loadEnvironmentalData(lat: Double, lon: Double) {

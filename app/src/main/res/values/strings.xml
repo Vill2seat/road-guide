@@ -34,6 +34,8 @@
 
     <!-- Notification -->
     <string name="notification_recording">Recording location...</string>
+    <string name="notification_paused">Recording paused</string>
+    <string name="notification_stopped">Recording stopped</string>
 
     <!-- Tracking status -->
     <string name="tracking_status_on">ON</string>

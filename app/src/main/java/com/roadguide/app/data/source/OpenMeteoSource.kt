@@ -87,13 +87,8 @@ class OpenMeteoWeatherSource(
         val time = extractString(current, "\"time\"")
         val timestamp = if (time != null) dateFormat.get().parse(time)?.time ?: System.currentTimeMillis() else System.currentTimeMillis()
 
-        try {
-        return OpenMeteoWeather(
-        } catch (e: Exception) {
-            Log.e("OpenMeteoSource", "parse failed for lat=$lat, lon=$lon", e)
-            return null
-        }
-        try {
+        return try {
+            OpenMeteoWeather(
             temperatureCelsius = extractDouble(current, "\"temperature_2m\""),
             apparentTemperatureCelsius = extractDouble(current, "\"apparent_temperature\""),
             relativeHumidityPercent = extractDouble(current, "\"relative_humidity_2m\""),
@@ -112,6 +107,10 @@ class OpenMeteoWeatherSource(
             europeanAqi = null,
             timestamp = timestamp
         )
+        } catch (e: Exception) {
+            Log.e("OpenMeteoSource", "parse failed for lat=$lat, lon=$lon", e)
+            null
+        }
     }
 
     private fun extractBlock(json: String, key: String): String? {

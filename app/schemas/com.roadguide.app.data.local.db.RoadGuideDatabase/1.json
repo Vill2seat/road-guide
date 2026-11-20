@@ -2,7 +2,7 @@
   "formatVersion": 1,
   "database": {
     "version": 1,
-    "identityHash": "cf6153cd4155dfbf49fe513dfb7d2475",
+    "identityHash": "d77d16ab788f785bb3db3d00ffa6edb3",
     "entities": [
       {
         "tableName": "location_points",
@@ -813,7 +813,7 @@
       },
       {
         "tableName": "exposure_results",
-        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `segmentId` INTEGER, `stayId` INTEGER, `routeId` INTEGER, `exposureScore` REAL NOT NULL, `pollution` REAL NOT NULL, `durationMinutes` INTEGER NOT NULL, `activityLevel` REAL NOT NULL, `confidence` REAL NOT NULL, `createdTimestamp` INTEGER NOT NULL, `updatedTimestamp` INTEGER NOT NULL, FOREIGN KEY(`segmentId`) REFERENCES `route_segments`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `segmentId` INTEGER, `stayId` INTEGER, `routeId` INTEGER, `exposureScore` REAL NOT NULL, `pollution` REAL NOT NULL, `durationMinutes` INTEGER NOT NULL, `activityLevel` REAL NOT NULL, `confidence` REAL NOT NULL, `coverage` REAL NOT NULL, `createdTimestamp` INTEGER NOT NULL, `updatedTimestamp` INTEGER NOT NULL, FOREIGN KEY(`segmentId`) REFERENCES `route_segments`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
         "fields": [
           {
             "fieldPath": "id",
@@ -866,6 +866,12 @@
           {
             "fieldPath": "confidence",
             "columnName": "confidence",
+            "affinity": "REAL",
+            "notNull": true
+          },
+          {
+            "fieldPath": "coverage",
+            "columnName": "coverage",
             "affinity": "REAL",
             "notNull": true
           },
@@ -1186,7 +1192,7 @@
     "views": [],
     "setupQueries": [
       "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
-      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, 'cf6153cd4155dfbf49fe513dfb7d2475')"
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, 'd77d16ab788f785bb3db3d00ffa6edb3')"
     ]
   }
 }

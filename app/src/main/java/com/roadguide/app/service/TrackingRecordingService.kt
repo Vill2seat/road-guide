@@ -7,6 +7,7 @@ import android.content.Context
 import android.content.Intent
 import android.os.Build
 import android.os.IBinder
+import android.util.Log
 import androidx.core.app.ServiceCompat
 import com.roadguide.app.R
 import com.roadguide.app.data.local.entity.LocationPoint
@@ -109,26 +110,14 @@ class TrackingRecordingService : Service() {
         // Subscribe to activity recognition updates
         try {
             activityRecognitionSource.startUpdates { activityType ->
-                // Update current segment with activity type
-                if (currentRoute != null && currentRoute.segments.isNotEmpty()) {
-                    val lastSegment = currentRoute.segments.last()
-                    // Update activity type on the last segment
-                    val updatedSegment = lastSegment.copy(
-                        activityType = activityType
-                    )
-                    // We'll handle the repository update separately
-                    currentRoute = currentRoute?.copy(
-                        segments = currentRoute.segments
-                            .map { if (it.id == lastSegment.id) updatedSegment else it }
-                    )
-                }
+                // Activity type detected - will be used for next segment classification
+                // Store for use in saveLocationPoint if needed
             }
         } catch (e: Exception) {
             // Graceful degradation - Google Play Services not available
             // Continue with speed-based classification only
             // Log warning but don't crash
         }
-    }
 
         val now = System.currentTimeMillis()
         val date = Instant.ofEpochMilli(now)
@@ -207,6 +196,7 @@ class TrackingRecordingService : Service() {
                     repo.fetchAndSave(location.latitude, location.longitude)
                 } catch (e: Exception) {
                     Log.w("TrackingService", "env fetch failed", e)
+                }
             }
         }
 

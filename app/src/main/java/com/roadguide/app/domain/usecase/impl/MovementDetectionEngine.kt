@@ -47,4 +47,18 @@ object MovementDetectionEngine {
         val avgSpeed = lastThree.mapNotNull { it.speedMps }.average()
         return avgSpeed < STATIONARY_MAX_SPEED_MS
     }
+
+    /** Calculates confidence in activity classification based on sample count */
+    fun calculateConfidence(activity: ActivityType, sampleCount: Int): Double {
+        val sampleFactor = if (sampleCount >= 10) 1.0 else if (sampleCount >= 5) 0.7 else 0.5
+        val activityFactor = when {
+            activity == ActivityType.STATIONARY -> 1.0
+            activity == ActivityType.WALKING -> 0.9
+            activity == ActivityType.RUNNING -> 0.8
+            activity == ActivityType.CYCLING -> 0.85
+            activity == ActivityType.IN_VEHICLE -> 0.95
+            else -> 0.7
+        }
+        return sampleFactor * activityFactor
+    }
 }

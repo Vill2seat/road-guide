@@ -23,6 +23,15 @@ interface PlaceDao {
     @Query("SELECT * FROM places WHERE category = :category")
     fun observeByCategory(category: PlaceCategory): Flow<List<Place>>
 
-    @Query("SELECT * FROM places WHERE isPrivate = 0 ORDER BY visitCount DESC")
-    fun observePublicPlaces(): Flow<List<Place>>
+    @Query("SELECT COUNT(*) FROM routes WHERE placeId = :placeId AND status = 'COMPLETED'")
+    suspend fun getVisitCount(placeId: Long): Int
+
+    @Query("SELECT SUM(totalDurationSeconds) FROM routes WHERE placeId = :placeId AND status = 'COMPLETED'")
+    suspend fun getTotalDuration(placeId: Long): Long
+
+    @Query("SELECT MAX(startTime) FROM routes WHERE placeId = :placeId AND status = 'COMPLETED'")
+    suspend fun getLastVisit(placeId: Long): Long?
+
+    @Query("SELECT AVG(totalDurationSeconds) FROM routes WHERE placeId = :placeId AND status = 'COMPLETED'")
+    suspend fun getAverageDuration(placeId: Long): Double
 }

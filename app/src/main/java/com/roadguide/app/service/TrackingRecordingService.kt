@@ -8,6 +8,7 @@ import android.content.Intent
 import android.os.Build
 import android.os.IBinder
 import androidx.core.app.ServiceCompat
+import com.roadguide.app.R
 import com.roadguide.app.data.local.entity.LocationPoint
 import com.roadguide.app.data.local.entity.Route
 import com.roadguide.app.data.local.entity.RouteStatus
@@ -44,6 +45,7 @@ class TrackingRecordingService : Service() {
     private val serviceJob = Job()
     private val serviceScope = CoroutineScope(Dispatchers.Default + serviceJob)
 
+    private var isPaused = false
     private var isRecording = false
     private var lastLocationTime = 0L
 
@@ -235,12 +237,42 @@ class TrackingRecordingService : Service() {
         ServiceCompat.stopForeground(this, ServiceCompat.STOP_FOREGROUND_REMOVE)
     }
 
+    private suspend fun pauseTracking() {
+        isPaused = true
+        isRecording = false
+        locationSource.removeLocationUpdates()
+        locationSource.updateInterval(300)
+        ServiceCompat.startForeground(
+            this,
+            NOTIFICATION_ID,
+            createNotification(),
+            4
+        )
+    }
+
+    private suspend fun resumeTracking() {
+        isPaused = false
+        isRecording = true
+        locationSource.requestLocationUpdates(intervalSeconds = 60)
+        ServiceCompat.startForeground(
+            this,
+            NOTIFICATION_ID,
+            createNotification(),
+            4
+        )
+    }
+
     private fun createNotification(): android.app.Notification {
+        val text = when {
+            isPaused -> getString(R.string.notification_paused)
+            isRecording -> getString(R.string.notification_recording)
+            else -> getString(R.string.notification_stopped)
+        }
         return android.app.Notification.Builder(this, "tracking_channel")
             .setContentTitle("Road Guide")
-            .setContentText(stringResource(R.string.notification_recording))
+            .setContentText(text)
             .setSmallIcon(android.R.drawable.ic_notification_overlay)
-            .setOngoing(true)
+            .setOngoing(isRecording)
             .build()
     }
 

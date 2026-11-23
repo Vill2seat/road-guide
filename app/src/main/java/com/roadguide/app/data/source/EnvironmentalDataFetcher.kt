@@ -5,7 +5,6 @@ import com.roadguide.app.data.local.EnvironmentalValidator
 import com.roadguide.app.data.local.entity.DataQuality
 import com.roadguide.app.data.local.entity.DataSource
 import com.roadguide.app.data.local.entity.EnvironmentalSample
-import com.roadguide.app.domain.model.ExposureConstants
 
 /**
  * Orchestrates fetching environmental data from Open-Meteo (weather + AQI),
@@ -23,6 +22,7 @@ class EnvironmentalDataFetcher(
 
         val result = EnvironmentalDataResult(
             weather = weather,
+            aqis = null,
             fetchTimestamp = now
         )
 
@@ -65,7 +65,7 @@ class EnvironmentalDataFetcher(
             else -> DataQuality.LOW
         }
 
-        val exposureLevel = calculateExposureLevel(europeanAqi, usAqi, pm2_5, pm10)
+        val exposureLevel = computeExposureLevel(europeanAqi, usAqi, pm2_5, pm10)
 
         val sample = EnvironmentalSample(
             latitude = lat, longitude = lon, timestamp = fetchedAt,
@@ -105,26 +105,12 @@ class EnvironmentalDataFetcher(
         pm2_5: Double?,
         pm10: Double?
     ): Double {
-        return calculateExposureLevel(europeanAqi, usAqi, pm2_5, pm10)
+        val aqi = europeanAqi ?: usAqi ?: return 0.0
+        val aqiLevel = (aqi.coerceIn(0, 500) / 500.0)
+        val pmAdjustment = when {
+            pm2_5 != null -> pm2_5.coerceIn(0.0, 100.0) / 100.0
+            else -> 0.0
+        }
+        return (aqiLevel * 0.7 + pmAdjustment * 0.3).coerceIn(0.0, 1.0)
     }
-}
-
-private data class EnvironmentalDataResult(
-    val weather: OpenMeteoWeather?,
-    val fetchTimestamp: Long
-)
-
-fun calculateExposureLevel(
-    europeanAqi: Int?,
-    usAqi: Int?,
-    pm2_5: Double?,
-    pm10: Double?
-): Double {
-    val aqi = europeanAqi ?: usAqi ?: return 0.0
-    val aqiLevel = (aqi.coerceIn(0, 500) / 500.0)
-    val pmAdjustment = when {
-        pm2_5 != null -> pm2_5.coerceIn(0.0, 100.0) / 100.0
-        else -> 0.0
-    }
-    return (aqiLevel * 0.7 + pmAdjustment * 0.3).coerceIn(0.0, 1.0)
 }

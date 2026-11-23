@@ -8,12 +8,11 @@ import com.roadguide.app.data.local.entity.EnvironmentalSample
 import com.roadguide.app.domain.model.ExposureConstants
 
 /**
- * Orchestrates fetching environmental data from multiple sources,
+ * Orchestrates fetching environmental data from Open-Meteo (weather + AQI),
  * aggregates into a single EnvironmentalSample, and applies validation.
  */
 class EnvironmentalDataFetcher(
     private val openMeteoSource: OpenMeteoWeatherSource,
-    private val camsSource: CamsSource,
     private val validator: EnvironmentalValidator
 ) {
 
@@ -21,24 +20,16 @@ class EnvironmentalDataFetcher(
         Log.d("EnvFetcher", "fetching for lat=$lat, lon=$lon")
         val now = System.currentTimeMillis()
         val weather = openMeteoSource.fetch(lat, lon)
-        val aqis = camsSource.fetch(lat, lon)
 
         val result = EnvironmentalDataResult(
             weather = weather,
-            aqis = aqis,
             fetchTimestamp = now
         )
 
         val sample = buildSample(lat, lon, result, now)
 
         if (sample != null) {
-            val source = when {
-                weather != null && aqis != null -> DataSource.OPEN_METEO
-                weather != null -> DataSource.OPEN_METEO
-                aqis != null -> DataSource.CAMS
-                else -> return null
-            }
-            Log.d("EnvFetcher", "validation result: $source")
+            Log.d("EnvFetcher", "validation result: ${sample.source}")
         }
 
         return sample
@@ -51,36 +42,27 @@ class EnvironmentalDataFetcher(
         fetchedAt: Long
     ): EnvironmentalSample? {
         val weather = result.weather
-        val aqis = result.aqis
 
-        val source = when {
-            weather != null && aqis != null -> DataSource.OPEN_METEO
-            weather != null -> DataSource.OPEN_METEO
-            aqis != null -> DataSource.CAMS
-            else -> return null
-        }
+        val source = if (weather != null) DataSource.OPEN_METEO else return null
 
-        val pm2_5 = weather?.pm2_5 ?: aqis?.pm2_5
-        val pm10 = weather?.pm10 ?: aqis?.pm10
-        val nitrogenDioxide = weather?.nitrogenDioxide ?: aqis?.nitrogenDioxide
-        val ozone = weather?.ozone ?: aqis?.ozone
-        val sulphurDioxide = weather?.sulphurDioxide ?: aqis?.sulphurDioxide
-        val carbonMonoxide = weather?.carbonMonoxide ?: aqis?.carbonMonoxide
+        val pm2_5 = weather?.pm2_5
+        val pm10 = weather?.pm10
+        val nitrogenDioxide = weather?.nitrogenDioxide
+        val ozone = weather?.ozone
+        val sulphurDioxide = weather?.sulphurDioxide
+        val carbonMonoxide = weather?.carbonMonoxide
 
         val europeanAqi = weather?.europeanAqi
-        val usAqi = aqis?.usAqi
+        val usAqi = null
 
         val hasWeather = weather != null
-        val hasAqis = aqis != null
-        val hasPm = (weather?.pm2_5 != null || aqis?.pm2_5 != null) ||
-                (weather?.pm10 != null || aqis?.pm10 != null)
-        val hasAqi = weather?.europeanAqi != null || aqis?.usAqi != null
+        val hasPm = (weather?.pm2_5 != null) || (weather?.pm10 != null)
+        val hasAqi = weather?.europeanAqi != null
 
         val preliminaryQuality = when {
-            hasWeather && hasAqis && hasPm && hasAqi -> DataQuality.HIGH
-            hasWeather && hasAqis -> DataQuality.MEDIUM
-            hasWeather || hasAqis -> DataQuality.LOW
-            else -> DataQuality.UNKNOWN
+            hasWeather && hasPm && hasAqi -> DataQuality.HIGH
+            hasWeather -> DataQuality.MEDIUM
+            else -> DataQuality.LOW
         }
 
         val exposureLevel = calculateExposureLevel(europeanAqi, usAqi, pm2_5, pm10)
@@ -126,6 +108,11 @@ class EnvironmentalDataFetcher(
         return calculateExposureLevel(europeanAqi, usAqi, pm2_5, pm10)
     }
 }
+
+private data class EnvironmentalDataResult(
+    val weather: OpenMeteoWeather?,
+    val fetchTimestamp: Long
+)
 
 fun calculateExposureLevel(
     europeanAqi: Int?,

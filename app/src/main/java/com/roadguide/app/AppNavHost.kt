@@ -43,6 +43,9 @@ import com.roadguide.app.feature.onboarding.OnboardingFlow
 import com.roadguide.app.feature.permissions.PermissionScreen
 import com.roadguide.app.feature.places.PlacesScreen
 import com.roadguide.app.feature.weather.WeatherScreen
+import com.roadguide.app.data.source.OsrmRoutingSource
+import com.roadguide.app.domain.usecase.impl.RouteComparisonEngine
+import com.roadguide.app.domain.usecase.impl.RouteEvaluationEngine
 import com.roadguide.app.feature.planner.PlannerScreen
 import com.roadguide.app.feature.profile.ProfileScreen
 import com.roadguide.app.feature.settings.SettingsScreen
@@ -59,7 +62,10 @@ private data class BottomNavItem(
 @Composable
 fun AppNavHost(
     permissionSource: PermissionSource,
-    permissionLauncher: ActivityResultLauncher<Array<String>>
+    permissionLauncher: ActivityResultLauncher<Array<String>>,
+    osrmRoutingSource: OsrmRoutingSource? = null,
+    routeEvaluationEngine: RouteEvaluationEngine? = null,
+    routeComparisonEngine: RouteComparisonEngine? = null
 ) {
     val navController = rememberNavController()
     val items = listOf(
@@ -116,7 +122,11 @@ fun AppNavHost(
                 TimelineScreen()
             }
             composable(ScreenRoutes.Planner) {
-                PlannerScreen()
+                PlannerScreen(
+                    osrmRoutingSource = osrmRoutingSource,
+                    routeEvaluationEngine = routeEvaluationEngine,
+                    routeComparisonEngine = routeComparisonEngine
+                )
             }
             composable(ScreenRoutes.History) {
                 HistoryScreen()

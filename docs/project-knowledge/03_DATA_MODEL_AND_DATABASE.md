@@ -228,7 +228,7 @@ data class EnvironmentalSample(
     val fetchedAt: Long = System.currentTimeMillis()
 )
 
-enum class DataSource { OPEN_METEO, OPEN_METEO_AQ, CAMS, OVERPASS, MANUAL }
+enum class DataSource { OPEN_METEO, OPEN_METEO_AQ, OVERPASS, MANUAL }
 enum class DataQuality { HIGH, MEDIUM, LOW, UNKNOWN, STALE, OUT_OF_RANGE }
 ```
 

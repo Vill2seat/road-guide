@@ -1,0 +1,333 @@
+package com.roadguide.app.domain.usecase.impl
+
+import android.location.Location
+import android.location.LocationManager
+import android.util.Log
+
+import com.roadguide.app.data.local.entity.ActivityType
+import com.roadguide.app.data.local.entity.LocationPoint
+import com.roadguide.app.data.local.entity.Route
+import com.roadguide.app.data.local.entity.RouteSegment
+import com.roadguide.app.data.local.entity.RouteStatus
+import com.roadguide.app.data.local.entity.RouteType
+import com.roadguide.app.data.repository.EnvironmentalSampleRepository
+import com.roadguide.app.data.repository.ExposureResultRepository
+import com.roadguide.app.data.repository.LocationPointRepository
+import com.roadguide.app.data.repository.RouteRepository
+import com.roadguide.app.data.repository.RouteSegmentRepository
+import com.roadguide.app.data.repository.StayRepository
+import com.roadguide.app.data.repository.PrivacyZoneRepository
+import com.roadguide.app.data.source.ActivityRecognitionSource
+import com.roadguide.app.data.source.LocationSource
+import com.roadguide.app.domain.usecase.impl.GeographicContextEngine
+import com.roadguide.app.domain.usecase.impl.MovementDetectionEngine
+import com.roadguide.app.data.local.settings.TrackingPrefs
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.firstOrNull
+import kotlinx.coroutines.withContext
+import java.time.Instant
+import java.time.ZoneId
+import java.time.LocalDate
+import kotlin.math.abs
+
+@Singleton
+class TrackingPipeline @Inject constructor(
+    private val locationSource: LocationSource,
+    private val activityRecognitionSource: ActivityRecognitionSource,
+    private val locationPointRepository: LocationPointRepository,
+    private val routeRepository: RouteRepository,
+    private val environmentalSampleRepository: EnvironmentalSampleRepository,
+    private val routeSegmentRepository: RouteSegmentRepository,
+    private val exposureResultRepository: ExposureResultRepository,
+    private val privacyZoneRepository: PrivacyZoneRepository,
+    private val stayRepository: StayRepository,
+    private val geographicContextEngine: GeographicContextEngine
+) {
+    private val _event = MutableStateFlow<PipelineEvent>(PipelineEvent.Idle)
+    val event: Flow<PipelineEvent> = _event.stateIn(
+        scope = CoroutineScope(Dispatchers.Default + SupervisorJob()),
+        started = SharingStarted.WhileSubscribed(),
+        initialValue = PipelineEvent.Idle
+    )
+
+    private val pipelineScope = CoroutineScope(Dispatchers.Main + SupervisorJob())
+    private var processingJob: Job? = null
+
+    private var currentRouteId: Long = 0
+    private var currentSegmentSampleCount = 0
+    private var currentSegmentPointsWithEnv = 0
+    private var lastActivityType: com.roadguide.app.data.local.entity.ActivityType? = null
+
+    // Point buffering for segmentation
+    private val pendingPoints = mutableListOf<LocationPointSummary>()
+    private var pendingRouteStartTime: Long = 0
+    private var pendingRouteDistance: Double = 0.0
+    private var lastPointTimestamp: Long = 0
+
+    // Midnight tracking
+    private var currentDate: String = ""
+    private var pointsSinceLastSegmentation = 0
+
+    suspend fun startTracking(routeId: Long = 0): Route? {
+        // Try to restore existing route from prefs or DB
+        var effectiveRouteId = currentRouteId
+        if (effectiveRouteId == 0) {
+            effectiveRouteId = trackingPrefs.currentRouteId
+        }
+        if (effectiveRouteId == 0) {
+            // Create new route
+            val now = Instant.now()
+            val date = now.atZone(ZoneId.systemDefault()).toLocalDate().toString()
+            val newRoute = Route(
+                id = 0,
+                startTime = now.toEpochMilli(),
+                endTime = null,
+                distanceMeters = 0.0,
+                status = RouteStatus.IN_PROGRESS,
+                routeType = RouteType.DAILY_AUTO,
+                confidence = 0.0,
+                date = date,
+                totalDurationSeconds = 0,
+                calculationVersion = 1
+            )
+            effectiveRouteId = routeRepository.insert(newRoute)
+            trackingPrefs.currentRouteId = effectiveRouteId
+        }
+        currentRouteId = effectiveRouteId
+        currentDate = Instant.ofEpochMilli(currentRouteId.toLong()).atZone(ZoneId.systemDefault()).toLocalDate().toString()
+        
+        locationSource.requestLocationUpdates(intervalSeconds = 10)
+        _event.value = PipelineEvent.Started
+        return routeRepository.getById(currentRouteId).firstOrNull()
+    }
+
+    suspend fun stopTracking(): Route? {
+        locationSource.removeLocationUpdates()
+        processingJob?.cancel()
+        processingJob = null
+        _event.value = PipelineEvent.Stopped
+        return null
+    }
+
+    fun onLocationReceived(point: LocationPoint) {
+        _event.value = PipelineEvent.LocationReceived
+        processLocationPoint(point)
+    }
+
+    private fun processLocationPoint(point: LocationPoint) {
+        processingJob = pipelineScope.launch {
+            try {
+                // Check if point is inside a privacy zone
+                val activeZones = privacyZoneRepository.observeActiveZones().firstOrNull() as? List<com.roadguide.app.data.local.entity.PrivacyZone>
+
+                val location = android.location.Location(LocationManager.GPS_PROVIDER)
+                location.latitude = point.latitude
+                location.longitude = point.longitude
+
+                if (activeZones != null && isLocationInPrivacyZone(location, activeZones)) {
+                    // Skip this point - it's inside a privacy zone
+                    return@launch
+                }
+
+                locationPointRepository.insert(point)
+
+                // Track sample count - increment for each point
+                currentSegmentSampleCount++
+
+                // Track points with environmental data
+                val envSample = environmentalSampleRepository.fetchAndSave(point.latitude, point.longitude)
+                if (envSample == null) {
+                    Log.w("TrackingPipeline", "no env data for point")
+                } else {
+                    currentSegmentPointsWithEnv++
+                }
+
+                // Reset counter if activity type changed
+                val activityType = classifyActivity(point)
+                if (lastActivityType != activityType) {
+                    lastActivityType = activityType
+                    currentSegmentSampleCount = 0
+                    currentSegmentPointsWithEnv = 0
+                }
+
+                val segment = RouteSegment(
+                    routeId = currentRouteId,
+                    startTime = point.timestamp,
+                    endTime = point.timestamp,
+                    activityType = activityType,
+                    distanceMeters = 0.0,
+                    startLatitude = point.latitude,
+                    startLongitude = point.longitude,
+                    endLatitude = point.latitude,
+                    endLongitude = point.longitude,
+                    confidence = MovementDetectionEngine.calculateConfidence(activityType, currentSegmentSampleCount)
+                )
+                val segmentId = routeSegmentRepository.insert(segment)
+
+                val exposureScore = ExposureCalculationEngine.calculateSegmentExposure(
+                    segment = segment,
+                    sample = envSample,
+                    roadFactor = geographicContextEngine.getRoadFactor(point.latitude, point.longitude)
+                )
+                val normalizedScore = ExposureCalculationEngine.normalizeExposure(exposureScore)
+
+val coverage = if (currentSegmentSampleCount > 0) {
+                    (currentSegmentPointsWithEnv.toDouble() / currentSegmentSampleCount) * 100.0
+                } else 0.0
+
+val exposureResult = com.roadguide.app.data.local.entity.ExposureResult(
+                    segmentId = segmentId,
+                    routeId = currentRouteId,
+                    exposureScore = normalizedScore,
+                    rawExposureScore = exposureScore,
+                    pollution = envSample?.let { ExposureCalculationEngine.calculatePollutionFactor(it) } ?: 1.0,
+                    durationMinutes = 1,
+                    activityLevel = ExposureCalculationEngine.getActivityFactor(activityType),
+                    confidence = MovementDetectionEngine.calculateConfidence(activityType, currentSegmentSampleCount),
+                    coverage = coverage
+                )
+                exposureResultRepository.insert(exposureResult)
+                Log.d("TrackingPipeline", "exposure=$normalizedScore, confidence=${MovementDetectionEngine.calculateConfidence(activityType, currentSegmentSampleCount)}")
+
+                // Detect stays using speed-based classification
+                val speed = point.speedMetersPerSecond ?: 0f
+                if (speed < 0.5 && currentSegmentSampleCount >= 5) {
+                    // Stationary period detected
+                    val stayStartTime = point.timestamp - (currentSegmentSampleCount * 10000) // approximate
+                    val stayEndTime = point.timestamp
+                    val stayDurationSeconds = (stayEndTime - stayStartTime) / 1000
+
+                    val stay = com.roadguide.app.data.local.entity.Stay(
+                        routeId = currentRouteId,
+                        startTime = stayStartTime,
+                        endTime = stayEndTime,
+                        centerLatitude = point.latitude,
+                        centerLongitude = point.longitude,
+                        // durationSeconds calculated from startTime/endTime
+                        confidence = MovementDetectionEngine.calculateConfidence(ActivityType.STATIONARY, currentSegmentSampleCount)
+                    )
+                    val stayId = stayRepository.insert(stay)
+
+                    // Create ExposureResult for the stay if environmental data available
+                    val envSampleForStay = environmentalSampleRepository.fetchAndSave(point.latitude, point.longitude)
+                    val exposureResultForStay = if (envSampleForStay != null) {
+                        val stayExposureScore = ExposureCalculationEngine.calculateSegmentExposure(
+                            segment = RouteSegment(
+                                routeId = currentRouteId,
+                                startTime = stayStartTime,
+                                endTime = stayEndTime,
+                                activityType = ActivityType.STATIONARY,
+                                distanceMeters = 0.0,
+                                startLatitude = point.latitude,
+                                startLongitude = point.longitude,
+                                endLatitude = point.latitude,
+                                endLongitude = point.longitude,
+                                confidence = MovementDetectionEngine.calculateConfidence(ActivityType.STATIONARY, currentSegmentSampleCount)
+                            ),
+                            sample = envSampleForStay,
+                            roadFactor = geographicContextEngine.getRoadFactor(point.latitude, point.longitude)
+                        )
+                        val normalizedStayScore = ExposureCalculationEngine.normalizeExposure(stayExposureScore)
+                        com.roadguide.app.data.local.entity.ExposureResult(
+                            segmentId = segmentId,
+                            routeId = currentRouteId,
+                            stayId = stayId,
+                            exposureScore = normalizedStayScore,
+                            rawExposureScore = stayExposureScore,
+                            pollution = ExposureCalculationEngine.calculatePollutionFactor(envSampleForStay),
+                            durationMinutes = (stayDurationSeconds / 60).toInt(),
+                            activityLevel = ExposureCalculationEngine.getActivityFactor(ActivityType.STATIONARY),
+                            confidence = MovementDetectionEngine.calculateConfidence(ActivityType.STATIONARY, currentSegmentSampleCount)
+                        )
+                    } else {
+                        // Graceful degradation: save stay without exposure data
+                        com.roadguide.app.data.local.entity.ExposureResult(
+                            segmentId = segmentId,
+                            routeId = currentRouteId,
+                            stayId = stayId,
+                            exposureScore = 0.0,
+                            pollution = 1.0,
+                            durationMinutes = (stayDurationSeconds / 60).toInt(),
+                            activityLevel = ExposureCalculationEngine.getActivityFactor(ActivityType.STATIONARY),
+                            confidence = MovementDetectionEngine.calculateConfidence(ActivityType.STATIONARY, currentSegmentSampleCount)
+                        )
+                    }
+                    exposureResultRepository.insert(exposureResultForStay)
+
+                    _event.value = PipelineEvent.StayDetected
+                }
+            } catch (e: Exception) {
+            }
+        }
+    }
+
+    private fun classifyActivity(
+        point: LocationPoint,
+        freshActivityType: com.roadguide.app.data.local.entity.ActivityType? = null
+    ): com.roadguide.app.data.local.entity.ActivityType {
+        // Use ActivityRecognitionSource data if available and fresh (< 30 seconds)
+        val speed = point.speedMetersPerSecond ?: 0f
+
+        val activityType = when {
+            freshActivityType != null && freshActivityType != com.roadguide.app.data.local.entity.ActivityType.STATIONARY -> freshActivityType
+            speed < 0.5f -> com.roadguide.app.data.local.entity.ActivityType.STATIONARY
+            speed < 2.0f -> com.roadguide.app.data.local.entity.ActivityType.WALKING
+            speed < 6.0f -> com.roadguide.app.data.local.entity.ActivityType.RUNNING
+            else -> com.roadguide.app.data.local.entity.ActivityType.CYCLING
+        }
+
+        return activityType
+    }
+
+    private fun isLocationInPrivacyZone(
+        location: android.location.Location,
+        zones: List<com.roadguide.app.data.local.entity.PrivacyZone>
+    ): Boolean {
+        for (zone in zones) {
+            val distance = calculateDistanceMeters(
+                location.latitude, location.longitude,
+                zone.centerLatitude, zone.centerLongitude
+            )
+            if (distance <= zone.radiusMeters) {
+                return true
+            }
+        }
+        return false
+    }
+
+    private fun calculateDistanceMeters(lat1: Double, lon1: Double, lat2: Double, lon2: Double): Double {
+        val R = 6371000.0
+        val dLat = Math.toRadians(lat2 - lat1)
+        val dLon = Math.toRadians(lon2 - lon1)
+        val a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+            Math.cos(Math.toRadians(lat1)) * Math.cos(Math.toRadians(lat2)) *
+            Math.sin(dLon / 2) * Math.sin(dLon / 2)
+        val c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a))
+        return R * c
+    }
+
+    fun pauseTracking() {
+        _event.value = PipelineEvent.Paused
+    }
+
+    fun resumeTracking() {
+        _event.value = PipelineEvent.Resumed
+    }
+
+    enum class PipelineEvent {
+        Idle,
+        Started,
+        Stopped,
+        Paused,
+        Resumed,
+        LocationReceived,
+        RouteCompleted,
+        ExposureCalculated,
+        StayDetected
+    }
+}

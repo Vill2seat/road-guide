@@ -22,7 +22,8 @@ data class ExposureResult(
     val segmentId: Long? = null,
     val stayId: Long? = null,
     val routeId: Long? = null,
-    val exposureScore: Double, // 0-100
+    val exposureScore: Double, // 0-100 (normalized)
+    val rawExposureScore: Double = 0.0, // pre-normalization raw score
     val pollution: Double,
     val durationMinutes: Int,
     val activityLevel: Double, // 0-1

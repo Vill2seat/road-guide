@@ -102,16 +102,16 @@ Spec explicitly forbids medical claims. Exposure must be "relative ecological lo
 
 ---
 
-## ADR-20241112-004: Open-Meteo + CAMS for Environmental Data
+## ADR-20241112-004: Open-Meteo Air Quality (CAMS model) for Environmental Data
 
-**Status**: Accepted
+**Status**: Accepted (superseded by ADR-20261123-001)
 **Date**: 2024-11-12
 
 ### Context
 Need global air quality + weather data. No personal sensors.
 
 ### Decision
-- Primary: Open-Meteo Weather API + Air Quality API (CAMS model)
+- Primary: Open-Meteo Weather API + Air Quality API (uses CAMS model as backend)
 - No API key required (free tier: 10k/day)
 - Hourly resolution, ~11km (EU) / ~45km (global)
 - Cache 1 hour, validate: max age 3h, max distance 30km

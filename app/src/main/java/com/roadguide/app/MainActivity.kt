@@ -18,6 +18,9 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import com.roadguide.app.core.ui.theme.RoadGuideTheme
 import com.roadguide.app.data.source.PermissionSource
+import com.roadguide.app.data.source.OsrmRoutingSource
+import com.roadguide.app.domain.usecase.impl.RouteComparisonEngine
+import com.roadguide.app.domain.usecase.impl.RouteEvaluationEngine
 import com.roadguide.app.feature.onboarding.OnboardingFlow
 import com.roadguide.app.feature.permissions.PermissionScreen
 import dagger.hilt.android.AndroidEntryPoint
@@ -27,6 +30,9 @@ import javax.inject.Inject
 class MainActivity : ComponentActivity() {
 
     @Inject lateinit var permissionSource: PermissionSource
+    @Inject lateinit var osrmRoutingSource: OsrmRoutingSource
+    @Inject lateinit var routeEvaluationEngine: RouteEvaluationEngine
+    @Inject lateinit var routeComparisonEngine: RouteComparisonEngine
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -81,7 +87,10 @@ class MainActivity : ComponentActivity() {
         } else {
             AppNavHost(
                 permissionSource = permissionSource,
-                permissionLauncher = permissionLauncher
+                permissionLauncher = permissionLauncher,
+                osrmRoutingSource = osrmRoutingSource,
+                routeEvaluationEngine = routeEvaluationEngine,
+                routeComparisonEngine = routeComparisonEngine
             )
         }
     }

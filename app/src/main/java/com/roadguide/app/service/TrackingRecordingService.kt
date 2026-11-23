@@ -11,19 +11,27 @@ import android.util.Log
 import androidx.core.app.ServiceCompat
 import com.roadguide.app.R
 import com.roadguide.app.data.local.entity.LocationPoint
+import com.roadguide.app.data.local.entity.PrivacyZone
 import com.roadguide.app.data.local.entity.Route
 import com.roadguide.app.data.local.entity.RouteStatus
 import com.roadguide.app.data.local.entity.RouteType
 import com.roadguide.app.data.repository.EnvironmentalSampleRepository
 import com.roadguide.app.data.repository.LocationPointRepository
+import com.roadguide.app.data.repository.PrivacyZoneRepository
 import com.roadguide.app.data.repository.RouteRepository
 import com.roadguide.app.data.source.LocationSource
+import com.roadguide.app.domain.model.GeofenceState
+import com.roadguide.app.domain.usecase.AggregateDailyExposure
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.withTimeout
 import com.roadguide.app.data.local.settings.TrackingPrefs
 import com.roadguide.app.data.source.ActivityRecognitionSource
@@ -40,6 +48,8 @@ class TrackingRecordingService : Service() {
     @Inject lateinit var locationSource: LocationSource
     @Inject lateinit var trackingPrefs: TrackingPrefs
     @Inject lateinit var activityRecognitionSource: ActivityRecognitionSource
+    @Inject lateinit var aggregateDailyExposure: AggregateDailyExposure
+    @Inject lateinit var privacyZoneRepository: PrivacyZoneRepository
 
     private var trackingJob: Job? = null
     private var routeId: Long? = null
@@ -51,6 +61,10 @@ class TrackingRecordingService : Service() {
     private var isPaused = false
     private var isRecording = false
     private var lastLocationTime = 0L
+
+    /** Состояние геофенсинга для UI */
+    private val _geofenceState = MutableStateFlow<GeofenceState>(GeofenceState())
+    val geofenceState: StateFlow<GeofenceState> = _geofenceState.asStateFlow()
 
     override fun onCreate() {
         super.onCreate()
@@ -173,6 +187,37 @@ class TrackingRecordingService : Service() {
     private suspend fun saveLocationPoint(location: android.location.Location) {
         val routeId = this.routeId ?: return
 
+        // --- Геофенсинг: проверка попадания в приват-зоны ---
+        var insideZones: List<PrivacyZone> = emptyList()
+        var shouldExcludeFromHistory = false
+        var shouldExcludeFromExposure = false
+
+        try {
+            val activeZones = privacyZoneRepository.observeActiveZones().first()
+            insideZones = activeZones.filter { zone ->
+                isInsidePrivacyZone(location.latitude, location.longitude, zone)
+            }
+            shouldExcludeFromHistory = insideZones.any { it.excludeFromHistory }
+            shouldExcludeFromExposure = insideZones.any { it.excludeFromExposure }
+
+            // Обновляем состояние геофенсинга для UI
+            _geofenceState.update {
+                it.copy(
+                    currentZones = insideZones,
+                    isInsideProtectedZone = insideZones.isNotEmpty()
+                )
+            }
+        } catch (e: Exception) {
+            // Graceful degradation: если репозиторий недоступен, продолжаем запись без геофенсинга
+            Log.w("TrackingService", "Privacy zone check failed, continuing without geofencing", e)
+        }
+
+        // Если excludeFromHistory — не сохраняем точку вообще
+        if (shouldExcludeFromHistory) {
+            Log.d("TrackingService", "Point excluded from history (privacy zone), lat=${location.latitude}, lon=${location.longitude}")
+            return
+        }
+
         val point = LocationPoint(
             id = 0,
             latitude = location.latitude,
@@ -184,14 +229,15 @@ class TrackingRecordingService : Service() {
             altitude = location.altitude.coerceAtLeast(0.0),
             provider = location.provider ?: "fused",
             isMock = false,
-            routeId = routeId
+            routeId = routeId,
+            excludeFromExposure = shouldExcludeFromExposure
         )
 
         locationPointRepository.insert(point)
-        Log.d("TrackingService", "point saved, routeId=$routeId")
+        Log.d("TrackingService", "point saved, routeId=$routeId, excludeFromExposure=$shouldExcludeFromExposure")
 
         // Adaptive GPS interval based on speed
-        val speed = location.speedMetersPerSecond ?: 0f
+        val speed = location.speed ?: 0f
         if (speed < 0.3f) {
             locationSource.updateInterval(300)
         } else if (speed <= 1.0f) {
@@ -229,7 +275,7 @@ class TrackingRecordingService : Service() {
         lastLocation = location
     }
 
-    private suspend fun calculateDistanceMeters(
+    private fun calculateDistanceMeters(
         lat1: Double, lon1: Double, lat2: Double, lon2: Double
     ): Double {
         val R = 6371000.0
@@ -240,6 +286,15 @@ class TrackingRecordingService : Service() {
             Math.sin(dLon / 2) * Math.sin(dLon / 2)
         val c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a))
         return R * c
+    }
+
+    /**
+     * Проверяет, находится ли точка внутри приват-зоны (геофенсинг).
+     * Использует формулу Haversine для расчёта расстояния между двумя точками на сфере.
+     */
+    private fun isInsidePrivacyZone(lat: Double, lon: Double, zone: PrivacyZone): Boolean {
+        val distance = calculateDistanceMeters(lat, lon, zone.centerLatitude, zone.centerLongitude)
+        return distance <= zone.radiusMeters
     }
 
     private suspend fun stopRecording() {
@@ -266,6 +321,15 @@ class TrackingRecordingService : Service() {
             )
             currentRoute = updatedRoute
             routeRepository.update(updatedRoute)
+
+            // Aggregate daily exposure for the completed route's date (§30: midnight crossover & late data)
+            serviceScope.launch {
+                try {
+                    aggregateDailyExposure.aggregate(route.date)
+                } catch (e: Exception) {
+                    Log.w("TrackingService", "Daily aggregation failed", e)
+                }
+            }
         }
 
         ServiceCompat.stopForeground(this, ServiceCompat.STOP_FOREGROUND_REMOVE)

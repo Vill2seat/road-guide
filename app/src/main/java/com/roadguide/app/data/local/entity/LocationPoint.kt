@@ -24,5 +24,6 @@ data class LocationPoint(
     val isMock: Boolean = false,
     val qualityFlags: Int = 0,
     val routeId: Long? = null,
-    val collectionDiagnostics: String? = null
+    val collectionDiagnostics: String? = null,
+    val excludeFromExposure: Boolean = false
 )

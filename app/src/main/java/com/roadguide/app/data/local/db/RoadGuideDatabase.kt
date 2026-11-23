@@ -5,6 +5,7 @@ import androidx.room.Database
 import androidx.room.Room
 import androidx.room.RoomDatabase
 import androidx.room.TypeConverters
+import androidx.room.migration.Migration
 import com.roadguide.app.data.local.Converters
 import com.roadguide.app.data.local.dao.DailyReportDao
 import com.roadguide.app.data.local.dao.EnvironmentalSampleDao
@@ -39,7 +40,7 @@ import com.roadguide.app.data.local.entity.Stay
         PrivacyZone::class,
         DataRetentionPolicy::class
     ],
-    version = 1,
+    version = 3,
     exportSchema = true
 )
 @TypeConverters(Converters::class)
@@ -58,13 +59,32 @@ abstract class RoadGuideDatabase : RoomDatabase() {
     companion object {
         @Volatile private var INSTANCE: RoadGuideDatabase? = null
 
+        // Migration from v1 to v2: add rawExposureScore column to exposure_results table
+        val MIGRATION_1_2 = object : Migration(1, 2) {
+            override fun migrate(database: androidx.sqlite.db.SupportSQLiteDatabase) {
+                database.execSQL(
+                    "ALTER TABLE exposure_results ADD COLUMN rawExposureScore REAL NOT NULL DEFAULT 0.0"
+                )
+            }
+        }
+
+        // Migration from v2 to v3: add excludeFromExposure column to location_points table
+        val MIGRATION_2_3 = object : Migration(2, 3) {
+            override fun migrate(database: androidx.sqlite.db.SupportSQLiteDatabase) {
+                database.execSQL(
+                    "ALTER TABLE location_points ADD COLUMN excludeFromExposure INTEGER NOT NULL DEFAULT 0"
+                )
+            }
+        }
+
         fun getInstance(context: Context): RoadGuideDatabase {
             return INSTANCE ?: synchronized(this) {
                 INSTANCE ?: Room.databaseBuilder(
                     context.applicationContext,
                     RoadGuideDatabase::class.java,
                     "road_guide.db"
-                ).build()
+                ).addMigrations(MIGRATION_1_2, MIGRATION_2_3)
+                    .build()
                     .also { INSTANCE = it }
             }
         }

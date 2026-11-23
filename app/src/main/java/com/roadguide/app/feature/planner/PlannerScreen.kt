@@ -28,6 +28,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
@@ -41,25 +42,40 @@ import com.roadguide.app.R
 import com.roadguide.app.core.ui.theme.RgColor
 import com.roadguide.app.core.ui.theme.RgDimens
 import com.roadguide.app.core.ui.theme.RgIcon
+import com.roadguide.app.data.source.OsrmRoutingSource
+import com.roadguide.app.domain.model.RouteCategory
+import com.roadguide.app.domain.model.RouteEvaluation
+import com.roadguide.app.domain.model.RouteProfile
+import com.roadguide.app.domain.usecase.impl.RouteComparisonEngine
+import com.roadguide.app.domain.usecase.impl.RouteEvaluationEngine
 import com.roadguide.app.map.MapView
 import com.roadguide.app.map.addLocationMarker
 import com.roadguide.app.map.addRoutePolyline
 import com.roadguide.app.map.focusCameraOnPoints
 import com.roadguide.app.map.model.MapPoint
+import kotlinx.coroutines.launch
+import kotlin.math.roundToInt
 
 @Composable
 fun PlannerScreen(
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    osrmRoutingSource: OsrmRoutingSource? = null,
+    routeEvaluationEngine: RouteEvaluationEngine? = null,
+    routeComparisonEngine: RouteComparisonEngine? = null
 ) {
     val context = LocalContext.current
+    val coroutineScope = rememberCoroutineScope()
 
     // State for input fields (editable)
     val fromText = remember { mutableStateOf("Текущее положение") }
     val toText = remember { mutableStateOf("Адрес назначения") }
     val isLoading = remember { mutableStateOf(false) }
     val routePoints = remember { mutableStateOf<List<MapPoint>?>(null) }
+    val routeEvaluations = remember { mutableStateOf<List<RouteEvaluation>?>(null) }
+    val selectedRoute = remember { mutableStateOf<RouteEvaluation?>(null) }
     val fromPointState = remember { mutableStateOf<MapPoint?>(null) }
     val toPointState = remember { mutableStateOf<MapPoint?>(null) }
+    val routingError = remember { mutableStateOf<String?>(null) }
 
     // Simple geocoding/hypothesis: check if coordinates or known addresses
     fun resolveAddress(address: String, lat: Double = 55.7522, lon: Double = 37.6133): MapPoint {
@@ -115,6 +131,9 @@ fun PlannerScreen(
 
         isLoading.value = true
         routePoints.value = null
+        routeEvaluations.value = null
+        selectedRoute.value = null
+        routingError.value = null
 
         // Resolve start and end points
         val from = if (fromText.value == "Текущее положение") {
@@ -127,11 +146,64 @@ fun PlannerScreen(
         fromPointState.value = from
         toPointState.value = to
 
-        // Simple routing fallback: generate intermediate points between start and end
-        // (In production, integrate OSRM or similar routing engine)
-        val points = generateMockRoute(from, to)
-        routePoints.value = points
-        isLoading.value = false
+        coroutineScope.launch {
+            try {
+                // Try real OSRM routing if available
+                if (osrmRoutingSource != null && routeEvaluationEngine != null && routeComparisonEngine != null) {
+                    val osrmRoutes = osrmRoutingSource.route(from, to, profile = RouteProfile.DRIVING)
+
+                    if (osrmRoutes != null && osrmRoutes.isNotEmpty()) {
+                        val evaluations = mutableListOf<RouteEvaluation>()
+                        for ((index, osrmRoute) in osrmRoutes.withIndex()) {
+                            val category = when (index) {
+                                0 -> RouteCategory.FASTEST
+                                1 -> RouteCategory.LOWEST_EXPOSURE
+                                else -> RouteCategory.BALANCED
+                            }
+                            val eval = routeEvaluationEngine.evaluateRoute(
+                                id = "route_$index",
+                                geometry = osrmRoute.geometry,
+                                durationSeconds = osrmRoute.durationSeconds,
+                                category = category,
+                                profile = RouteProfile.DRIVING
+                            )
+                            evaluations.add(eval)
+                        }
+
+                        // Re-classify properly using comparison engine
+                        val classified = routeComparisonEngine.classifyRoutes(evaluations)
+                        routeEvaluations.value = classified
+
+                        // Select best route
+                        val best = routeComparisonEngine.selectBestRoute(classified)
+                        selectedRoute.value = best
+
+                        // Use the best route's geometry for map display
+                        routePoints.value = best?.geometry ?: classified.firstOrNull()?.geometry
+                    } else {
+                        // OSRM unavailable - fallback to mock
+                        routingError.value = "Сервер маршрутизации недоступен. Используется упрощённый маршрут."
+                        val points = generateMockRoute(from, to)
+                        routePoints.value = points
+                    }
+                } else {
+                    // No routing dependencies - fallback to mock
+                    val points = generateMockRoute(from, to)
+                    routePoints.value = points
+                }
+            } catch (e: Exception) {
+                routingError.value = "Ошибка построения маршрута: ${e.message}"
+                val points = generateMockRoute(from, to)
+                routePoints.value = points
+            } finally {
+                isLoading.value = false
+            }
+        }
+    }
+
+    fun selectRoute(evaluation: RouteEvaluation) {
+        selectedRoute.value = evaluation
+        routePoints.value = evaluation.geometry
     }
 
     Scaffold(
@@ -267,6 +339,77 @@ fun PlannerScreen(
 
             Spacer(modifier = Modifier.height(RgDimens.Space4))
 
+            // Route comparison cards (multiple routes)
+            routeEvaluations.value?.let { evaluations ->
+                if (evaluations.size > 1) {
+                    Text(
+                        text = "Доступные маршруты",
+                        style = MaterialTheme.typography.titleMedium,
+                        color = MaterialTheme.colorScheme.onSurface,
+                        modifier = Modifier.padding(bottom = RgDimens.Space3)
+                    )
+                    Column(
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        evaluations.forEach { eval ->
+                            val isSelected = selectedRoute.value?.id == eval.id
+                            Card(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(bottom = RgDimens.Space2),
+                                colors = CardDefaults.cardColors(
+                                    containerColor = if (isSelected) {
+                                        MaterialTheme.colorScheme.primaryContainer
+                                    } else {
+                                        MaterialTheme.colorScheme.surface
+                                    }
+                                ),
+                                onClick = { selectRoute(eval) }
+                            ) {
+                                Row(
+                                    modifier = Modifier.padding(16.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Column(modifier = Modifier.weight(1f)) {
+                                        Text(
+                                            text = when (eval.category) {
+                                                RouteCategory.FASTEST -> "Быстрый маршрут"
+                                                RouteCategory.LOWEST_EXPOSURE -> "Экологичный маршрут"
+                                                RouteCategory.BALANCED -> "Сбалансированный"
+                                            },
+                                            style = MaterialTheme.typography.titleMedium,
+                                            color = MaterialTheme.colorScheme.onSurface
+                                        )
+                                        Text(
+                                            text = eval.summary,
+                                            style = MaterialTheme.typography.bodySmall,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                                        )
+                                    }
+                                    Column {
+                                        Text(
+                                            text = "${(eval.exposureScore).roundToInt()}",
+                                            style = MaterialTheme.typography.titleLarge,
+                                            color = when {
+                                                eval.exposureScore < 30 -> RgColor.ExposureGood
+                                                eval.exposureScore < 60 -> RgColor.ExposureModerate
+                                                else -> RgColor.ExposureHigh
+                                            }
+                                        )
+                                        Text(
+                                            text = "экспозиция",
+                                            style = MaterialTheme.typography.labelSmall,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    Spacer(modifier = Modifier.height(RgDimens.Space4))
+                }
+            }
+
             // Route result card
             if (routePoints.value != null) {
                 Card(
@@ -312,6 +455,7 @@ fun PlannerScreen(
                             modifier = Modifier.fillMaxWidth(),
                             horizontalArrangement = Arrangement.SpaceBetween
                         ) {
+                            val selected = selectedRoute.value
                             Column(
                                 modifier = Modifier.weight(1f)
                             ) {
@@ -320,8 +464,9 @@ fun PlannerScreen(
                                     style = MaterialTheme.typography.bodySmall,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
+                                val distKm = if (selected != null) (selected.distanceMeters / 1000.0) else 5.4
                                 Text(
-                                    text = "~${5.4f} км",
+                                    text = "~${"%.1f".format(distKm)} км",
                                     style = MaterialTheme.typography.titleMedium,
                                     color = MaterialTheme.colorScheme.onSurface
                                 )
@@ -334,11 +479,43 @@ fun PlannerScreen(
                                     style = MaterialTheme.typography.bodySmall,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
+                                val exposure = selected?.exposureScore ?: 50.0
+                                val exposureLabel = when {
+                                    exposure < 30 -> "Отличная"
+                                    exposure < 60 -> "Умеренная"
+                                    else -> "Повышенная"
+                                }
                                 Text(
-                                    text = "Хорошо",
+                                    text = exposureLabel,
                                     style = MaterialTheme.typography.titleMedium,
-                                    color = RgColor.ExposureGood
+                                    color = when {
+exposure < 30 -> RgColor.ExposureGood
+                                    exposure < 60 -> RgColor.ExposureModerate
+                                    else -> RgColor.ExposureHigh
+                                    }
                                 )
+                            }
+                        }
+
+                        // Eco route warning from comparison engine
+                        routeEvaluations.value?.let { evaluations ->
+                            routeComparisonEngine?.let { comparison ->
+                                comparison.getEcoRouteWarning(evaluations)?.let { warning ->
+Spacer(modifier = Modifier.height(RgDimens.Space3))
+                                    Card(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        colors = CardDefaults.cardColors(
+                                            containerColor = MaterialTheme.colorScheme.errorContainer
+                                        )
+                                    ) {
+                                        Text(
+                                            text = warning,
+                                            style = MaterialTheme.typography.bodyMedium,
+                                            color = MaterialTheme.colorScheme.onErrorContainer,
+                                            modifier = Modifier.padding(16.dp)
+                                        )
+                                    }
+                                }
                             }
                         }
                     }

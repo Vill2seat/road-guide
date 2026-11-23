@@ -41,20 +41,29 @@ import com.roadguide.app.data.repository.StayRepository
 import com.roadguide.app.data.repository.StayRepositoryImpl
 import com.roadguide.app.data.repository.TrackingSettingsRepository
 import com.roadguide.app.data.repository.TrackingSettingsRepositoryImpl
+import com.roadguide.app.data.source.ActivityRecognitionSource
 import com.roadguide.app.data.source.CamsSource
 import com.roadguide.app.data.source.EnvironmentalDataFetcher
 import com.roadguide.app.data.source.LocationSource
+import com.roadguide.app.data.source.OsrmRoutingSource
+import com.roadguide.app.data.source.OverpassApiSource
 import com.roadguide.app.data.source.OpenMeteoWeatherSource
 import com.roadguide.app.data.source.PermissionSource
+import com.roadguide.app.domain.model.GeographicContext
+import com.roadguide.app.domain.usecase.AggregateDailyExposure
 import com.roadguide.app.domain.usecase.GetDailyReport
 import com.roadguide.app.domain.usecase.GetEnvironmentalSample
 import com.roadguide.app.domain.usecase.GetRouteSummaries
 import com.roadguide.app.domain.usecase.GetTrackingSettings
 import com.roadguide.app.domain.usecase.ToggleTracking
+import com.roadguide.app.domain.usecase.impl.DailyExposureAggregator
+import com.roadguide.app.domain.usecase.impl.GeographicContextEngine
 import com.roadguide.app.domain.usecase.impl.GetDailyReportImpl
 import com.roadguide.app.domain.usecase.impl.GetEnvironmentalSampleImpl
 import com.roadguide.app.domain.usecase.impl.GetRouteSummariesImpl
 import com.roadguide.app.domain.usecase.impl.GetTrackingSettingsImpl
+import com.roadguide.app.domain.usecase.impl.RouteComparisonEngine
+import com.roadguide.app.domain.usecase.impl.RouteEvaluationEngine
 import com.roadguide.app.domain.usecase.impl.ToggleTrackingImpl
 import com.roadguide.app.mapper.RouteMapper
 
@@ -69,7 +78,8 @@ object AppModule {
             context.applicationContext,
             RoadGuideDatabase::class.java,
             "road_guide.db"
-        ).build()
+        ).addMigrations(RoadGuideDatabase.MIGRATION_1_2, RoadGuideDatabase.MIGRATION_2_3)
+            .build()
     }
 
     @Provides
@@ -173,6 +183,11 @@ object AppModule {
 
     @Provides
     @Singleton
+    fun provideActivityRecognitionSource(@ApplicationContext context: Context): ActivityRecognitionSource =
+        ActivityRecognitionSource(context)
+
+    @Provides
+    @Singleton
     fun provideEnvironmentalSampleRepository(
         dao: EnvironmentalSampleDao,
         fetcher: EnvironmentalDataFetcher,
@@ -256,4 +271,52 @@ object AppModule {
     @Singleton
     fun provideGetEnvironmentalSample(repository: EnvironmentalSampleRepository): GetEnvironmentalSample =
         GetEnvironmentalSampleImpl(repository)
+
+    @Provides
+    @Singleton
+    fun provideAggregateDailyExposure(
+        routeRepository: RouteRepository,
+        routeSegmentRepository: RouteSegmentRepository,
+        exposureResultRepository: ExposureResultRepository,
+        stayRepository: StayRepository,
+        dailyReportRepository: DailyReportRepository,
+    ): AggregateDailyExposure =
+        DailyExposureAggregator(
+            routeRepository = routeRepository,
+            routeSegmentRepository = routeSegmentRepository,
+            exposureResultRepository = exposureResultRepository,
+            stayRepository = stayRepository,
+            dailyReportRepository = dailyReportRepository,
+        )
+
+    @Provides
+    @Singleton
+    fun provideOverpassSource(okHttpClient: OkHttpClient): OverpassApiSource =
+        OverpassApiSource(okHttpClient)
+
+    @Provides
+    @Singleton
+    fun provideGeographicContextEngine(overpassSource: OverpassApiSource): GeographicContextEngine =
+        GeographicContextEngine(overpassSource)
+
+    @Provides
+    @Singleton
+    fun provideOsrmRoutingSource(okHttpClient: OkHttpClient): OsrmRoutingSource =
+        OsrmRoutingSource(okHttpClient)
+
+    @Provides
+    @Singleton
+    fun provideRouteEvaluationEngine(
+        environmentalSampleRepository: EnvironmentalSampleRepository,
+        geographicContextEngine: GeographicContextEngine
+    ): RouteEvaluationEngine =
+        RouteEvaluationEngine(
+            environmentalSampleRepository = environmentalSampleRepository,
+            geographicContextEngine = geographicContextEngine
+        )
+
+    @Provides
+    @Singleton
+    fun provideRouteComparisonEngine(): RouteComparisonEngine =
+        RouteComparisonEngine()
 }

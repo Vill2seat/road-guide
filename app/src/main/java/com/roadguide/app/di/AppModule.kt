@@ -156,20 +156,11 @@ object AppModule {
 
     @Provides
     @Singleton
-    fun provideCamsSource(
-        @ApplicationContext context: Context,
-        okHttpClient: OkHttpClient
-    ): CamsSource =
-        CamsSource(context, okHttpClient)
-
-    @Provides
-    @Singleton
     fun provideEnvironmentalDataFetcher(
         openMeteo: OpenMeteoWeatherSource,
-        cams: CamsSource,
         validator: EnvironmentalValidator
     ): EnvironmentalDataFetcher =
-        EnvironmentalDataFetcher(openMeteo, cams, validator)
+        EnvironmentalDataFetcher(openMeteo, validator)
 
     @Provides
     @Singleton

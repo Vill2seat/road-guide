@@ -13,7 +13,6 @@ import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -23,6 +22,7 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import com.roadguide.app.core.ui.theme.RoadGuideTheme
+import com.roadguide.app.core.ui.theme.LoadingPlaceholder
 import com.roadguide.app.data.source.PermissionSource
 import com.roadguide.app.data.source.LocationSource
 import com.roadguide.app.data.source.OsrmRoutingSource
@@ -31,6 +31,7 @@ import com.roadguide.app.domain.usecase.impl.RouteEvaluationEngine
 import com.roadguide.app.feature.onboarding.OnboardingFlow
 import com.roadguide.app.feature.permissions.PermissionScreen
 import dagger.hilt.android.AndroidEntryPoint
+import kotlinx.coroutines.flow.collect
 import javax.inject.Inject
 
 @AndroidEntryPoint
@@ -74,7 +75,10 @@ class MainActivity : ComponentActivity() {
             }
         }
 
-        val onboardingDone by permissionSource.hasCompletedOnboarding().collectAsState(initial = false)
+        var onboardingDone by remember { mutableStateOf<Boolean?>(null) }
+        LaunchedEffect(permissionSource) {
+            permissionSource.hasCompletedOnboarding().collect { onboardingDone = it }
+        }
 
         DisposableEffect(lifecycleOwner) {
             val observer = LifecycleEventObserver { _, event ->
@@ -99,7 +103,9 @@ class MainActivity : ComponentActivity() {
             }
         }
 
-        if (!onboardingDone) {
+        if (onboardingDone == null) {
+            LoadingPlaceholder(modifier = Modifier.fillMaxSize())
+        } else if (onboardingDone == false) {
             OnboardingFlow(
                 onFinished = {
                     hasPermissions = permissionSource.hasAllPermissions()

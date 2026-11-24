@@ -24,7 +24,8 @@ class TrackingPrefsConverterTest {
     fun `tracking preferences defaults when constructed empty`() {
         val prefs = TrackingPreferences()
 
-        assertEquals(true, prefs.trackingEnabled)
+        assertEquals(false, prefs.trackingEnabled)
+        assertEquals(false, prefs.trackingPaused)
         assertEquals(60, prefs.intervalSeconds)
         assertEquals("metric", prefs.units)
         assertEquals(100, prefs.aqiThreshold)

@@ -1,8 +1,8 @@
 package com.roadguide.app.data.local
 
 import com.roadguide.app.data.local.entity.DataQuality
+import com.roadguide.app.data.local.entity.DataSource
 import com.roadguide.app.data.local.entity.EnvironmentalSample
-import kotlin.math.abs
 
 /**
  * Validates environmental samples against freshness, distance, and future-offset rules.
@@ -41,19 +41,23 @@ class EnvironmentalValidator(
         }
 
         // Time window check: too far from requested time -> null (reject sample)
-        val timeDiffMinutes = abs(sample.timestamp - requestTime) / (1000.0 * 60)
-        if (timeDiffMinutes > maxFutureOffsetMinutes) {
+        val sampleTimeOffsetMillis = sample.timestamp - requestTime
+        val maxSampleTimeOffsetMillis = if (sample.source == DataSource.OPEN_METEO_AQ) {
+            MAX_AQ_TIME_OFFSET_MS
+        } else {
+            maxFutureOffsetMinutes * 60_000L
+        }
+        if (sampleTimeOffsetMillis !in -maxSampleTimeOffsetMillis..maxSampleTimeOffsetMillis) {
             return null
         }
 
         // Future offset check: if the sample was fetched in the future (cyber attack etc.)
-        val futureOffset = (sample.fetchedAt - now) / (1000.0 * 60)
-        if (futureOffset > maxFutureOffsetMinutes) {
+        if (sample.fetchedAt - now > maxSampleTimeOffsetMillis) {
             return DataQuality.OUT_OF_RANGE
         }
 
-        // Return sample's own quality if it passes all checks
-        return sample.dataQuality
+        // Weather-only samples remain useful, but cannot support air-quality scoring.
+        return if (sample.hasValidAirQualityData()) sample.dataQuality else DataQuality.LOW
     }
 
     private fun haversineKm(lat1: Double, lon1: Double, lat2: Double, lon2: Double): Double {
@@ -65,5 +69,9 @@ class EnvironmentalValidator(
                         Math.sin(dLon / 2) * Math.sin(dLon / 2)
         val c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a))
         return R * c
+    }
+
+    private companion object {
+        const val MAX_AQ_TIME_OFFSET_MS = 30 * 60 * 1_000L
     }
 }

@@ -10,9 +10,13 @@ interface PlaceRepository {
 
     suspend fun update(place: Place)
 
+    suspend fun deleteById(id: Long)
+
     fun getById(id: Long): Flow<Place?>
 
     fun observeByCategory(category: PlaceCategory): Flow<List<Place>>
+
+    fun observeAll(): Flow<List<Place>>
 
     fun observePublicPlaces(): Flow<List<Place>>
 }
@@ -23,10 +27,14 @@ class PlaceRepositoryImpl(private val dao: PlaceDao) : PlaceRepository {
 
     override suspend fun update(place: Place) = dao.update(place)
 
+    override suspend fun deleteById(id: Long) = dao.deleteById(id)
+
     override fun getById(id: Long): Flow<Place?> = dao.getById(id)
 
     override fun observeByCategory(category: PlaceCategory): Flow<List<Place>> =
         dao.observeByCategory(category)
 
-    override fun observePublicPlaces(): Flow<List<Place>> = dao.observeAll()
+    override fun observeAll(): Flow<List<Place>> = dao.observeAll()
+
+    override fun observePublicPlaces(): Flow<List<Place>> = dao.observePublicPlaces()
 }

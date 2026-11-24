@@ -1,6 +1,5 @@
 package com.roadguide.app.feature.dailyreport
 
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -8,9 +7,12 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
@@ -27,6 +29,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import com.roadguide.app.R
 import com.roadguide.app.core.common.ScreenState
 import com.roadguide.app.core.ui.theme.ErrorPlaceholder
@@ -36,6 +39,10 @@ import com.roadguide.app.core.ui.theme.RgDimens
 import com.roadguide.app.core.ui.theme.RgIcon
 import com.roadguide.app.data.local.entity.DailyReport
 import com.roadguide.app.feature.dailyreport.viewmodel.DailyReportViewModel
+import java.time.LocalDate
+import java.time.format.DateTimeFormatter
+import java.time.format.FormatStyle
+import java.util.Locale
 
 @Composable
 fun DailyReportScreen(
@@ -46,6 +53,13 @@ fun DailyReportScreen(
     val uiState by dailyReportViewModel.uiState.collectAsState()
     val report by dailyReportViewModel.report.collectAsState()
     val recentReports by dailyReportViewModel.recentReports.collectAsState()
+    val selectedDate by dailyReportViewModel.selectedDate.collectAsState()
+    val displayDate = remember(selectedDate) {
+        runCatching {
+            LocalDate.parse(selectedDate)
+                .format(DateTimeFormatter.ofLocalizedDate(FormatStyle.MEDIUM).withLocale(Locale.getDefault()))
+        }.getOrDefault(selectedDate)
+    }
 
     Scaffold(
         modifier = modifier.fillMaxSize()
@@ -61,7 +75,10 @@ fun DailyReportScreen(
                 ScreenState.Success, ScreenState.Empty -> {
                     val reportValue = report
                     Column(
-                        modifier = Modifier.fillMaxSize()
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .verticalScroll(rememberScrollState())
+                            .padding(RgDimens.Space4)
                     ) {
                         Text(
                             text = stringResource(R.string.daily_report_title),
@@ -70,7 +87,7 @@ fun DailyReportScreen(
                         )
                         Spacer(modifier = Modifier.height(RgDimens.Space2))
                         Text(
-                            text = reportValue?.date ?: "Сегодня",
+                            text = stringResource(R.string.daily_report_day_label, displayDate),
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -85,9 +102,13 @@ fun DailyReportScreen(
                             Spacer(modifier = Modifier.height(RgDimens.Space4))
                             RecommendationsCard(report = reportValue)
                             Spacer(modifier = Modifier.height(RgDimens.Space4))
-                            RecentReportsList(reports = recentReports)
                         }
 
+                        RecentReportsList(
+                            reports = recentReports,
+                            selectedDate = selectedDate,
+                            onSelectDate = dailyReportViewModel::loadReportForDate
+                        )
                         Button(
                             onClick = { dailyReportViewModel.refresh() },
                             colors = ButtonDefaults.buttonColors(containerColor = RgColor.Primary),
@@ -105,7 +126,9 @@ fun DailyReportScreen(
 @Composable
 private fun EmptyDailyReportState() {
     Column(
-        modifier = Modifier.fillMaxSize(),
+        modifier = Modifier
+            .fillMaxWidth()
+            .heightIn(min = 240.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
     ) {
@@ -115,12 +138,12 @@ private fun EmptyDailyReportState() {
         )
         Spacer(modifier = Modifier.height(RgDimens.Space3))
         Text(
-            text = "Нет отчёта за этот день",
+            text = stringResource(R.string.daily_report_no_exposure_title),
             style = MaterialTheme.typography.titleLarge,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
         Text(
-            text = "Завершите день трекинга, чтобы увидеть детальный отчёт",
+            text = stringResource(R.string.daily_report_no_exposure_desc),
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
@@ -141,7 +164,7 @@ private fun ScoreCard(report: DailyReport) {
             modifier = Modifier.padding(16.dp)
         ) {
             Text(
-                text = "Оценка дня",
+                text = stringResource(R.string.daily_report_score_title),
                 style = MaterialTheme.typography.titleMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
@@ -175,13 +198,13 @@ private fun ScoreCard(report: DailyReport) {
                 horizontalArrangement = androidx.compose.foundation.layout.Arrangement.SpaceBetween
             ) {
                 StatChip(
-                    label = "Надёжность",
-                    value = "${(report.confidence * 100).toInt()}%",
+                    label = stringResource(R.string.daily_report_confidence),
+                    value = formatDailyPercentage(report.confidence),
                     color = qualityColorFor(report.confidence)
                 )
                 StatChip(
-                    label = "Покрытие",
-                    value = "${(report.coverage * 100).toInt()}%",
+                    label = stringResource(R.string.daily_report_coverage),
+                    value = formatDailyPercentage(report.coverage),
                     color = qualityColorFor(report.coverage)
                 )
             }
@@ -201,7 +224,7 @@ private fun StatisticsCard(report: DailyReport) {
             modifier = Modifier.padding(16.dp)
         ) {
             Text(
-                text = "Статистика дня",
+                text = stringResource(R.string.daily_report_stats_title),
                 style = MaterialTheme.typography.titleMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
@@ -209,23 +232,20 @@ private fun StatisticsCard(report: DailyReport) {
 
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = androidx.compose.foundation.layout.Arrangement.SpaceBetween
+                horizontalArrangement = Arrangement.spacedBy(RgDimens.Space2)
             ) {
                 StatItem(
-                    label = "Дистанция",
-                    value = "${(report.totalDistanceMeters / 1000).toString().take(4)} км"
+                    label = stringResource(R.string.daily_report_distance),
+                    value = stringResource(
+                        R.string.daily_report_distance_km,
+                        report.totalDistanceMeters / 1000.0
+                    ),
+                    modifier = Modifier.weight(1f)
                 )
                 StatItem(
-                    label = "Время в пути",
-                    value = formatDuration(report.totalDurationSeconds)
-                )
-                StatItem(
-                    label = "Места",
-                    value = report.visitedPlacesCount.toString()
-                )
-                StatItem(
-                    label = "Coverage",
-                    value = "${(report.coverage * 100).toInt()}%"
+                    label = stringResource(R.string.daily_report_travel_time),
+                    value = formatDuration(report.totalDurationSeconds),
+                    modifier = Modifier.weight(1f)
                 )
             }
 
@@ -233,19 +253,40 @@ private fun StatisticsCard(report: DailyReport) {
 
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = androidx.compose.foundation.layout.Arrangement.SpaceBetween
+                horizontalArrangement = Arrangement.spacedBy(RgDimens.Space2)
             ) {
                 StatItem(
-                    label = "Ходьба",
-                    value = formatDuration(report.walkingDurationSeconds)
+                    label = stringResource(R.string.daily_report_places),
+                    value = report.visitedPlacesCount.toString(),
+                    modifier = Modifier.weight(1f)
                 )
                 StatItem(
-                    label = "Транспорт",
-                    value = formatDuration(report.transportDurationSeconds)
+                    label = stringResource(R.string.daily_report_coverage),
+                    value = formatDailyPercentage(report.coverage),
+                    modifier = Modifier.weight(1f)
+                )
+            }
+
+            Spacer(modifier = Modifier.height(RgDimens.Space2))
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(RgDimens.Space2)
+            ) {
+                StatItem(
+                    label = stringResource(R.string.daily_report_walking),
+                    value = formatDuration(report.walkingDurationSeconds),
+                    modifier = Modifier.weight(1f)
                 )
                 StatItem(
-                    label = "Стойка",
-                    value = formatDuration(report.stationaryDurationSeconds)
+                    label = stringResource(R.string.daily_report_transport),
+                    value = formatDuration(report.transportDurationSeconds),
+                    modifier = Modifier.weight(1f)
+                )
+                StatItem(
+                    label = stringResource(R.string.daily_report_stationary),
+                    value = formatDuration(report.stationaryDurationSeconds),
+                    modifier = Modifier.weight(1f)
                 )
             }
         }
@@ -266,7 +307,7 @@ private fun RecommendationsCard(report: DailyReport) {
             modifier = Modifier.padding(16.dp)
         ) {
             Text(
-                text = "Рекомендации",
+                text = stringResource(R.string.daily_report_recommendations_title),
                 style = MaterialTheme.typography.titleMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
@@ -274,7 +315,7 @@ private fun RecommendationsCard(report: DailyReport) {
 
             if (recommendations.isEmpty()) {
                 Text(
-                    text = "Рекомендации будут доступны после накопления достаточного количества данных",
+                    text = stringResource(R.string.daily_report_recommendations_empty),
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -307,53 +348,72 @@ private fun RecommendationsCard(report: DailyReport) {
 }
 
 @Composable
-private fun RecentReportsList(reports: List<DailyReport>) {
+private fun RecentReportsList(
+    reports: List<DailyReport>,
+    selectedDate: String,
+    onSelectDate: (String) -> Unit
+) {
     if (reports.isEmpty()) return
 
     Column(
         modifier = Modifier.fillMaxWidth()
     ) {
         Text(
-            text = "Недавние отчёты",
+            text = stringResource(R.string.daily_report_recent_title),
             style = MaterialTheme.typography.titleMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier.padding(bottom = RgDimens.Space2)
         )
 
         reports.forEach { report ->
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(bottom = RgDimens.Space1),
+                onClick = { onSelectDate(report.date) },
+                colors = CardDefaults.cardColors(
+                    containerColor = if (report.date == selectedDate) {
+                        MaterialTheme.colorScheme.primaryContainer
+                    } else {
+                        MaterialTheme.colorScheme.surface
+                    }
+                )
             ) {
-                Column() {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(RgDimens.Space2),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column {
+                        Text(
+                            text = report.date,
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
+                        Text(
+                            text = stringResource(
+                                R.string.daily_report_score_value,
+                                report.totalScore.toInt()
+                            ),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = scoreColorFor(report.totalScore)
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.weight(1f))
+
                     Text(
-                        text = report.date,
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurface
-                    )
-                    Text(
-                        text = "${report.totalScore.toInt()}/100",
+                        text = stringResource(
+                            R.string.daily_report_distance_km,
+                            report.totalDistanceMeters / 1000.0
+                        ),
                         style = MaterialTheme.typography.bodySmall,
-                        color = scoreColorFor(report.totalScore)
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
 
-                Spacer(modifier = Modifier.weight(1f))
-
-                Text(
-                    text = "${(report.totalDistanceMeters / 1000).toString().take(4)} км",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
             }
-
-            Spacer(modifier = Modifier.height(RgDimens.Space1))
-            androidx.compose.foundation.layout.Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(1.dp)
-                    .background(MaterialTheme.colorScheme.outlineVariant)
-            )
         }
     }
 }
@@ -378,8 +438,9 @@ private fun StatChip(label: String, value: String, color: Color) {
 }
 
 @Composable
-private fun StatItem(label: String, value: String) {
+private fun StatItem(label: String, value: String, modifier: Modifier = Modifier) {
     Column(
+        modifier = modifier,
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         Text(
@@ -396,26 +457,27 @@ private fun StatItem(label: String, value: String) {
     }
 }
 
+@Composable
 private fun formatDuration(seconds: Long): String {
     val minutes = seconds / 60
-    return "${minutes} мин"
+    return stringResource(R.string.daily_report_minutes, minutes)
 }
 
 private fun scoreColorFor(score: Double): Color {
-    return when {
-        score >= 75.0 -> RgColor.ExposureGood
-        score >= 50.0 -> RgColor.ExposureModerate
-        score >= 25.0 -> RgColor.ExposureHigh
-        else -> RgColor.ExposureVeryHigh
+    return when (exposureScoreBand(score)) {
+        ExposureScoreBand.LOW -> RgColor.ExposureGood
+        ExposureScoreBand.MODERATE -> RgColor.ExposureModerate
+        ExposureScoreBand.HIGH -> RgColor.ExposureHigh
+        ExposureScoreBand.VERY_HIGH -> RgColor.ExposureVeryHigh
     }
 }
 
 private fun qualityColorFor(value: Double): Color {
-    return when {
-        value >= 0.8 -> RgColor.ExposureGood
-        value >= 0.5 -> RgColor.ExposureModerate
-        value >= 0.2 -> RgColor.ExposureHigh
-        else -> RgColor.ExposureVeryHigh
+    return when (dataQualityBand(value)) {
+        DataQualityBand.HIGH -> RgColor.ExposureGood
+        DataQualityBand.MODERATE -> RgColor.ExposureModerate
+        DataQualityBand.LOW -> RgColor.ExposureHigh
+        DataQualityBand.VERY_LOW -> RgColor.ExposureVeryHigh
     }
 }
 

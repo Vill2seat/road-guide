@@ -1,12 +1,12 @@
 package com.roadguide.app.data.repository
 
-import android.content.Context
 import androidx.room.Room
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import com.roadguide.app.data.local.db.RoadGuideDatabase
 import com.roadguide.app.data.local.entity.Place
 import com.roadguide.app.data.local.entity.PlaceCategory
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
 import org.junit.After
 import org.junit.Assert.assertEquals
@@ -45,7 +45,6 @@ class PlaceRepositoryTest {
     @Test
     fun `insert and get place`() = runBlocking {
         val place = Place(
-            id = 1L,
             name = "Test Place",
             address = "123 Test St",
             latitude = 55.7558,

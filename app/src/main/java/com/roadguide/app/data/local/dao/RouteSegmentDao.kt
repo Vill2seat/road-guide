@@ -21,6 +21,9 @@ interface RouteSegmentDao {
     @Query("SELECT * FROM route_segments WHERE routeId = :routeId ORDER BY startTime")
     fun observeByRoute(routeId: Long): Flow<List<RouteSegment>>
 
+    @Query("SELECT * FROM route_segments ORDER BY startTime")
+    fun observeAll(): Flow<List<RouteSegment>>
+
     @Query("SELECT * FROM route_segments WHERE id = :id")
     fun getById(id: Long): Flow<RouteSegment?>
 

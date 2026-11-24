@@ -125,9 +125,11 @@ private fun EmptyWeatherState() {
 
 @Composable
 private fun WeatherHeaderCard(sample: EnvironmentalSample) {
-    val aqi = sample.europeanAqi ?: sample.usAqi ?: 0
-    val aqiColor = aqiColorFor(aqi)
-    val aqiLabel = aqiLabelFor(aqi)
+    val aqi = sample.europeanAqi?.takeIf { it in 0..500 }
+        ?: sample.usAqi?.takeIf { it in 0..500 }
+    val aqiColor = aqi?.let(::aqiColorFor) ?: MaterialTheme.colorScheme.onSurfaceVariant
+    val aqiLabel = aqi?.let(::aqiLabelFor)
+        ?: stringResource(R.string.air_quality_insufficient)
 
     Card(
         modifier = Modifier.fillMaxWidth(),
@@ -150,7 +152,8 @@ private fun WeatherHeaderCard(sample: EnvironmentalSample) {
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                     Text(
-                        text = aqi.toString(),
+                        text = aqi?.toString()
+                            ?: stringResource(R.string.air_quality_insufficient),
                         style = MaterialTheme.typography.headlineMedium,
                         color = aqiColor
                     )

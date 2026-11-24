@@ -8,8 +8,13 @@ import android.util.Log
 import java.text.SimpleDateFormat
 import java.util.Locale
 import java.util.TimeZone
+import java.io.IOException
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.TimeoutCancellationException
 import kotlinx.coroutines.withTimeout
+import kotlinx.coroutines.withContext
 
 /** Open-Meteo weather client (current weather + hourly forecast). */
 class OpenMeteoWeatherSource(
@@ -21,7 +26,13 @@ class OpenMeteoWeatherSource(
 ) {
 
     private val dateFormat: ThreadLocal<SimpleDateFormat> = ThreadLocal.withInitial {
-        SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss", Locale.ROOT).apply {
+        SimpleDateFormat("yyyy-MM-dd", Locale.ROOT).apply {
+            timeZone = TimeZone.getTimeZone("UTC")
+        }
+    }
+
+    private val timestampFormat: ThreadLocal<SimpleDateFormat> = ThreadLocal.withInitial {
+        SimpleDateFormat("yyyy-MM-dd'T'HH:mm", Locale.ROOT).apply {
             timeZone = TimeZone.getTimeZone("UTC")
         }
     }
@@ -48,10 +59,19 @@ class OpenMeteoWeatherSource(
         for (attempt in 1..maxRetries) {
             try {
                 return withTimeout(timeoutMs.toLong()) {
-                    val url = buildUrl(lat, lon)
-                    val response = httpGet(url)
+                    val response = withContext(Dispatchers.IO) {
+                        httpGet(buildUrl(lat, lon))
+                    }
                     parseOpenMeteo(response, lat, lon)
                 }
+            } catch (e: TimeoutCancellationException) {
+                lastException = e
+                if (attempt < maxRetries) delayMs(retryDelayMs.toLong())
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: IOException) {
+                lastException = e
+                if (attempt < maxRetries) delayMs(retryDelayMs.toLong())
             } catch (e: Exception) {
                 lastException = e
                 if (attempt < maxRetries) {
@@ -71,17 +91,19 @@ class OpenMeteoWeatherSource(
             "current=temperature_2m,apparent_temperature,relative_humidity_2m," +
             "wind_speed_10m,wind_direction_10m,precipitation,rain,cloud_cover,uv_index&" +
             "hourly=temperature_2m,relative_humidity_2m,wind_speed_10m,precipitation,rain,cloud_cover,uv_index&" +
-            "timezone=auto&start_date=$today&end_date=$today"
+            "wind_speed_unit=ms&" +
+            "timezone=UTC&start_date=$today&end_date=$today"
     }
 
     private fun httpGet(urlString: String): String {
         val request = Request.Builder().url(urlString).build()
-        val response = okHttpClient.newCall(request).execute()
-        if (!response.isSuccessful) {
-            Log.e(TAG, "HTTP ${response.code}: ${response.message}")
-            throw java.io.IOException("Unexpected code ${response.code}")
+        return okHttpClient.newCall(request).execute().use { response ->
+            if (!response.isSuccessful) {
+                Log.e(TAG, "HTTP ${response.code}: ${response.message}")
+                throw IOException("Unexpected code ${response.code}")
+            }
+            response.body?.string() ?: throw IOException("Empty weather response body")
         }
-        return response.body!!.string()
     }
 
     private fun parseOpenMeteo(json: String, lat: Double, lon: Double): OpenMeteoWeather? {
@@ -91,7 +113,7 @@ class OpenMeteoWeatherSource(
         val time = extractString(current, "\"time\"")
             ?: extractString(hourly, "time")
         val ts = if (time != null) {
-            dateFormat.get().parse(time)?.time ?: System.currentTimeMillis()
+            timestampFormat.get().parse(time)?.time ?: System.currentTimeMillis()
         } else {
             System.currentTimeMillis()
         }

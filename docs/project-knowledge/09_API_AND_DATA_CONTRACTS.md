@@ -687,6 +687,13 @@ data class RouteExport(
 **Date Format**: ISO-8601 with timezone (`yyyy-MM-dd'T'HH:mm:ss.SSSZ`)
 **Instant Serialization**: Custom serializer → epoch milliseconds (Long) for compactness
 
+**Export privacy requirements (implementation contract)**:
+- Omit route points, segments, and stays excluded by any active `excludeFromHistory` zone.
+- Retain points in exposure-only zones only if all exposure/sample fields are omitted for them.
+- Recompute exported route distance/duration from visible intervals; do not export stored totals that include hidden intervals.
+- The app currently has no JSON serializer/exporter or file-sharing flow. `PrivacyZonePolicy.prepareForExport` only supplies a location-point filtering/eligibility contract and is not yet connected to this schema.
+- Zone changes do not physically remove earlier raw coordinates from Room; a future exporter must apply current zone rules before serialization.
+
 ---
 
 ## Versioning & Migration
@@ -702,5 +709,4 @@ data class RouteExport(
 
 ## Planned vs Implemented
 
-> **All contracts are 📋 Planned** — no DTOs, mappers, or serialization code exists.
-> This document defines target contracts per `ROAD GUIDE.txt` (Parts 9, 13, 25, 26).
+> **Contract status is mixed:** weather, air-quality, and routing clients exist; these API examples and the JSON export schema remain target contracts. In particular, JSON serialization and file export are not implemented. See `13_CURRENT_IMPLEMENTATION_STATUS.md` for current component status.

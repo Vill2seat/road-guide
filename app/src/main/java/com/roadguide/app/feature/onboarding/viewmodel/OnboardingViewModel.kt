@@ -3,7 +3,6 @@ package com.roadguide.app.feature.onboarding.viewmodel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.roadguide.app.data.source.PermissionSource
-import com.roadguide.app.domain.usecase.PermissionSource
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow

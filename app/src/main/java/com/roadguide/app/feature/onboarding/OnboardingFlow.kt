@@ -7,6 +7,7 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -39,11 +40,9 @@ import com.roadguide.app.R
 import com.roadguide.app.core.ui.theme.LoadingPlaceholder
 import com.roadguide.app.feature.onboarding.viewmodel.OnboardingViewModel
 import com.roadguide.app.feature.permissions.PermissionScreen
-import com.roadguide.app.domain.model.TrackingPreferences
+import com.roadguide.app.data.local.settings.TrackingPreferences
 import com.roadguide.app.domain.model.TrackingSettingsState
 import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.async
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -59,19 +58,31 @@ fun OnboardingFlow(
     val currentPageState = onboardingViewModel.currentPage.collectAsState()
     val currentPage = currentPageState.value
     var showPermissionDeniedDialog by remember { mutableStateOf(false) }
+    var pendingPermissionRequest by remember { mutableStateOf<Array<String>?>(null) }
+    val finishOnboarding = {
+        coroutineScope.launch {
+            onboardingViewModel.completeOnboarding().await()
+            onFinished()
+        }
+    }
 
     val permissionLauncher: ActivityResultLauncher<Array<String>> = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions()
     ) { granted ->
-        val allGranted = granted.values.all { it }
-        if (allGranted) {
-            coroutineScope.launch(Dispatchers.IO) {
-                val deferred = onboardingViewModel.completeOnboarding()
-                deferred.await()
-                onFinished()
-            }
+        val missing = permissionSource.getMissingPermissions()
+        if (missing.isEmpty()) {
+            finishOnboarding()
+        } else if (missing.none(granted::containsKey)) {
+            pendingPermissionRequest = missing.toTypedArray()
         } else {
             showPermissionDeniedDialog = true
+        }
+    }
+
+    LaunchedEffect(pendingPermissionRequest) {
+        pendingPermissionRequest?.let { permissions ->
+            pendingPermissionRequest = null
+            permissionLauncher.launch(permissions)
         }
     }
 
@@ -82,15 +93,13 @@ fun OnboardingFlow(
                 val missing = permissionSource.getMissingPermissions()
                 if (missing.isNotEmpty()) {
                     permissionLauncher.launch(missing.toTypedArray())
+                } else {
+                    finishOnboarding()
                 }
             },
             onSkip = {
                 showPermissionDeniedDialog = false
-                coroutineScope.launch(Dispatchers.IO) {
-                    val deferred = onboardingViewModel.completeOnboarding()
-                    deferred.await()
-                    onFinished()
-                }
+                finishOnboarding()
             }
         )
     }
@@ -125,11 +134,7 @@ fun OnboardingFlow(
                         if (missing.isNotEmpty()) {
                             permissionLauncher.launch(missing.toTypedArray())
                         } else {
-                            coroutineScope.launch(Dispatchers.IO) {
-                                val deferred = onboardingViewModel.completeOnboarding()
-                                deferred.await()
-                                onFinished()
-                            }
+                            finishOnboarding()
                         }
                     },
                     modifier = Modifier.fillMaxSize()

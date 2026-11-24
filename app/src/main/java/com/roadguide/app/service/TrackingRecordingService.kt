@@ -5,6 +5,7 @@ import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.content.Context
 import android.content.Intent
+import android.content.pm.ServiceInfo
 import android.os.Build
 import android.os.IBinder
 import android.util.Log
@@ -13,15 +14,23 @@ import com.roadguide.app.R
 import com.roadguide.app.data.local.entity.LocationPoint
 import com.roadguide.app.data.local.entity.PrivacyZone
 import com.roadguide.app.data.local.entity.Route
+import com.roadguide.app.data.local.entity.RouteSegment
 import com.roadguide.app.data.local.entity.RouteStatus
 import com.roadguide.app.data.local.entity.RouteType
+import com.roadguide.app.data.local.entity.Stay
 import com.roadguide.app.data.repository.EnvironmentalSampleRepository
 import com.roadguide.app.data.repository.LocationPointRepository
 import com.roadguide.app.data.repository.PrivacyZoneRepository
 import com.roadguide.app.data.repository.RouteRepository
+import com.roadguide.app.data.repository.RouteSegmentRepository
+import com.roadguide.app.data.repository.StayRepository
 import com.roadguide.app.data.source.LocationSource
 import com.roadguide.app.domain.model.GeofenceState
+import com.roadguide.app.domain.usecase.impl.RouteSegmentationEngine
+import com.roadguide.app.domain.usecase.impl.PrivacyScope
+import com.roadguide.app.domain.usecase.impl.PrivacyZonePolicy
 import com.roadguide.app.domain.usecase.AggregateDailyExposure
+import com.roadguide.app.mapper.LocationPointMapper
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -50,6 +59,8 @@ class TrackingRecordingService : Service() {
     @Inject lateinit var activityRecognitionSource: ActivityRecognitionSource
     @Inject lateinit var aggregateDailyExposure: AggregateDailyExposure
     @Inject lateinit var privacyZoneRepository: PrivacyZoneRepository
+    @Inject lateinit var routeSegmentRepository: RouteSegmentRepository
+    @Inject lateinit var stayRepository: StayRepository
 
     private var trackingJob: Job? = null
     private var routeId: Long? = null
@@ -88,19 +99,112 @@ class TrackingRecordingService : Service() {
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         when (intent?.action) {
-            ACTION_START_RECORDING -> {
+            ACTION_START_RECORDING -> startRecordingService(startId)
+            ACTION_STOP_RECORDING -> {
                 serviceScope.launch {
-                    if (locationSource.hasLocationPermission()) {
-                        startForeground(NOTIFICATION_ID, createNotification())
-                        startRecording()
+                    try {
+                        stopRecording()
+                        stopForeground(STOP_FOREGROUND_REMOVE)
+                        stopSelf(startId)
+                    } catch (e: Exception) {
+                        Log.e("TrackingService", "Failed to stop location recording", e)
+                        stopForeground(STOP_FOREGROUND_REMOVE)
+                        stopSelf(startId)
                     }
                 }
             }
-            ACTION_STOP_RECORDING -> {
-                serviceScope.launch { stopRecording() }
+            ACTION_PAUSE_RECORDING -> serviceScope.launch {
+                try {
+                    if (isRecording) pauseTracking() else stopSelf(startId)
+                } catch (e: Exception) {
+                    Log.e("TrackingService", "Failed to pause location recording", e)
+                }
             }
+            ACTION_RESUME_RECORDING -> startRecordingService(startId, resume = true)
+            null -> restoreTrackingAfterProcessRestart(startId)
         }
         return START_STICKY
+    }
+
+    private fun startRecordingService(startId: Int, resume: Boolean = false) {
+        if (!locationSource.hasLocationPermission()) {
+            failStart(startId, "Cannot start: location permissions are missing")
+            return
+        }
+
+        try {
+            updateForegroundNotification()
+        } catch (e: SecurityException) {
+            failStart(startId, "Cannot enter location foreground service", e)
+            return
+        }
+
+        serviceScope.launch {
+            try {
+                if (resume && currentRoute != null) {
+                    resumeTracking()
+                } else if (currentRoute != null && isPaused) {
+                    resumeTracking()
+                } else {
+                    startRecording()
+                }
+            } catch (e: Exception) {
+                Log.e("TrackingService", "Failed to start location recording", e)
+                if (e is SecurityException) {
+                    try {
+                        trackingPrefs.setTrackingEnabled(false)
+                    } catch (preferenceError: Exception) {
+                        Log.e("TrackingService", "Failed to clear tracking preference", preferenceError)
+                    }
+                }
+                stopForeground(STOP_FOREGROUND_REMOVE)
+                stopSelf(startId)
+            }
+        }
+    }
+
+    private fun failStart(startId: Int, message: String, error: Exception? = null) {
+        if (error == null) Log.e("TrackingService", message)
+        else Log.e("TrackingService", message, error)
+        serviceScope.launch {
+            try {
+                trackingPrefs.setTrackingEnabled(false)
+            } catch (preferenceError: Exception) {
+                Log.e("TrackingService", "Failed to clear tracking preference", preferenceError)
+            }
+            stopForeground(STOP_FOREGROUND_REMOVE)
+            stopSelf(startId)
+        }
+    }
+
+    private fun restoreTrackingAfterProcessRestart(startId: Int) {
+        if (!locationSource.hasLocationPermission()) {
+            failStart(startId, "Cannot restore: location permissions are missing")
+            return
+        }
+
+        try {
+            updateForegroundNotification()
+        } catch (e: SecurityException) {
+            failStart(startId, "Cannot restore location foreground service", e)
+            return
+        }
+
+        serviceScope.launch {
+            try {
+                val preferences = trackingPrefs.preferencesFlow.first()
+                if (preferences.trackingEnabled && !preferences.trackingPaused) {
+                    startRecording()
+                } else {
+                    stopForeground(STOP_FOREGROUND_REMOVE)
+                    stopSelf(startId)
+                }
+            } catch (e: Exception) {
+                Log.e("TrackingService", "Failed to restore tracking state", e)
+                stopForeground(STOP_FOREGROUND_REMOVE)
+                stopSelf(startId)
+            }
+        }
     }
 
     override fun onBind(intent: Intent?): IBinder? = null
@@ -117,8 +221,7 @@ class TrackingRecordingService : Service() {
         val locationSource = this.locationSource
 
         if (!locationSource.hasLocationPermission()) {
-            // Cannot start recording without location permissions
-            return
+            throw SecurityException("Location permissions are no longer granted")
         }
 
         // Subscribe to activity recognition updates
@@ -133,27 +236,41 @@ class TrackingRecordingService : Service() {
             // Log warning but don't crash
         }
 
-        val now = System.currentTimeMillis()
-        val date = Instant.ofEpochMilli(now)
-            .atZone(ZoneId.systemDefault())
-            .toLocalDate()
-            .toString()
+        val existingRoute = routeRepository.observeByStatus(RouteStatus.IN_PROGRESS)
+            .first()
+            .maxByOrNull(Route::startTime)
+            ?: routeRepository.observeByStatus(RouteStatus.PAUSED)
+                .first()
+                .maxByOrNull(Route::startTime)
+        if (existingRoute != null) {
+            val resumedRoute = existingRoute.copy(status = RouteStatus.IN_PROGRESS)
+            currentRoute = resumedRoute
+            routeRepository.update(resumedRoute)
+            routeId = existingRoute.id
+        } else {
+            val now = System.currentTimeMillis()
+            val date = Instant.ofEpochMilli(now)
+                .atZone(ZoneId.systemDefault())
+                .toLocalDate()
+                .toString()
 
-        val newRoute = Route(
-            id = 0,
-            startTime = now,
-            endTime = null,
-            distanceMeters = 0.0,
-            status = RouteStatus.IN_PROGRESS,
-            routeType = RouteType.DAILY_AUTO,
-            confidence = 0.0,
-            date = date,
-            totalDurationSeconds = 0,
-            calculationVersion = 1
-        )
+            val newRoute = Route(
+                id = 0,
+                startTime = now,
+                endTime = null,
+                distanceMeters = 0.0,
+                status = RouteStatus.IN_PROGRESS,
+                routeType = RouteType.DAILY_AUTO,
+                confidence = 0.0,
+                date = date,
+                totalDurationSeconds = 0,
+                calculationVersion = 1
+            )
 
-        currentRoute = newRoute
-        routeId = routeRepository.insert(newRoute)
+            val insertedRouteId = routeRepository.insert(newRoute)
+            currentRoute = newRoute.copy(id = insertedRouteId)
+            routeId = insertedRouteId
+        }
 
         val intervalSeconds: Long = try {
             withTimeout(5000) {
@@ -175,46 +292,40 @@ class TrackingRecordingService : Service() {
                 lastLocationTime = System.currentTimeMillis()
             }
         }
-
-        ServiceCompat.startForeground(
-            this,
-            NOTIFICATION_ID,
-            createNotification(),
-            4
-        )
+        updateForegroundNotification()
     }
 
     private suspend fun saveLocationPoint(location: android.location.Location) {
         val routeId = this.routeId ?: return
 
-        // --- Геофенсинг: проверка попадания в приват-зоны ---
-        var insideZones: List<PrivacyZone> = emptyList()
-        var shouldExcludeFromHistory = false
-        var shouldExcludeFromExposure = false
-
+        val activeZones: List<PrivacyZone>
         try {
-            val activeZones = privacyZoneRepository.observeActiveZones().first()
-            insideZones = activeZones.filter { zone ->
-                isInsidePrivacyZone(location.latitude, location.longitude, zone)
-            }
-            shouldExcludeFromHistory = insideZones.any { it.excludeFromHistory }
-            shouldExcludeFromExposure = insideZones.any { it.excludeFromExposure }
-
-            // Обновляем состояние геофенсинга для UI
-            _geofenceState.update {
-                it.copy(
-                    currentZones = insideZones,
-                    isInsideProtectedZone = insideZones.isNotEmpty()
-                )
-            }
+            activeZones = privacyZoneRepository.observeActiveZones().first()
         } catch (e: Exception) {
-            // Graceful degradation: если репозиторий недоступен, продолжаем запись без геофенсинга
-            Log.w("TrackingService", "Privacy zone check failed, continuing without geofencing", e)
+            lastLocation = null
+            Log.e("TrackingService", "Privacy policy unavailable; dropping location sample", e)
+            return
         }
 
+        val insideZones = activeZones.filter { zone ->
+            isInsidePrivacyZone(location.latitude, location.longitude, zone)
+        }
+        _geofenceState.update {
+            it.copy(
+                currentZones = insideZones,
+                isInsideProtectedZone = insideZones.isNotEmpty()
+            )
+        }
+        val privacyDecision = PrivacyZonePolicy.decisionAt(
+            location.latitude,
+            location.longitude,
+            activeZones
+        )
+
         // Если excludeFromHistory — не сохраняем точку вообще
-        if (shouldExcludeFromHistory) {
-            Log.d("TrackingService", "Point excluded from history (privacy zone), lat=${location.latitude}, lon=${location.longitude}")
+        if (privacyDecision.excludeFromHistory) {
+            lastLocation = null
+            Log.d("TrackingService", "Location sample omitted by history privacy policy")
             return
         }
 
@@ -230,11 +341,14 @@ class TrackingRecordingService : Service() {
             provider = location.provider ?: "fused",
             isMock = false,
             routeId = routeId,
-            excludeFromExposure = shouldExcludeFromExposure
+            excludeFromExposure = privacyDecision.excludeFromExposure
         )
 
         locationPointRepository.insert(point)
-        Log.d("TrackingService", "point saved, routeId=$routeId, excludeFromExposure=$shouldExcludeFromExposure")
+        Log.d(
+            "TrackingService",
+            "point saved, routeId=$routeId, excludeFromExposure=${privacyDecision.excludeFromExposure}"
+        )
 
         // Adaptive GPS interval based on speed
         val speed = location.speed ?: 0f
@@ -246,10 +360,14 @@ class TrackingRecordingService : Service() {
             locationSource.updateInterval(10)
         }
 
-        environmentalSampleRepository.let { repo ->
+        if (!privacyDecision.excludeFromExposure) environmentalSampleRepository.let { repo ->
             serviceScope.launch {
                 try {
-                    repo.fetchAndSave(location.latitude, location.longitude)
+                    repo.fetchAndSave(
+                        location.latitude,
+                        location.longitude,
+                        location.time
+                    )
                 } catch (e: Exception) {
                     Log.w("TrackingService", "env fetch failed", e)
                 }
@@ -258,15 +376,29 @@ class TrackingRecordingService : Service() {
 
         currentRoute?.let { route ->
             val distanceDelta = lastLocation?.let { prev ->
-                calculateDistanceMeters(
-                    prev.latitude, prev.longitude,
-                    location.latitude, location.longitude
-                )
+                val gap = location.time - prev.time
+                if (
+                    gap in 1..RouteSegmentationEngine.MAX_GPS_GAP_MS &&
+                    !PrivacyZonePolicy.excludesPath(
+                        prev.latitude,
+                        prev.longitude,
+                        location.latitude,
+                        location.longitude,
+                        activeZones,
+                        PrivacyScope.HISTORY
+                    )
+                ) {
+                    calculateDistanceMeters(
+                        prev.latitude, prev.longitude,
+                        location.latitude, location.longitude
+                    )
+                } else 0.0
             } ?: 0.0
             val updatedDistance = route.distanceMeters + distanceDelta
             val updatedRoute = route.copy(
                 distanceMeters = updatedDistance,
-                totalDurationSeconds = (System.currentTimeMillis() - route.startTime) / 1000
+                totalDurationSeconds = ((System.currentTimeMillis() - route.startTime) / 1000)
+                    .coerceAtLeast(0)
             )
             currentRoute = updatedRoute
             routeRepository.update(updatedRoute)
@@ -298,10 +430,9 @@ class TrackingRecordingService : Service() {
     }
 
     private suspend fun stopRecording() {
-        if (!isRecording) return
-
         isRecording = false
         trackingJob?.cancel()
+        trackingJob = null
 
         locationSource.removeLocationUpdates()
 
@@ -312,51 +443,129 @@ class TrackingRecordingService : Service() {
             // Ignore - might not have been subscribed
         }
 
-        ServiceCompat.stopForeground(this, ServiceCompat.STOP_FOREGROUND_REMOVE)
-
         currentRoute?.let { route ->
+            val activeZones = privacyZoneRepository.observeActiveZones().first()
+            val storedPoints = locationPointRepository.observeByRoute(route.id).first()
+            val points = PrivacyZonePolicy.filterPoints(
+                storedPoints,
+                activeZones,
+                PrivacyScope.HISTORY
+            )
+                .map { LocationPointMapper.toSummary(it) }
+                .filter { it.timestamp >= route.startTime }
+            val analysis = RouteSegmentationEngine.analyzePoints(
+                routeId = route.id,
+                routeStartTime = route.startTime,
+                points = points,
+                privacyZones = activeZones
+            )
+            persistRouteAnalysis(route.id, analysis)
+
             val updatedRoute = route.copy(
                 status = RouteStatus.COMPLETED,
-                endTime = System.currentTimeMillis()
+                endTime = points.lastOrNull()?.timestamp ?: route.startTime,
+                startTime = points.firstOrNull()?.timestamp ?: route.startTime,
+                distanceMeters = PrivacyZonePolicy.recordedDistanceMeters(
+                    storedPoints,
+                    activeZones
+                ),
+                totalDurationSeconds = PrivacyZonePolicy.recordedDurationSeconds(
+                    storedPoints,
+                    activeZones
+                )
             )
             currentRoute = updatedRoute
             routeRepository.update(updatedRoute)
 
-            // Aggregate daily exposure for the completed route's date (§30: midnight crossover & late data)
-            serviceScope.launch {
-                try {
-                    aggregateDailyExposure.aggregate(route.date)
-                } catch (e: Exception) {
-                    Log.w("TrackingService", "Daily aggregation failed", e)
-                }
+            try {
+                aggregateDailyExposure.aggregate(route.date)
+            } catch (e: Exception) {
+                Log.w("TrackingService", "Daily aggregation failed", e)
             }
         }
 
-        ServiceCompat.stopForeground(this, ServiceCompat.STOP_FOREGROUND_REMOVE)
+        currentRoute = null
+        routeId = null
+        lastLocation = null
+        isPaused = false
+    }
+
+    private suspend fun persistRouteAnalysis(
+        routeId: Long,
+        analysis: RouteSegmentationEngine.Analysis
+    ) {
+        val existingSegments = routeSegmentRepository.observeByRoute(routeId).first()
+            .associateBy { it.startTime }
+        analysis.segments.forEach { segment ->
+            val existing = existingSegments[segment.startTime]
+            if (existing == null) {
+                routeSegmentRepository.insert(segment)
+            } else {
+                routeSegmentRepository.update(segment.copy(id = existing.id))
+            }
+        }
+
+        val existingStays = stayRepository.observeByRoute(routeId).first()
+            .associateBy { it.startTime }
+        analysis.stays.forEach { stay ->
+            val existing = existingStays[stay.startTime]
+            if (existing == null) {
+                stayRepository.insert(stay)
+            } else {
+                stayRepository.update(stay.copy(id = existing.id))
+            }
+        }
     }
 
     private suspend fun pauseTracking() {
+        if (!isRecording) return
         isPaused = true
         isRecording = false
+        trackingJob?.cancel()
+        trackingJob = null
         locationSource.removeLocationUpdates()
-        locationSource.updateInterval(300)
-        ServiceCompat.startForeground(
-            this,
-            NOTIFICATION_ID,
-            createNotification(),
-            4
-        )
+        currentRoute?.let { route ->
+            val pausedRoute = route.copy(status = RouteStatus.PAUSED)
+            currentRoute = pausedRoute
+            routeRepository.update(pausedRoute)
+        }
+        updateForegroundNotification()
     }
 
     private suspend fun resumeTracking() {
+        if (!locationSource.hasLocationPermission()) {
+            throw SecurityException("Location permissions are no longer granted")
+        }
+        if (isRecording) return
         isPaused = false
         isRecording = true
+        currentRoute?.let { route ->
+            val resumedRoute = route.copy(status = RouteStatus.IN_PROGRESS)
+            currentRoute = resumedRoute
+            routeRepository.update(resumedRoute)
+        }
         locationSource.requestLocationUpdates(intervalSeconds = 60)
+        trackingJob = serviceScope.launch {
+            locationSource.locationUpdates.collect { loc ->
+                if (!isRecording) return@collect
+                saveLocationPoint(loc)
+                lastLocationTime = System.currentTimeMillis()
+            }
+        }
+        updateForegroundNotification()
+    }
+
+    private fun updateForegroundNotification() {
+        val serviceType = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            ServiceInfo.FOREGROUND_SERVICE_TYPE_LOCATION
+        } else {
+            0
+        }
         ServiceCompat.startForeground(
             this,
             NOTIFICATION_ID,
             createNotification(),
-            4
+            serviceType
         )
     }
 
@@ -378,6 +587,8 @@ class TrackingRecordingService : Service() {
         const val NOTIFICATION_ID = 1001
         const val ACTION_START_RECORDING = "com.roadguide.app.ACTION_START_RECORDING"
         const val ACTION_STOP_RECORDING = "com.roadguide.app.ACTION_STOP_RECORDING"
+        const val ACTION_PAUSE_RECORDING = "com.roadguide.app.ACTION_PAUSE_RECORDING"
+        const val ACTION_RESUME_RECORDING = "com.roadguide.app.ACTION_RESUME_RECORDING"
 
         fun getStartIntent(context: Context): Intent {
             return Intent(context, TrackingRecordingService::class.java).apply {
@@ -388,6 +599,18 @@ class TrackingRecordingService : Service() {
         fun getStopIntent(context: Context): Intent {
             return Intent(context, TrackingRecordingService::class.java).apply {
                 action = ACTION_STOP_RECORDING
+            }
+        }
+
+        fun getPauseIntent(context: Context): Intent {
+            return Intent(context, TrackingRecordingService::class.java).apply {
+                action = ACTION_PAUSE_RECORDING
+            }
+        }
+
+        fun getResumeIntent(context: Context): Intent {
+            return Intent(context, TrackingRecordingService::class.java).apply {
+                action = ACTION_RESUME_RECORDING
             }
         }
     }

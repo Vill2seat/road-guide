@@ -38,10 +38,25 @@ data class CamsAqis(
 )
 
 /**
+ * Current pollutant concentrations and AQI returned by Open-Meteo Air Quality API.
+ */
+data class OpenMeteoAirQuality(
+    val usAqi: Int?,
+    val europeanAqi: Int?,
+    val pm2_5: Double?,
+    val pm10: Double?,
+    val nitrogenDioxide: Double?,
+    val ozone: Double?,
+    val sulphurDioxide: Double?,
+    val carbonMonoxide: Double?,
+    val timestamp: Long
+)
+
+/**
  * Result of environmental data fetch.
  */
 data class EnvironmentalDataResult(
     val weather: OpenMeteoWeather?,
-    val aqis: CamsAqis?,
+    val aqis: OpenMeteoAirQuality?,
     val fetchTimestamp: Long
 )

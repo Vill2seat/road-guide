@@ -37,6 +37,7 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import com.roadguide.app.R
 import com.roadguide.app.data.source.PermissionSource
+import com.roadguide.app.data.source.LocationSource
 import com.roadguide.app.feature.dailyreport.DailyReportScreen
 import com.roadguide.app.feature.history.HistoryScreen
 import com.roadguide.app.feature.onboarding.OnboardingFlow
@@ -63,6 +64,7 @@ private data class BottomNavItem(
 fun AppNavHost(
     permissionSource: PermissionSource,
     permissionLauncher: ActivityResultLauncher<Array<String>>,
+    locationSource: LocationSource? = null,
     osrmRoutingSource: OsrmRoutingSource? = null,
     routeEvaluationEngine: RouteEvaluationEngine? = null,
     routeComparisonEngine: RouteComparisonEngine? = null
@@ -116,13 +118,19 @@ fun AppNavHost(
             modifier = Modifier.padding(innerPadding)
         ) {
             composable(ScreenRoutes.Tracker) {
-                TrackerScreen()
+                TrackerScreen(
+                    onOpenTimeline = { navController.navigate(ScreenRoutes.Timeline) },
+                    onOpenDailyReport = { navController.navigate(ScreenRoutes.DailyReport) }
+                )
             }
             composable(ScreenRoutes.Timeline) {
-                TimelineScreen()
+                TimelineScreen(
+                    onOpenDailyReport = { navController.navigate(ScreenRoutes.DailyReport) }
+                )
             }
             composable(ScreenRoutes.Planner) {
                 PlannerScreen(
+                    locationSource = locationSource,
                     osrmRoutingSource = osrmRoutingSource,
                     routeEvaluationEngine = routeEvaluationEngine,
                     routeComparisonEngine = routeComparisonEngine

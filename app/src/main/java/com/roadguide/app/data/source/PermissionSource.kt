@@ -1,10 +1,9 @@
 package com.roadguide.app.data.source
 
 import android.Manifest
-import android.app.Activity
 import android.content.Context
 import android.content.pm.PackageManager
-import androidx.core.app.ActivityCompat
+import android.os.Build
 import androidx.core.content.ContextCompat
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.booleanPreferencesKey
@@ -34,19 +33,28 @@ class PermissionSource(private val context: Context) {
         return hasLocationPermission() && hasNotificationsPermission()
     }
 
-    /**
-     * Checks if location permissions are granted (foreground + background).
-     */
-    fun hasLocationPermission(): Boolean {
+    fun hasForegroundLocationPermission(): Boolean {
         val fine = ContextCompat.checkSelfPermission(
             context,
             Manifest.permission.ACCESS_FINE_LOCATION
         ) == PackageManager.PERMISSION_GRANTED
-        val background = ContextCompat.checkSelfPermission(
+        val coarse = ContextCompat.checkSelfPermission(
             context,
-            Manifest.permission.ACCESS_BACKGROUND_LOCATION
+            Manifest.permission.ACCESS_COARSE_LOCATION
         ) == PackageManager.PERMISSION_GRANTED
-        return fine && background
+        return fine || coarse
+    }
+
+    /**
+     * Checks if location permissions are granted (foreground + background).
+     */
+    fun hasLocationPermission(): Boolean {
+        if (!hasForegroundLocationPermission()) return false
+        return Build.VERSION.SDK_INT < Build.VERSION_CODES.Q ||
+            ContextCompat.checkSelfPermission(
+                context,
+                Manifest.permission.ACCESS_BACKGROUND_LOCATION
+            ) == PackageManager.PERMISSION_GRANTED
     }
 
     /**
@@ -79,21 +87,25 @@ class PermissionSource(private val context: Context) {
     }
 
     /**
-     * Returns the list of missing permissions (without requesting).
-     * The caller MUST use ActivityResultLauncher to request them.
+     * Returns one permission group at a time. Android requires foreground location to be
+     * granted before background location can be requested.
      */
     fun getMissingPermissions(): java.util.ArrayList<String> {
-        val missing = mutableListOf<String>()
-
-        if (!hasLocationPermission()) {
-            missing.add(Manifest.permission.ACCESS_FINE_LOCATION)
-            missing.add(Manifest.permission.ACCESS_BACKGROUND_LOCATION)
+        if (!hasForegroundLocationPermission()) {
+            return arrayListOf(
+                Manifest.permission.ACCESS_FINE_LOCATION,
+                Manifest.permission.ACCESS_COARSE_LOCATION
+            )
         }
-        if (!hasNotificationsPermission()) {
-            missing.add(Manifest.permission.POST_NOTIFICATIONS)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
+            !hasNotificationsPermission()
+        ) {
+            return arrayListOf(Manifest.permission.POST_NOTIFICATIONS)
         }
-
-        return java.util.ArrayList(missing)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q && !hasLocationPermission()) {
+            return arrayListOf(Manifest.permission.ACCESS_BACKGROUND_LOCATION)
+        }
+        return arrayListOf()
     }
 
     companion object {

@@ -5,7 +5,7 @@ import androidx.lifecycle.viewModelScope
 import com.roadguide.app.core.common.ScreenState
 import com.roadguide.app.domain.model.TrackingSettingsState
 import com.roadguide.app.domain.usecase.GetTrackingSettings
-import com.roadguide.app.domain.usecase.ToggleTracking
+import com.roadguide.app.service.TrackingServiceController
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -16,7 +16,7 @@ import javax.inject.Inject
 @HiltViewModel
 class ProfileViewModel @Inject constructor(
     private val getTrackingSettings: GetTrackingSettings,
-    private val toggleTracking: ToggleTracking
+    private val trackingServiceController: TrackingServiceController
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow<ScreenState>(ScreenState.Loading)
@@ -44,7 +44,8 @@ class ProfileViewModel @Inject constructor(
     fun toggleTracking(enabled: Boolean) {
         viewModelScope.launch {
             try {
-                val state = toggleTracking.invoke(enabled)
+                trackingServiceController.setTrackingEnabled(enabled)
+                val state = getTrackingSettings.invoke()
                 _trackingSettings.value = state
                 _uiState.value = ScreenState.Success
             } catch (e: Exception) {

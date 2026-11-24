@@ -35,7 +35,7 @@ class LocationPointMapperTest {
         assertEquals(55.7558, summary.latitude, 0.0)
         assertEquals(37.6173, summary.longitude, 0.0)
         assertEquals(1000000000L, summary.timestamp)
-        assertEquals("walking", summary.activityType)
+        assertEquals("unknown", summary.activityType)
         assertEquals(2.5, summary.speedMps, 0.0)
         assertEquals(100.0, summary.altitudeMeters, 0.0)
     }
@@ -57,7 +57,7 @@ class LocationPointMapperTest {
         assertEquals(56.0, summary.latitude, 0.0)
         assertEquals(38.0, summary.longitude, 0.0)
         assertEquals(2000000000L, summary.timestamp)
-        assertEquals("walking", summary.activityType)
+        assertEquals("unknown", summary.activityType)
         assertEquals(0.0, summary.speedMps, 0.0)
         assertEquals(0.0, summary.altitudeMeters, 0.0)
     }

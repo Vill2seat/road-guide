@@ -10,10 +10,15 @@ import org.junit.Test
 
 class MovementDetectionEngineTest {
 
-    private fun point(speedMps: Double, timestamp: Long) = LocationPointSummary(
+    private fun point(
+        speedMps: Double,
+        timestamp: Long,
+        latitude: Double = 55.0,
+        longitude: Double = 37.0
+    ) = LocationPointSummary(
         id = 0L,
-        latitude = 55.0,
-        longitude = 37.0,
+        latitude = latitude,
+        longitude = longitude,
         timestamp = timestamp,
         speedMps = speedMps
     )
@@ -25,9 +30,40 @@ class MovementDetectionEngineTest {
 
     @Test
     fun stationaryDetectedWithLowSpeed() {
-        val points = (1..5).map { point(0.3, it * 1000L) }
+        val points = (0..5).map { point(0.3, it * 60_000L) }
         assertEquals(ActivityType.STATIONARY, MovementDetectionEngine.classify(points))
         assertTrue(MovementDetectionEngine.detectStationary(points))
+    }
+
+    @Test
+    fun stationaryRequiresMinimumDuration() {
+        val points = (0..4).map { point(0.3, it * 1000L) }
+
+        assertFalse(MovementDetectionEngine.detectStationary(points))
+        assertTrue(MovementDetectionEngine.detectStationary(points, thresholdMs = 4_000L))
+    }
+
+    @Test
+    fun stationaryCanBeDetectedAtTheConfiguredSamplingInterval() {
+        val points = listOf(point(0.1, 0L), point(0.1, 300_000L))
+
+        assertTrue(MovementDetectionEngine.detectStationary(points))
+    }
+
+    @Test
+    fun stationaryRequiresStableLocationAndNoLongGpsGap() {
+        val scattered = listOf(
+            point(0.1, 0L),
+            point(0.1, 60_000L, latitude = 55.002),
+            point(0.1, 120_000L)
+        )
+        val gap = listOf(
+            point(0.1, 0L),
+            point(0.1, 400_000L)
+        )
+
+        assertFalse(MovementDetectionEngine.detectStationary(scattered, thresholdMs = 120_000L))
+        assertFalse(MovementDetectionEngine.detectStationary(gap, thresholdMs = 120_000L))
     }
 
     @Test
@@ -54,6 +90,13 @@ class MovementDetectionEngineTest {
             point(9.0, 2200L),
             point(12.0, 2400L)
         )
+        assertEquals(ActivityType.CYCLING, MovementDetectionEngine.classify(points))
+    }
+
+    @Test
+    fun cyclingDetectedAtSteadyCyclingSpeed() {
+        val points = (1..8).map { point(8.0, it * 10_000L) }
+
         assertEquals(ActivityType.CYCLING, MovementDetectionEngine.classify(points))
     }
 

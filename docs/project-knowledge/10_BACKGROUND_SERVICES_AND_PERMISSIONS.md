@@ -4,7 +4,20 @@
 
 Foreground Service architecture, Android permission model, battery optimization, and privacy controls for continuous location tracking.
 
-**Status**: 📋 Planned — No implementation exists.
+**Status**: 🟡 Partially implemented. See the current implementation note below; the
+remaining sections describe the intended design and must not be read as a claim that
+every listed feature is already available.
+
+### Current implementation
+
+The app uses `TrackingRecordingService` and `TrackingServiceController`. The tracker
+and settings switches start/stop the service; the tracker also exposes pause/resume.
+Permissions are requested in stages (foreground location, notifications, then
+background location), and location permission is rechecked before start/resume.
+The service persists and resumes its route, while `BootReceiver` restarts it after
+`BOOT_COMPLETED` only when tracking is enabled, not paused, and location permissions
+remain granted. Android/OEM background-start restrictions can still prevent recovery;
+these cases are logged.
 
 ---
 
@@ -303,51 +316,17 @@ fun scheduleHealthCheck(context: Context) {
 
 ---
 
-## Private Zones (Geofencing)
+## Private Zones
 
-### Implementation
+The current app evaluates circular `PrivacyZone` records in the tracking and read/report paths; it does not register Android `GeofencingClient` transitions.
 
-```kotlin
-class PrivateZoneManager(private val context: Context) {
-    private val geofencingClient = LocationServices.getGeofencingClient(context)
-    private val zoneDao = RoomDb.getInstance(context).privacyZoneDao()
-    
-    fun addZone(zone: PrivacyZone) {
-        zoneDao.insert(zone)
-        registerGeofence(zone)
-    }
-    
-    private fun registerGeofence(zone: PrivacyZone) {
-        val geofence = Geofence.Builder()
-            .setRequestId(zone.id.toString())
-            .setCircularRegion(zone.center.latitude, zone.center.longitude, zone.radiusMeters)
-            .setTransitionTypes(Geofence.GEOFENCE_TRANSITION_ENTER or Geofence.GEOFENCE_TRANSITION_EXIT)
-            .setExpirationDuration(Geofence.NEVER_EXPIRE)
-            .build()
-        
-        val request = GeofencingRequest.Builder()
-            .setInitialTrigger(GeofencingRequest.INITIAL_TRIGGER_ENTER)
-            .addGeofence(geofence)
-            .build()
-        
-        geofencingClient.addGeofences(request, createPendingIntent())
-    }
-    
-    // In GeofenceBroadcastReceiver:
-    // On ENTER: set flag in LocationPoint.qualityFlags |= PRIVATE_ZONE_BIT
-    // On EXIT: clear flag
-}
-```
-
-### Data Handling in Private Zones
-
-| Data | Behavior |
-|------|----------|
-| LocationPoint | Stored with `PRIVATE_ZONE` quality flag |
-| Stay | `privacyStatus = EXCLUDED` |
-| Timeline | Shows "Private Zone" placeholder, no coordinates/name |
-| Exposure | Optional exclusion (user setting) |
-| Export/Delete | Separate "Delete Private Zone Data" action |
+| Policy | Current behavior |
+|--------|------------------|
+| Exclude from history | Do not persist future points inside the active zone; split route edges crossing it; filter affected points, segments, and stays from history/Timeline. |
+| Exclude from exposure | Keep location history, mark affected points ineligible, skip environmental fetches there, and omit affected intervals from exposure and its coverage denominator. |
+| Zone updates | Existing views are re-filtered and daily reports recalculated. Raw coordinates already written to Room are not physically deleted. |
+| Export | `PrivacyZonePolicy.prepareForExport` provides point filtering and exposure eligibility, but no exporter/file flow currently consumes it. |
+| Saved-place privacy marker | `Place.isPrivate` affects public-place listing only; it is not a tracking privacy zone. |
 
 ---
 
@@ -358,10 +337,10 @@ class PrivateZoneManager(private val context: Context) {
 | **Local Storage Default** | Room DB only; no network sync unless user enables |
 | **No Third-Party Tracking** | No analytics SDK; no crash reporting to external services (v1) |
 | **Pause Monitoring** | `LocationForegroundService#pauseTracking()` → `removeLocationUpdates()` |
-| **Private Zones** | Geofences + data filtering (above) |
+| **Private Zones** | Local circular checks + data filtering; no Android geofence registration |
 | **Delete Daily History** | `RouteRepository.deleteByDate(date)` + cascades |
 | **Delete All Data** | `RoomDatabase.clearAllTables()` + DataStore clear |
-| **Export Data** | JSON export (see `09_API_AND_DATA_CONTRACTS.md`) |
+| **Export Data** | No JSON/file exporter is implemented; privacy filtering contract is available for future integration |
 | **No Mandatory Auth** | All core features work offline, no account |
 
 ---
@@ -383,5 +362,4 @@ class PrivateZoneManager(private val context: Context) {
 
 ## Planned vs Implemented
 
-> **All background service and permission components are 📋 Planned** — no Foreground Service, no permission flow, no geofencing exists.
-> This document defines target behavior per `ROAD GUIDE.txt` (Parts 5, 14, 16, 27, 28, 30).
+> **Implementation status differs from the original target design:** a foreground tracking service and runtime permission flow exist. Local circular privacy-zone evaluation is implemented, but Android geofence registration and a data exporter are not. Remaining target behavior is described per `ROAD GUIDE.txt` (Parts 5, 14, 16, 27, 28, 30).

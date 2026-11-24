@@ -4,7 +4,19 @@
 
 Complete UI specification for Road Guide: screens, navigation, components, design tokens, and Figma handoff.
 
-**Status**: 📋 Planned — Design defined in spec & Figma, no Compose implementation exists.
+**Status**: 🟡 Partially Implemented — Compose navigation and core screens exist; compare their current behavior with the acceptance scenarios below before extending secondary screens.
+
+## Priority Screen Acceptance Scenarios
+
+| Screen | User scenario / acceptance criteria | Remaining gap |
+|--------|-------------------------------------|---------------|
+| **Tracker (P0)** | Start, pause, resume, and stop recording; show the persisted route and live position; honor privacy zones on map/history; show missing environmental data as unavailable; provide direct Timeline and Daily Report actions. | Verify permission-denial/recovery and process-death behavior on device; the visual bottom-sheet design and place markers are incomplete. |
+| **Timeline (P0)** | Browse by local day; show chronological route, activity, and stay events; show an actionable empty state; exclude private history. | Event correction/editing and richer environmental detail are not implemented. |
+| **Daily Report (P0)** | Open today's report by default; display score, confidence, and coverage separately; allow selection of recent report dates; regenerate on refresh; show an insufficient-data state rather than a zero score. | Pollutant breakdown, best/worst period detail, charts, and contributor explanations remain incomplete. |
+| **Eco Route Planner (P0)** | Resolve current location/address/coordinates; select driving, walking, or cycling; request real OSRM geometry; compare available alternatives; clearly indicate missing AQ data; never draw a fabricated route. | Waypoints/saved places, route mode availability by region, and reliable alternative-route supply remain incomplete. |
+| **History / Places / Profile (P1)** | Extend only after the P0 scenarios above remain usable. | Filtering, export, and several documented profile flows are still partial. |
+
+These are behavior-level acceptance checks, not a claim that the screens have been device-tested.
 
 ---
 

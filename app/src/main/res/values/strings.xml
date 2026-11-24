@@ -3,7 +3,7 @@
     <string name="app_name">Road Guide</string>
 
     <!-- Bottom navigation -->
-    <string name="nav_map">Map</string>
+    <string name="nav_map">Tracker</string>
     <string name="nav_timeline">Timeline</string>
     <string name="nav_planner">Planner</string>
     <string name="nav_history">History</string>
@@ -29,6 +29,7 @@
 
     <!-- Tracker screen -->
     <string name="tracker_start">Start</string>
+    <string name="tracker_pause">Pause</string>
     <string name="tracker_stop">Stop</string>
     <string name="tracker_resume">Resume</string>
 
@@ -46,6 +47,8 @@
 
     <!-- AQI -->
     <string name="aqi">AQI: </string>
+    <string name="air_quality_insufficient">Insufficient air-quality data</string>
+    <string name="exposure_unavailable">Unavailable</string>
 
     <!-- Weather -->
     <string name="weather">Weather</string>
@@ -106,6 +109,8 @@
     <string name="daily_report_empty_desc">
         Complete a day of tracking to see the detailed report.
     </string>
+    <string name="daily_report_no_exposure_title">Insufficient exposure data</string>
+    <string name="daily_report_no_exposure_desc">Valid air-quality exposure segments were not recorded for this day. Keep tracking to build a report.</string>
     <string name="daily_report_score_title">Day score</string>
     <string name="daily_report_stats_title">Daily statistics</string>
     <string name="daily_report_recommendations_title">Recommendations</string>
@@ -117,6 +122,21 @@
 
     <!-- Planner screen -->
     <string name="planner_build_route">Build route</string>
+    <string name="planner_description">Compare routes by travel time and estimated environmental exposure.</string>
+    <string name="planner_from">From</string>
+    <string name="planner_to">To</string>
+    <string name="planner_current_location">Current location</string>
+    <string name="planner_origin_example">For example: current location, city or address</string>
+    <string name="planner_destination">Destination address</string>
+    <string name="planner_route_building">Building route…</string>
+    <string name="planner_origin_required">Enter a starting point.</string>
+    <string name="planner_destination_required">Enter a destination.</string>
+    <string name="planner_location_unavailable">Current location is unavailable. Check location permission and try again.</string>
+    <string name="planner_geocoder_unavailable">Address lookup is unavailable on this device.</string>
+    <string name="planner_address_not_found">The address could not be found.</string>
+    <string name="planner_invalid_coordinates">Coordinates must be latitude, longitude within valid ranges.</string>
+    <string name="planner_routing_unavailable">No routed result is available. Check the addresses and network connection.</string>
+    <string name="planner_route_failed">Could not build the route. Please try again.</string>
 
     <!-- History screen -->
     <string name="history_empty_title">No history</string>
@@ -137,9 +157,118 @@
     <string name="place_category_restaurant">Restaurant</string>
     <string name="place_category_transit">Transit</string>
     <string name="place_category_other">Other</string>
+    <string name="places_tab">Places</string>
+    <string name="places_search">Search saved places</string>
+    <string name="places_empty">No saved places</string>
+    <string name="places_empty_hint">Add a place to keep it in your list.</string>
+    <string name="places_no_search_results">No matching places</string>
+    <string name="places_search_hint">Try a different search.</string>
+    <string name="places_invalid_form">Enter a name, valid coordinates, and a positive radius.</string>
+    <string name="place_add">Add place</string>
+    <string name="place_edit">Edit</string>
+    <string name="place_delete">Delete</string>
+    <string name="place_delete_title">Delete place?</string>
+    <string name="place_delete_message">Delete “%1$s” from saved places?</string>
+    <string name="place_name">Name</string>
+    <string name="place_address">Address (optional)</string>
+    <string name="place_latitude">Latitude</string>
+    <string name="place_longitude">Longitude</string>
+    <string name="place_radius">Radius in meters</string>
+    <string name="place_category">Category</string>
+    <string name="place_private_toggle">Mark private in saved-place listings only</string>
+    <string name="place_save">Save</string>
+    <string name="place_cancel">Cancel</string>
+    <string name="place_category_value">Category: %1$s</string>
+    <string name="place_radius_value">Radius: %1$.0f m</string>
+    <string name="place_coordinates_value">%1$.5f, %2$.5f</string>
+    <string name="privacy_zones_tab">Privacy zones</string>
+    <string name="privacy_zone_add">Add zone</string>
+    <string name="privacy_zone_edit">Edit privacy zone</string>
+    <string name="privacy_zone_name">Zone name</string>
+    <string name="privacy_zone_active">Protection active</string>
+    <string name="privacy_zone_exclude_history">Exclude location from history</string>
+    <string name="privacy_zone_exclude_exposure">Exclude exposure calculations</string>
+    <string name="privacy_zone_radius_value">Radius: %1$.0f m</string>
+    <string name="privacy_zone_coordinates_value">%1$.5f, %2$.5f</string>
+    <string name="privacy_zone_policy_value">History excluded: %1$s · exposure excluded: %2$s</string>
+    <string name="privacy_zone_empty">No privacy zones</string>
+    <string name="privacy_zone_empty_hint">Add a zone to control which location and exposure data is retained there.</string>
+    <string name="privacy_zone_delete_title">Delete privacy zone?</string>
+    <string name="privacy_zone_delete_message">Delete “%1$s”? Existing reports will be recalculated.</string>
+    <string name="privacy_yes">Yes</string>
+    <string name="privacy_no">No</string>
     <string name="onboarding_title">Onboarding</string>
     <string name="permission_denied_title">Permissions Required</string>
     <string name="permission_denied_message">Road Guide needs location and notification permissions to track your routes and provide environmental data. Please grant these permissions to continue.</string>
     <string name="permission_retry">Retry</string>
     <string name="permission_skip">Skip</string>
+    <string name="daily_report_day_label">Day: %1$s</string>
+    <string name="daily_report_confidence">Confidence</string>
+    <string name="daily_report_coverage">Coverage</string>
+    <string name="daily_report_distance">Distance</string>
+    <string name="daily_report_distance_km">%1$.1f km</string>
+    <string name="daily_report_travel_time">Travel time</string>
+    <string name="daily_report_places">Places</string>
+    <string name="daily_report_walking">Walking</string>
+    <string name="daily_report_transport">Transport</string>
+    <string name="daily_report_stationary">Stationary</string>
+    <string name="daily_report_recommendations_empty">Recommendations will appear when enough data is available.</string>
+    <string name="daily_report_score_value">Score: %1$d / 100</string>
+    <string name="daily_report_minutes">%1$d min</string>
+    <string name="tracker_state_stopped">Tracking off</string>
+    <string name="tracker_state_paused">Paused</string>
+    <string name="tracker_state_recording">Recording</string>
+    <string name="tracker_today_route">Today\'s route</string>
+    <string name="tracker_route_summary">%1$.1f km · %2$d min</string>
+    <string name="tracker_route_points">Recorded points: %1$d</string>
+    <string name="tracker_environment_title">Latest environmental sample</string>
+    <string name="tracker_environment_sample_time">Sample time: %1$s</string>
+    <string name="tracker_report_summary">Score %1$d/100 · confidence %2$d%% · coverage %3$d%%</string>
+    <string name="tracker_report_unavailable">A daily report is not available yet.</string>
+    <string name="tracker_open_timeline">Timeline</string>
+    <string name="tracker_open_report">Daily report</string>
+    <string name="tracker_current_location">Current location</string>
+    <string name="tracker_speed_value">%1$.1f m/s</string>
+    <string name="tracker_accuracy_value">Accuracy: %1$.0f m</string>
+    <string name="tracker_temperature_value">%1$.1f °C</string>
+    <string name="timeline_title">Daily timeline</string>
+    <string name="timeline_empty_title">No recorded activity</string>
+    <string name="timeline_empty_description">Start tracking to build a chronological view of routes, activities, and stops.</string>
+    <string name="timeline_previous_day">Previous day</string>
+    <string name="timeline_today">Today</string>
+    <string name="timeline_next_day">Next day</string>
+    <string name="timeline_summary">%1$d routes · %2$d events</string>
+    <string name="timeline_open_report">Open daily report</string>
+    <string name="timeline_exposure_label">Estimated exposure</string>
+    <string name="timeline_no_events">Activity details will appear after the route is processed.</string>
+    <string name="timeline_event_long_stop">Long stop</string>
+    <string name="timeline_event_stop">Stop</string>
+    <string name="timeline_event_walking">Walking</string>
+    <string name="timeline_event_running">Running</string>
+    <string name="timeline_event_cycling">Cycling</string>
+    <string name="timeline_event_public_transport">Public transport</string>
+    <string name="timeline_event_vehicle">Vehicle</string>
+    <string name="timeline_event_activity">Activity</string>
+    <string name="timeline_duration_minutes">%1$d min</string>
+    <string name="timeline_distance_meters">%1$d m</string>
+    <string name="planner_title">Eco route planner</string>
+    <string name="planner_travel_mode">Travel mode</string>
+    <string name="planner_mode_driving">Driving</string>
+    <string name="planner_mode_walking">Walking</string>
+    <string name="planner_mode_cycling">Cycling</string>
+    <string name="planner_available_routes">Available routes</string>
+    <string name="planner_fastest_route">Fastest route</string>
+    <string name="planner_lowest_exposure_route">Lowest exposure</string>
+    <string name="planner_balanced_route">Balanced route</string>
+    <string name="planner_route_data_summary">AQ coverage %1$d%% · confidence %2$d%%</string>
+    <string name="planner_exposure_label">Exposure</string>
+    <string name="planner_route_built">Route built (%1$d points)</string>
+    <string name="planner_distance">Distance</string>
+    <string name="planner_distance_km">~%1$.1f km</string>
+    <string name="planner_exposure_estimate">Estimated environmental exposure</string>
+    <string name="planner_exposure_low">Lower</string>
+    <string name="planner_exposure_moderate">Moderate</string>
+    <string name="planner_exposure_high">Higher</string>
+    <string name="planner_insufficient_data_warning">Air-quality data are insufficient to recommend the lowest-exposure route. Compare route time and distance as well.</string>
+    <string name="planner_empty_hint">Enter an origin and destination, choose a travel mode, then build a route.</string>
 </resources>

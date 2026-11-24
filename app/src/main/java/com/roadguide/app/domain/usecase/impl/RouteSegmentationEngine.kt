@@ -1,240 +1,300 @@
 package com.roadguide.app.domain.usecase.impl
 
 import com.roadguide.app.data.local.entity.ActivityType
-import com.roadguide.app.data.local.entity.Route
+import com.roadguide.app.data.local.entity.PrivacyZone
 import com.roadguide.app.data.local.entity.RouteSegment
-import com.roadguide.app.data.local.entity.RouteStatus
-import com.roadguide.app.data.local.entity.RouteType
+import com.roadguide.app.data.local.entity.Stay
 import com.roadguide.app.domain.model.LocationPointSummary
-import java.time.Instant
-import java.time.ZoneId
+import kotlin.math.cos
+import kotlin.math.sin
+import kotlin.math.sqrt
 
 object RouteSegmentationEngine {
+
+    const val MAX_GPS_GAP_MS = PrivacyZonePolicy.MAX_TRACKED_GAP_MS
+    const val MIN_ACTIVITY_SEGMENT_DURATION_MS = 30_000L
+    const val MIN_STAY_DURATION_MS = 5 * 60 * 1000L
+    private const val PUBLIC_TRANSPORT_WINDOW_SIZE = 12
+
+    data class Analysis(
+        val segments: List<RouteSegment>,
+        val stays: List<Stay>
+    )
 
     fun segmentPoints(
         routeId: Long,
         routeStartTime: Long,
         points: List<LocationPointSummary>,
-        routeDistance: Double
-    ): List<RouteSegment> {
-        if (points.isEmpty()) return emptyList()
-        if (points.size < 2) {
-            // Single point - treat as potential stay
-            return stayFromPoint(routeId, listOf(points.first()), routeStartTime)
-        }
-        val segments = mutableListOf<RouteSegment>()
-        var current: RouteSegment? = null
-        var currentActivity: ActivityType? = null
-        for (i in points.indices) {
-            val point = points[i]
-            val activity = determineActivityType(point)
-            if (current == null) {
-                current = makeSegment(routeId, routeStartTime, points, activity, i)
-                segments.add(current)
-                currentActivity = activity
-            } else if (activity != currentActivity) {
-                closeSegment(current, points, i)
-                segments.add(current)
-                current = makeSegment(routeId, routeStartTime, points, activity, i)
-                segments.add(current)
-                currentActivity = activity
-            } else {
-                extendSegment(current, point)
-            }
-        }
-        current?.let { closeSegment(it, points, points.size) }
-        current?.let { segments.add(it) }
-        return segments.filter { it.endTime > it.startTime }
-    }
+        @Suppress("UNUSED_PARAMETER") routeDistance: Double,
+        privacyZones: List<PrivacyZone> = emptyList()
+    ): List<RouteSegment> =
+        analyzePoints(routeId, routeStartTime, points, privacyZones).segments
 
-    private fun determineActivityType(point: LocationPointSummary): ActivityType {
-        if (point.activityType == "stationary" || point.speedMps < 0.5) {
-            return ActivityType.STATIONARY
-        }
-        return when {
-            point.speedMps < 2.0 -> ActivityType.WALKING
-            point.speedMps < 6.0 -> ActivityType.RUNNING
-            else -> ActivityType.CYCLING
-        }
-    }
-
-    private fun makeSegment(
+    fun analyzePoints(
         routeId: Long,
         routeStartTime: Long,
         points: List<LocationPointSummary>,
-        activity: ActivityType?,
-        pointIndex: Int
-    ): RouteSegment {
-        val point = points[pointIndex]
-        val startTime = point.timestamp
-        val endTime = if (pointIndex < points.size - 1) {
-            points[pointIndex + 1].timestamp
-        } else {
-            System.currentTimeMillis()
-        }
-        return RouteSegment(
-            routeId = routeId, startTime = startTime, endTime = endTime,
-            activityType = activity ?: ActivityType.UNKNOWN, distanceMeters = 0.0,
-            startLatitude = point.latitude, startLongitude = point.longitude,
-            endLatitude = point.latitude, endLongitude = point.longitude, confidence = 0.5
-        )
-    }
-
-    private fun closeSegment(segment: RouteSegment, points: List<LocationPointSummary>, endIndex: Int) {
-        if (endIndex <= 0) return
-        val startIndex = findStart(segment, points)
-        if (startIndex < 0) return
-        val sub = points.subList(startIndex, endIndex + 1)
-        val duration = (segment.endTime - segment.startTime) / 1000
-        val distance = calcDistance(sub)
-        if (duration < 60 || distance < 50.0) return
-        segment.distanceMeters = distance
-    }
-
-    private fun findStart(segment: RouteSegment, points: List<LocationPointSummary>): Int {
-        for (i in points.indices) {
-            if (points[i].timestamp >= segment.startTime) return i
-        }
-        return -1
-    }
-
-    private fun calcDistance(points: List<LocationPointSummary>): Double {
-        if (points.size < 2) return 0.0
-        var total = 0.0
-        for (i in 0 until points.size - 1) {
-            total += haversine(points[i].latitude, points[i].longitude,
-                points[i + 1].latitude, points[i + 1].longitude)
-        }
-        return total
-    }
-
-    private fun haversine(lat1: Double, lon1: Double, lat2: Double, lon2: Double): Double {
-        val R = 6371000.0
-        val dLat = Math.toRadians(lat2 - lat1)
-        val dLon = Math.toRadians(lon2 - lon1)
-        val a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-                Math.cos(Math.toRadians(lat1)) * Math.cos(Math.toRadians(lat2)) *
-                        Math.sin(dLon / 2) * Math.sin(dLon / 2)
-        val c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a))
-        return R * c
-    }
-
-    private fun stayFromPoint(routeId: Long, points: List<LocationPointSummary>, routeStartTime: Long): List<RouteSegment> {
-        // Use MovementDetectionEngine.detectStationary to find stationary periods
-        // Default threshold is 300_000 ms (5 minutes) of speed < 0.5 m/s
-        val segments = mutableListOf<RouteSegment>()
-
-        // Need at least 3 points for detectStationary to work
-        if (points.size < 3) {
-            // Single or double point - treat as potential stay if speed is very low
-            val slowPoints = points.filter { it.speedMps < 0.5 }
-            if (slowPoints.isNotEmpty()) {
-                return listOf(RouteSegment(
-                    routeId = routeId,
-                    startTime = slowPoints.first().timestamp,
-                    endTime = if (slowPoints.size > 1) slowPoints.last().timestamp else System.currentTimeMillis(),
-                    activityType = ActivityType.STATIONARY,
-                    distanceMeters = 0.0,
-                    startLatitude = slowPoints.first().latitude,
-                    startLongitude = slowPoints.first().longitude,
-                    endLatitude = if (slowPoints.size > 1) slowPoints.last().latitude else slowPoints.first().latitude,
-                    endLongitude = if (slowPoints.size > 1) slowPoints.last().longitude else slowPoints.first().longitude,
-                    confidence = 0.8
-                ))
+        privacyZones: List<PrivacyZone> = emptyList()
+    ): Analysis {
+        val orderedPoints = points
+            .asSequence()
+            .filter { it.timestamp >= routeStartTime }
+            .filterNot { point ->
+                PrivacyZonePolicy.decisionAt(
+                    point.latitude,
+                    point.longitude,
+                    privacyZones
+                ).excludeFromHistory
             }
-            return emptyList()
-        }
+            .sortedBy { it.timestamp }
+            .distinctBy { it.timestamp }
+            .toList()
 
-        // Check sliding windows of 3 points for stationary periods
-        var i = 0
-        while (i < points.size) {
-            if (i < 2) { i++; continue }
-            val window = points.slice(i - 2..i)
-            if (MovementDetectionEngine.detectStationary(window)) {
-                // This point is part of a stay - find the start and end of the stay
-                val stayStart = findStayStart(points, i)
-                val stayEnd = findStayEnd(points, i)
-                if (stayStart <= stayEnd && stayStart >= 0 && stayEnd < points.size) {
-                    val startPoint = points[stayStart]
-                    val endPoint = points[stayEnd]
-                    segments.add(RouteSegment(
+        if (orderedPoints.size < 2) return Analysis(emptyList(), emptyList())
+
+        val segments = mutableListOf<RouteSegment>()
+        val stays = mutableListOf<Stay>()
+        var groupStart = 0
+        var groupActivity = activityAt(orderedPoints, 0, privacyZones)
+        var pendingActivity: ActivityType? = null
+        var pendingStart = -1
+        var pendingCount = 0
+
+        for (index in 1 until orderedPoints.size) {
+            val previous = orderedPoints[index - 1]
+            val current = orderedPoints[index]
+            val gap = current.timestamp - previous.timestamp
+            val crossesPrivateZone = PrivacyZonePolicy.excludesPath(
+                previous.latitude,
+                previous.longitude,
+                current.latitude,
+                current.longitude,
+                privacyZones,
+                PrivacyScope.HISTORY
+            )
+
+            if (gap > MAX_GPS_GAP_MS || crossesPrivateZone) {
+                addGroup(
+                    routeId = routeId,
+                    points = orderedPoints,
+                    startIndex = groupStart,
+                    endIndex = index - 1,
+                    activity = groupActivity,
+                    segments = segments,
+                    stays = stays,
+                    privacyZones = privacyZones
+                )
+                groupStart = index
+                groupActivity = activityAt(orderedPoints, index, privacyZones)
+                pendingActivity = null
+                pendingStart = -1
+                pendingCount = 0
+                continue
+            }
+
+            val currentActivity = activityAt(orderedPoints, index, privacyZones)
+            if (currentActivity == groupActivity) {
+                pendingActivity = null
+                pendingStart = -1
+                pendingCount = 0
+            } else {
+                if (currentActivity != pendingActivity) {
+                    pendingActivity = currentActivity
+                    pendingStart = index
+                    pendingCount = 1
+                } else {
+                    pendingCount++
+                }
+
+                if (pendingCount >= 2) {
+                    addGroup(
                         routeId = routeId,
-                        startTime = startPoint.timestamp,
-                        endTime = endPoint.timestamp,
-                        activityType = ActivityType.STATIONARY,
-                        distanceMeters = 0.0,
-                        startLatitude = startPoint.latitude,
-                        startLongitude = startPoint.longitude,
-                        endLatitude = endPoint.latitude,
-                        endLongitude = endPoint.longitude,
-                        confidence = 0.8
-                    ))
-                    // Skip past this stay to avoid duplicates
-                    i = stayEnd + 2
+                        points = orderedPoints,
+                        startIndex = groupStart,
+                        endIndex = pendingStart - 1,
+                        activity = groupActivity,
+                        segments = segments,
+                        stays = stays,
+                        privacyZones = privacyZones
+                    )
+                    groupStart = pendingStart
+                    groupActivity = currentActivity
+                    pendingActivity = null
+                    pendingStart = -1
+                    pendingCount = 0
                 }
             }
-            i++
         }
 
-        return segments
-    }
-
-    /** Find the start index of a stationary period ending at or before point index */
-    private fun findStayStart(points: List<LocationPointSummary>, endIndex: Int): Int {
-        for (i in endIndex downTo 0) {
-            if (i + 2 <= points.size) {
-                val window = points.slice(i until i + 3)
-                if (MovementDetectionEngine.detectStationary(window)) return i
-            }
-        }
-        return endIndex
-    }
-
-    /** Find the end index of a stationary period starting at or after point index */
-    private fun findStayEnd(points: List<LocationPointSummary>, startIndex: Int): Int {
-        for (i in startIndex until points.size) {
-            if (i + 2 < points.size) {
-                val window = points.slice(i until i + 3)
-                if (MovementDetectionEngine.detectStationary(window)) return i
-            }
-        }
-        return startIndex
-    }
-
-    private fun extendSegment(segment: RouteSegment, point: LocationPointSummary) {
-        // Extend segment end time to include this point
-        if (point.timestamp > segment.endTime) {
-            segment.endTime = point.timestamp
-        }
-    }
-
-    fun finalizeRoute(
-        routeId: Long,
-        routeStartTime: Long,
-        points: List<LocationPointSummary>,
-        routeType: RouteType = RouteType.DAILY_AUTO,
-        routeDistance: Double = 0.0
-    ): Route {
-        val totalDuration = if (points.isNotEmpty()) {
-            points.last().timestamp - routeStartTime
-        } else {
-            3600_000L
-        }
-        val status = if (points.isNotEmpty()) RouteStatus.COMPLETED else RouteStatus.IN_PROGRESS
-        return Route(
-            id = routeId,
-            startTime = routeStartTime,
-            endTime = if (status == RouteStatus.COMPLETED) System.currentTimeMillis() else null,
-            distanceMeters = routeDistance,
-            status = status,
-            routeType = routeType,
-            confidence = 0.7,
-            date = Instant.ofEpochMilli(routeStartTime)
-                .atZone(ZoneId.systemDefault())
-                .toLocalDate()
-                .toString(),
-            totalDurationSeconds = totalDuration / 1000,
-            calculationVersion = 1
+        addGroup(
+            routeId = routeId,
+            points = orderedPoints,
+            startIndex = groupStart,
+            endIndex = orderedPoints.lastIndex,
+            activity = groupActivity,
+            segments = segments,
+            stays = stays,
+            privacyZones = privacyZones
         )
+
+        return Analysis(segments, stays)
+    }
+
+    fun recordedDistanceMeters(
+        points: List<LocationPointSummary>,
+        privacyZones: List<PrivacyZone> = emptyList()
+    ): Double {
+        val orderedPoints = points
+            .filterNot { point ->
+                PrivacyZonePolicy.decisionAt(
+                    point.latitude,
+                    point.longitude,
+                    privacyZones
+                ).excludeFromHistory
+            }
+            .sortedBy { it.timestamp }
+            .distinctBy { it.timestamp }
+        return orderedPoints.zipWithNext().sumOf { (previous, current) ->
+            if (
+                current.timestamp - previous.timestamp > MAX_GPS_GAP_MS ||
+                PrivacyZonePolicy.excludesPath(
+                    previous.latitude,
+                    previous.longitude,
+                    current.latitude,
+                    current.longitude,
+                    privacyZones,
+                    PrivacyScope.HISTORY
+                )
+            ) 0.0
+            else distanceMeters(
+                previous.latitude,
+                previous.longitude,
+                current.latitude,
+                current.longitude
+            )
+        }
+    }
+
+    private fun activityAt(
+        points: List<LocationPointSummary>,
+        index: Int,
+        privacyZones: List<PrivacyZone>
+    ): ActivityType {
+        val point = points[index]
+        var contiguousStart = index
+        while (contiguousStart > 0 &&
+            points[contiguousStart].timestamp - points[contiguousStart - 1].timestamp <= MAX_GPS_GAP_MS &&
+            !PrivacyZonePolicy.excludesPath(
+                points[contiguousStart - 1].latitude,
+                points[contiguousStart - 1].longitude,
+                points[contiguousStart].latitude,
+                points[contiguousStart].longitude,
+                privacyZones,
+                PrivacyScope.HISTORY
+            )
+        ) {
+            contiguousStart--
+        }
+        val windowStart = maxOf(contiguousStart, index - PUBLIC_TRANSPORT_WINDOW_SIZE + 1)
+        val transportWindow = points.subList(windowStart, index + 1)
+        if (transportWindow.size >= 10 &&
+            MovementDetectionEngine.classify(transportWindow) == ActivityType.PUBLIC_TRANSPORT
+        ) {
+            return ActivityType.PUBLIC_TRANSPORT
+        }
+
+        return point.activityType.toActivityType()
+            ?: MovementDetectionEngine.classify(listOf(point))
+    }
+
+    private fun String.toActivityType(): ActivityType? = when (lowercase()) {
+        "stationary" -> ActivityType.STATIONARY
+        "walking" -> ActivityType.WALKING
+        "running" -> ActivityType.RUNNING
+        "cycling" -> ActivityType.CYCLING
+        "in_vehicle", "in vehicle" -> ActivityType.IN_VEHICLE
+        "public_transport", "public transport" -> ActivityType.PUBLIC_TRANSPORT
+        else -> null
+    }
+
+    private fun addGroup(
+        routeId: Long,
+        points: List<LocationPointSummary>,
+        startIndex: Int,
+        endIndex: Int,
+        activity: ActivityType,
+        segments: MutableList<RouteSegment>,
+        stays: MutableList<Stay>,
+        privacyZones: List<PrivacyZone>
+    ) {
+        if (endIndex <= startIndex) return
+
+        val group = points.subList(startIndex, endIndex + 1)
+        val first = group.first()
+        val last = group.last()
+        val duration = last.timestamp - first.timestamp
+        if (duration < MIN_ACTIVITY_SEGMENT_DURATION_MS) return
+
+        val distance = recordedDistanceMeters(group, privacyZones)
+        segments += RouteSegment(
+            routeId = routeId,
+            startTime = first.timestamp,
+            endTime = last.timestamp,
+            activityType = activity,
+            distanceMeters = distance,
+            startLatitude = first.latitude,
+            startLongitude = first.longitude,
+            endLatitude = last.latitude,
+            endLongitude = last.longitude,
+            confidence = MovementDetectionEngine.calculateConfidence(activity, group.size)
+        )
+
+        if (activity == ActivityType.STATIONARY &&
+            MovementDetectionEngine.detectStationary(group, MIN_STAY_DURATION_MS)
+        ) {
+            stays += makeStay(routeId, group)
+        }
+    }
+
+    private fun makeStay(routeId: Long, points: List<LocationPointSummary>): Stay {
+        val centerLatitude = points.map { it.latitude }.average()
+        val centerLongitude = points.map { it.longitude }.average()
+        val radius = points.maxOf { point ->
+            distanceMeters(
+                point.latitude,
+                point.longitude,
+                centerLatitude,
+                centerLongitude
+            )
+        }
+        return Stay(
+            routeId = routeId,
+            startTime = points.first().timestamp,
+            endTime = points.last().timestamp,
+            centerLatitude = centerLatitude,
+            centerLongitude = centerLongitude,
+            radiusMeters = radius,
+            confidence = MovementDetectionEngine.calculateConfidence(
+                ActivityType.STATIONARY,
+                points.size
+            )
+        )
+    }
+
+    private fun distanceMeters(
+        firstLatitude: Double,
+        firstLongitude: Double,
+        secondLatitude: Double,
+        secondLongitude: Double
+    ): Double {
+        val earthRadiusMeters = 6_371_000.0
+        val latitudeDelta = Math.toRadians(secondLatitude - firstLatitude)
+        val longitudeDelta = Math.toRadians(secondLongitude - firstLongitude)
+        val firstLatitudeRadians = Math.toRadians(firstLatitude)
+        val secondLatitudeRadians = Math.toRadians(secondLatitude)
+        val a = sin(latitudeDelta / 2) * sin(latitudeDelta / 2) +
+            cos(firstLatitudeRadians) * cos(secondLatitudeRadians) *
+            sin(longitudeDelta / 2) * sin(longitudeDelta / 2)
+        return earthRadiusMeters * 2 * kotlin.math.atan2(sqrt(a), sqrt(1 - a))
     }
 }

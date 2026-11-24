@@ -3,11 +3,12 @@ package com.roadguide.app.domain.usecase.impl
 import com.roadguide.app.data.local.entity.ActivityType
 import com.roadguide.app.data.local.entity.DailyReport
 import com.roadguide.app.data.local.entity.ExposureResult
-import com.roadguide.app.data.local.entity.Route
 import com.roadguide.app.data.local.entity.RouteSegment
 import com.roadguide.app.data.local.entity.Stay
 import com.roadguide.app.data.repository.DailyReportRepository
 import com.roadguide.app.data.repository.ExposureResultRepository
+import com.roadguide.app.data.repository.LocationPointRepository
+import com.roadguide.app.data.repository.PrivacyZoneRepository
 import com.roadguide.app.data.repository.RouteRepository
 import com.roadguide.app.data.repository.RouteSegmentRepository
 import com.roadguide.app.data.repository.StayRepository
@@ -21,32 +22,68 @@ class DailyExposureAggregator(
     private val exposureResultRepository: ExposureResultRepository,
     private val stayRepository: StayRepository,
     private val dailyReportRepository: DailyReportRepository,
+    private val locationPointRepository: LocationPointRepository,
+    private val privacyZoneRepository: PrivacyZoneRepository,
 ) : AggregateDailyExposure {
 
     companion object {
-        private const val SECONDS_PER_DAY: Long = 86_400L
-        private const val RAW_SCORE_CAP: Double = 200.0
+        internal const val RAW_SCORE_CAP: Double = 200.0
     }
 
     override suspend fun aggregate(date: String): DailyReport? {
         return buildReport(date, isRegenerated = false)
     }
+
     private suspend fun buildReport(date: String, isRegenerated: Boolean): DailyReport? {
-        val routes = routeRepository.getByDate(date).first() ?: return null
-        if (routes.isEmpty()) return null
+        val routes = routeRepository.getByDate(date).first()
+        if (routes.isNullOrEmpty()) {
+            dailyReportRepository.deleteByDate(date)
+            return null
+        }
 
         val routeIds = routes.map { it.id }.toSet()
+        val activeZones = privacyZoneRepository.observeActiveZones().first()
 
         val allResults = exposureResultRepository.observeAll().first()
-        val routeResults = allResults.filter { it.routeId in routeIds }
-        if (routeResults.isEmpty()) return null
-
         val allSegments = routeIds.flatMap { routeId ->
             routeSegmentRepository.observeByRoute(routeId).first()
         }
-
+        val pointsByRoute = routeIds.associateWith { routeId ->
+            locationPointRepository.observeByRoute(routeId).first()
+        }
         val allStays = routeIds.flatMap { routeId ->
             stayRepository.observeByRoute(routeId).first()
+        }
+
+        val historySegments = allSegments.filterNot { segment ->
+            PrivacyZonePolicy.excludesSegment(
+                segment,
+                pointsByRoute[segment.routeId].orEmpty(),
+                activeZones,
+                PrivacyScope.HISTORY
+            )
+        }
+        val exposureSegments = historySegments.filterNot { segment ->
+            PrivacyZonePolicy.excludesSegment(
+                segment,
+                pointsByRoute[segment.routeId].orEmpty(),
+                activeZones,
+                PrivacyScope.EXPOSURE
+            )
+        }
+        val exposureSegmentIds = exposureSegments.mapTo(mutableSetOf()) { it.id }
+        val routeResults = allResults.filter { result ->
+            result.routeId?.let(routeIds::contains) == true &&
+                result.segmentId != null &&
+                result.segmentId in exposureSegmentIds
+        }
+        if (routeResults.isEmpty()) {
+            dailyReportRepository.deleteByDate(date)
+            return null
+        }
+
+        val visibleStays = allStays.filterNot { stay ->
+            PrivacyZonePolicy.excludesStay(stay, activeZones, PrivacyScope.HISTORY)
         }
 
         var walkingDuration = 0L
@@ -55,13 +92,29 @@ class DailyExposureAggregator(
         var totalDistance = 0.0
         var totalDurationSeconds = 0L
 
+        val hasHistoryExclusion = activeZones.any { it.isActive && it.excludeFromHistory }
         for (route in routes) {
-            totalDistance += route.distanceMeters
-            totalDurationSeconds += route.totalDurationSeconds
+            val routePoints = pointsByRoute[route.id].orEmpty()
+            val routeSegments = historySegments.filter { it.routeId == route.id }
+            totalDistance += when {
+                routePoints.isNotEmpty() ->
+                    PrivacyZonePolicy.recordedDistanceMeters(routePoints, activeZones)
+                hasHistoryExclusion -> 0.0
+                else -> route.distanceMeters
+            }
+            totalDurationSeconds += when {
+                routePoints.isNotEmpty() ->
+                    PrivacyZonePolicy.recordedDurationSeconds(routePoints, activeZones)
+                routeSegments.isNotEmpty() -> routeSegments.sumOf {
+                    (it.endTime - it.startTime).coerceAtLeast(0L) / 1_000L
+                }
+                hasHistoryExclusion -> 0L
+                else -> route.totalDurationSeconds
+            }
         }
 
-        for (segment in allSegments) {
-            val duration = segment.endTime - segment.startTime
+        for (segment in historySegments) {
+            val duration = (segment.endTime - segment.startTime).coerceAtLeast(0L) / 1_000L
             when (segment.activityType) {
                 ActivityType.WALKING, ActivityType.RUNNING -> walkingDuration += duration
                 ActivityType.CYCLING, ActivityType.IN_VEHICLE, ActivityType.PUBLIC_TRANSPORT ->
@@ -71,57 +124,55 @@ class DailyExposureAggregator(
             }
         }
 
-        var dailyRawScore = 0.0
-        var totalConfidenceSum = 0.0
-        var validSegmentCount = 0
+        val segmentDurations = exposureSegments.associate { segment ->
+            segment.id to (segment.endTime - segment.startTime).coerceAtLeast(0L) / 1_000L
+        }
+        val inputs = routeResults.mapNotNull { result ->
+            if (result.stayId != null) return@mapNotNull null
+            val durationSeconds = result.segmentId?.let(segmentDurations::get)
+                ?: return@mapNotNull null
+            DailyExposureInput(result, durationSeconds)
+        }
+        val totalTrackedSegmentSeconds = segmentDurations.values.sum()
+        val metrics = calculateDailyExposureMetrics(inputs, totalTrackedSegmentSeconds)
+        if (metrics == null) {
+            dailyReportRepository.deleteByDate(date)
+            return null
+        }
+        val dailyScore = metrics.normalizedScore
+        val coverageScore = metrics.coveragePercent
+        val confidenceScore = metrics.confidencePercent
 
-        val segmentContributions = mutableListOf<SegmentContribution>()
-
-        for (result in routeResults) {
+        val segmentContributions = metrics.validInputs.map { input ->
+            val result = input.result
+            val confidence = result.confidence
+            val durationHours = input.durationSeconds / 3_600.0
             val rawScore = result.rawExposureScore.coerceIn(0.0, RAW_SCORE_CAP)
-            val confidence = result.confidence.coerceIn(0.0, 1.0)
-            val durationHours = result.durationMinutes / 60.0
-            val weight = confidence * durationHours
-
-            dailyRawScore += rawScore * weight
-            totalConfidenceSum += confidence
-            validSegmentCount++
-
-            segmentContributions.add(
-                SegmentContribution(
-                    segmentId = result.segmentId ?: 0,
-                    stayId = result.stayId,
-                    rawScore = rawScore,
-                    normalizedScore = result.exposureScore,
-                    confidence = confidence,
-                    durationMinutes = result.durationMinutes,
-                    contribution = rawScore * weight,
-                )
+            SegmentContribution(
+                segmentId = result.segmentId ?: 0,
+                stayId = result.stayId,
+                rawScore = rawScore,
+                normalizedScore = result.exposureScore,
+                confidence = confidence,
+                durationMinutes = kotlin.math.ceil(input.durationSeconds / 60.0)
+                    .toInt()
+                    .coerceAtLeast(1),
+                contribution = rawScore * confidence * durationHours,
             )
         }
 
-        val dailyScore = normalizeDailyScore(dailyRawScore)
-
-        val coverageScore = if (totalDurationSeconds > 0) {
-            (totalDurationSeconds.toDouble() / SECONDS_PER_DAY) * 100.0
-        } else 0.0
-
-        val confidenceScore = if (validSegmentCount > 0) {
-            (totalConfidenceSum / validSegmentCount) * 100.0
-        } else 0.0
-
-        val visitedPlaceIds = allStays.mapNotNull { it.placeId }.distinct()
+        val visitedPlaceIds = visibleStays.mapNotNull { it.placeId }.distinct()
         var visitedPlacesCount = visitedPlaceIds.size
-        if (visitedPlacesCount == 0 && allStays.isNotEmpty()) {
-            visitedPlacesCount = allStays.size
+        if (visitedPlacesCount == 0 && visibleStays.isNotEmpty()) {
+            visitedPlacesCount = visibleStays.size
         }
 
-        segmentContributions.sortByDescending { it.contribution }
-        val topContributors = segmentContributions.take(5)
-        val topContributorsJson = buildTopContributorsJson(topContributors, allStays)
+        val orderedContributions = segmentContributions.sortedByDescending { it.contribution }
+        val topContributors = orderedContributions.take(5)
+        val topContributorsJson = buildTopContributorsJson(topContributors, visibleStays)
 
-        val bestPeriod = segmentContributions.minByOrNull { it.normalizedScore }
-        val worstPeriod = segmentContributions.maxByOrNull { it.normalizedScore }
+        val bestPeriod = orderedContributions.minByOrNull { it.normalizedScore }
+        val worstPeriod = orderedContributions.maxByOrNull { it.normalizedScore }
         val bestPeriodJson = buildPeriodJson(bestPeriod, "best")
         val worstPeriodJson = buildPeriodJson(worstPeriod, "worst")
 
@@ -149,7 +200,7 @@ class DailyExposureAggregator(
             bestPeriodJson = bestPeriodJson,
             worstPeriodJson = worstPeriodJson,
             recommendationsJson = recommendationsJson,
-            reportVersion = 2,
+            reportVersion = 3,
             generatedAt = System.currentTimeMillis(),
             isRegenerated = isRegenerated,
         )
@@ -158,12 +209,8 @@ class DailyExposureAggregator(
         return report
     }
 
-    fun normalizeDailyScore(rawScore: Double): Double {
-        val clamped = rawScore.coerceAtLeast(0.0)
-        val scale = 50.0
-        val normalized = 100.0 * (1.0 - Math.exp(-clamped / scale))
-        return normalized.coerceIn(0.0, 100.0)
-    }
+    fun normalizeDailyScore(rawScore: Double): Double =
+        normalizeDailyExposureScore(rawScore)
 
     private data class SegmentContribution(
         val segmentId: Long,
@@ -230,14 +277,14 @@ class DailyExposureAggregator(
         if (coverage < 50.0) {
             recs.add(Recommendation(
                 "low_coverage",
-                "Недостаточно данных за день ($coverage.toInt% покрытия). Рекомендуется включить отслеживание на большее время.",
+                "Недостаточно данных за день (${coverage.roundToLong()}% покрытия). Рекомендуется включить отслеживание на большее время.",
             ))
         }
 
         if (confidence < 50.0) {
             recs.add(Recommendation(
                 "low_confidence",
-                "Низкая достоверность данных ($confidence.toInt%). Проверьте датчики и качество локализации.",
+                "Низкая достоверность данных (${confidence.roundToLong()}%). Проверьте датчики и качество локализации.",
             ))
         }
 
@@ -275,4 +322,59 @@ class DailyExposureAggregator(
     override suspend fun regenerate(date: String): DailyReport? {
         return buildReport(date, isRegenerated = true)
     }
+}
+
+internal data class DailyExposureInput(
+    val result: ExposureResult,
+    val durationSeconds: Long,
+)
+
+internal data class DailyExposureMetrics(
+    val normalizedScore: Double,
+    val confidencePercent: Double,
+    val coveragePercent: Double,
+    val validInputs: List<DailyExposureInput>,
+)
+
+internal fun calculateDailyExposureMetrics(
+    inputs: List<DailyExposureInput>,
+    totalTrackedDurationSeconds: Long,
+): DailyExposureMetrics? {
+    val validInputs = inputs.filter { input ->
+        val result = input.result
+        input.durationSeconds > 0 &&
+            result.rawExposureScore.isFinite() && result.rawExposureScore > 0.0 &&
+            result.exposureScore.isFinite() && result.exposureScore in 0.0..100.0 &&
+            result.pollution.isFinite() && result.pollution > 0.0 &&
+            result.confidence.isFinite() && result.confidence in 0.0..1.0 &&
+            result.confidence > 0.0 &&
+            result.coverage.isFinite() && result.coverage in 0.0..100.0
+    }
+    if (validInputs.isEmpty() || totalTrackedDurationSeconds <= 0L) return null
+
+    val totalDurationSeconds = validInputs.sumOf { it.durationSeconds.toDouble() }
+    val validDurationSeconds = validInputs.sumOf { it.durationSeconds }
+    val weightedRawScore = validInputs.sumOf { input ->
+        input.result.rawExposureScore.coerceIn(0.0, DailyExposureAggregator.RAW_SCORE_CAP) *
+            input.result.confidence *
+            (input.durationSeconds / 3_600.0)
+    }
+    val confidencePercent = validInputs.sumOf { input ->
+        input.result.confidence * input.durationSeconds.toDouble()
+    } / totalDurationSeconds * 100.0
+    val coveragePercent = (validDurationSeconds.toDouble() /
+        totalTrackedDurationSeconds * 100.0).coerceIn(0.0, 100.0)
+
+    return DailyExposureMetrics(
+        normalizedScore = normalizeDailyExposureScore(weightedRawScore),
+        confidencePercent = confidencePercent,
+        coveragePercent = coveragePercent,
+        validInputs = validInputs,
+    )
+}
+
+internal fun normalizeDailyExposureScore(rawScore: Double): Double {
+    val clamped = rawScore.coerceAtLeast(0.0)
+    val normalized = 100.0 * (1.0 - Math.exp(-clamped / 50.0))
+    return normalized.coerceIn(0.0, 100.0)
 }

@@ -5,74 +5,68 @@ import com.roadguide.app.data.local.EnvironmentalValidator
 import com.roadguide.app.data.local.entity.DataQuality
 import com.roadguide.app.data.local.entity.DataSource
 import com.roadguide.app.data.local.entity.EnvironmentalSample
+import kotlinx.coroutines.async
+import kotlinx.coroutines.coroutineScope
 
-/**
- * Orchestrates fetching environmental data from Open-Meteo (weather + AQI),
- * aggregates into a single EnvironmentalSample, and applies validation.
- */
 class EnvironmentalDataFetcher(
     private val openMeteoSource: OpenMeteoWeatherSource,
+    private val airQualitySource: OpenMeteoAirQualitySource,
     private val validator: EnvironmentalValidator
 ) {
 
-    suspend fun fetch(lat: Double, lon: Double): EnvironmentalSample? {
-        Log.d("EnvFetcher", "fetching for lat=$lat, lon=$lon")
-        val now = System.currentTimeMillis()
-        val weather = openMeteoSource.fetch(lat, lon)
+    suspend fun fetch(
+        latitude: Double,
+        longitude: Double,
+        requestedTime: Long = System.currentTimeMillis()
+    ): EnvironmentalSample? {
+        Log.d("EnvFetcher", "fetching weather and air quality for coordinates")
+        val fetchedAt = System.currentTimeMillis()
+        val (weather, airQuality) = coroutineScope {
+            val weatherRequest = async { openMeteoSource.fetch(latitude, longitude) }
+            val airQualityRequest = async {
+                airQualitySource.fetch(latitude, longitude, requestedTime)
+            }
+            weatherRequest.await() to airQualityRequest.await()
+        }
 
         val result = EnvironmentalDataResult(
             weather = weather,
-            aqis = null,
-            fetchTimestamp = now
+            aqis = airQuality,
+            fetchTimestamp = fetchedAt
         )
-
-        val sample = buildSample(lat, lon, result, now)
-
-        if (sample != null) {
-            Log.d("EnvFetcher", "validation result: ${sample.source}")
+        val sample = buildSample(latitude, longitude, result, requestedTime)
+        if (sample == null) {
+            Log.w("EnvFetcher", "neither weather nor valid air-quality data was returned")
+        } else {
+            Log.d("EnvFetcher", "sample quality=${sample.dataQuality}, source=${sample.source}")
         }
-
         return sample
     }
 
     private fun buildSample(
-        lat: Double,
-        lon: Double,
+        latitude: Double,
+        longitude: Double,
         result: EnvironmentalDataResult,
-        fetchedAt: Long
+        requestedTime: Long
     ): EnvironmentalSample? {
-        val weather = result.weather
-
-        val source = if (weather != null) DataSource.OPEN_METEO else return null
-
-        val pm2_5 = weather?.pm2_5
-        val pm10 = weather?.pm10
-        val nitrogenDioxide = weather?.nitrogenDioxide
-        val ozone = weather?.ozone
-        val sulphurDioxide = weather?.sulphurDioxide
-        val carbonMonoxide = weather?.carbonMonoxide
-
-        val europeanAqi = weather?.europeanAqi
-        val usAqi = null
-
-        val hasWeather = weather != null
-        val hasPm = (weather?.pm2_5 != null) || (weather?.pm10 != null)
-        val hasAqi = weather?.europeanAqi != null
-
-        val preliminaryQuality = when {
-            hasWeather && hasPm && hasAqi -> DataQuality.HIGH
-            hasWeather -> DataQuality.MEDIUM
-            else -> DataQuality.LOW
+        val weather = result.weather?.takeIf {
+            kotlin.math.abs(it.timestamp - requestedTime) <= MAX_WEATHER_TIME_OFFSET_MS
         }
-
-        val exposureLevel = computeExposureLevel(europeanAqi, usAqi, pm2_5, pm10)
+        val airQuality = result.aqis
+        if (weather == null && airQuality == null) return null
 
         val sample = EnvironmentalSample(
-            latitude = lat, longitude = lon, timestamp = fetchedAt,
-            pm2_5 = pm2_5, pm10 = pm10,
-            nitrogenDioxide = nitrogenDioxide, ozone = ozone,
-            sulphurDioxide = sulphurDioxide, carbonMonoxide = carbonMonoxide,
-            usAqi = usAqi, europeanAqi = europeanAqi,
+            latitude = latitude,
+            longitude = longitude,
+            timestamp = airQuality?.timestamp ?: weather?.timestamp ?: result.fetchTimestamp,
+            pm2_5 = airQuality?.pm2_5 ?: weather?.pm2_5,
+            pm10 = airQuality?.pm10 ?: weather?.pm10,
+            nitrogenDioxide = airQuality?.nitrogenDioxide ?: weather?.nitrogenDioxide,
+            ozone = airQuality?.ozone ?: weather?.ozone,
+            sulphurDioxide = airQuality?.sulphurDioxide ?: weather?.sulphurDioxide,
+            carbonMonoxide = airQuality?.carbonMonoxide ?: weather?.carbonMonoxide,
+            usAqi = airQuality?.usAqi,
+            europeanAqi = airQuality?.europeanAqi ?: weather?.europeanAqi,
             temperatureCelsius = weather?.temperatureCelsius,
             apparentTemperatureCelsius = weather?.apparentTemperatureCelsius,
             relativeHumidityPercent = weather?.relativeHumidityPercent,
@@ -82,35 +76,32 @@ class EnvironmentalDataFetcher(
             rainMm = weather?.rainMm,
             cloudCoverPercent = weather?.cloudCoverPercent,
             uvIndex = weather?.uvIndex,
-            source = source,
-            dataQuality = preliminaryQuality,
-            modelResolutionKm = null,
-            fetchedAt = fetchedAt
+            source = if (airQuality != null) DataSource.OPEN_METEO_AQ else DataSource.OPEN_METEO,
+            dataQuality = DataQuality.LOW,
+            fetchedAt = result.fetchTimestamp
         )
 
+        val hasAqi = sample.usAqi?.let { it in 0..500 } == true ||
+            sample.europeanAqi?.let { it in 0..500 } == true
+        val hasPollutant = sample.hasValidPollutantData()
+        val quality = when {
+            hasAqi && hasPollutant -> DataQuality.HIGH
+            sample.hasValidAirQualityData() -> DataQuality.MEDIUM
+            else -> DataQuality.LOW
+        }
+
         return validator.validate(
-            sample = sample,
-            requestLat = lat,
-            requestLon = lon,
-            requestTime = fetchedAt,
-            now = fetchedAt
+            sample = sample.copy(dataQuality = quality),
+            requestLat = latitude,
+            requestLon = longitude,
+            requestTime = requestedTime,
+            now = result.fetchTimestamp
         )?.let { validatedQuality ->
             sample.copy(dataQuality = validatedQuality)
         }
     }
 
-    fun computeExposureLevel(
-        europeanAqi: Int?,
-        usAqi: Int?,
-        pm2_5: Double?,
-        pm10: Double?
-    ): Double {
-        val aqi = europeanAqi ?: usAqi ?: return 0.0
-        val aqiLevel = (aqi.coerceIn(0, 500) / 500.0)
-        val pmAdjustment = when {
-            pm2_5 != null -> pm2_5.coerceIn(0.0, 100.0) / 100.0
-            else -> 0.0
-        }
-        return (aqiLevel * 0.7 + pmAdjustment * 0.3).coerceIn(0.0, 1.0)
+    private companion object {
+        const val MAX_WEATHER_TIME_OFFSET_MS = 15 * 60 * 1_000L
     }
 }

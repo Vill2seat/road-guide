@@ -4,18 +4,23 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.roadguide.app.core.common.ScreenState
 import com.roadguide.app.data.local.entity.DailyReport
+import com.roadguide.app.domain.usecase.AggregateDailyExposure
 import com.roadguide.app.domain.usecase.GetDailyReport
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.launch
 import javax.inject.Inject
+import java.time.LocalDate
 
 @HiltViewModel
 class DailyReportViewModel @Inject constructor(
-    private val getDailyReport: GetDailyReport
+    private val getDailyReport: GetDailyReport,
+    private val aggregateDailyExposure: AggregateDailyExposure
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow<ScreenState>(ScreenState.Loading)
@@ -27,21 +32,34 @@ class DailyReportViewModel @Inject constructor(
     private val _recentReports = MutableStateFlow<List<DailyReport>>(emptyList())
     val recentReports: StateFlow<List<DailyReport>> = _recentReports.asStateFlow()
 
-    private val _selectedDate = MutableStateFlow<String?>(null)
-    val selectedDate: StateFlow<String?> = _selectedDate.asStateFlow()
+    private val _selectedDate = MutableStateFlow(LocalDate.now().toString())
+    val selectedDate: StateFlow<String> = _selectedDate.asStateFlow()
+    private var reportJob: Job? = null
+    private var recentReportsJob: Job? = null
+    private var refreshJob: Job? = null
 
     init {
+        loadReportForDate(_selectedDate.value)
         loadRecentReports()
     }
 
     fun loadReportForDate(date: String) {
+        if (runCatching { LocalDate.parse(date) }.isFailure) {
+            _uiState.value = ScreenState.Error("Invalid report date")
+            return
+        }
+        refreshJob?.cancel()
         _selectedDate.value = date
-        viewModelScope.launch {
+        reportJob?.cancel()
+        reportJob = viewModelScope.launch {
             try {
                 _uiState.value = ScreenState.Loading
-                val report = getDailyReport.invoke(date)
-                _report.value = report
-                _uiState.value = if (report != null) ScreenState.Success else ScreenState.Empty
+                getDailyReport.observeByDate(date).collect { report ->
+                    _report.value = report
+                    _uiState.value = if (report != null) ScreenState.Success else ScreenState.Empty
+                }
+            } catch (e: CancellationException) {
+                throw e
             } catch (e: Exception) {
                 _uiState.value = ScreenState.Error(e.message ?: "Unknown error")
             }
@@ -49,16 +67,32 @@ class DailyReportViewModel @Inject constructor(
     }
 
     fun loadRecentReports(limit: Int = 7) {
-        viewModelScope.launch {
+        recentReportsJob?.cancel()
+        recentReportsJob = viewModelScope.launch {
             try {
-                val reports = getDailyReport.observeRecent(limit).first()
-                _recentReports.value = reports
+                getDailyReport.observeRecent(limit).collect { reports ->
+                    _recentReports.value = reports
+                }
+            } catch (e: CancellationException) {
+                throw e
             } catch (e: Exception) {
+                _uiState.value = ScreenState.Error(e.message ?: "Unable to load recent reports")
             }
         }
     }
 
     fun refresh() {
-        _selectedDate.value?.let { loadReportForDate(it) }
+        refreshJob?.cancel()
+        refreshJob = viewModelScope.launch {
+            try {
+                _uiState.value = ScreenState.Loading
+                aggregateDailyExposure.regenerate(_selectedDate.value)
+                loadRecentReports()
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                _uiState.value = ScreenState.Error(e.message ?: "Unable to refresh report")
+            }
+        }
     }
 }

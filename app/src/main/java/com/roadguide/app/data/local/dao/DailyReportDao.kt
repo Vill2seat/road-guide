@@ -19,6 +19,9 @@ interface DailyReportDao {
     @Query("SELECT * FROM daily_reports WHERE date = :date LIMIT 1")
     fun getByDate(date: String): Flow<DailyReport?>
 
+    @Query("DELETE FROM daily_reports WHERE date = :date")
+    suspend fun deleteByDate(date: String): Int
+
     @Query("SELECT * FROM daily_reports ORDER BY date DESC LIMIT :limit")
     fun getRecent(limit: Int): Flow<List<DailyReport>>
 

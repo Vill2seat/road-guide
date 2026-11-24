@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -19,6 +20,9 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import com.roadguide.app.core.ui.theme.RoadGuideTheme
 import com.roadguide.app.core.ui.theme.LoadingPlaceholder
 import com.roadguide.app.data.source.LocationSource
@@ -28,6 +32,7 @@ import com.roadguide.app.domain.usecase.impl.RouteComparisonEngine
 import com.roadguide.app.domain.usecase.impl.RouteEvaluationEngine
 import com.roadguide.app.feature.onboarding.OnboardingFlow
 import com.roadguide.app.feature.permissions.PermissionScreen
+import dagger.Lazy
 import dagger.hilt.android.AndroidEntryPoint
 import javax.inject.Inject
 
@@ -35,10 +40,10 @@ import javax.inject.Inject
 class MainActivity : ComponentActivity() {
 
     @Inject lateinit var permissionSource: PermissionSource
-    @Inject lateinit var locationSource: LocationSource
-    @Inject lateinit var osrmRoutingSource: OsrmRoutingSource
-    @Inject lateinit var routeEvaluationEngine: RouteEvaluationEngine
-    @Inject lateinit var routeComparisonEngine: RouteComparisonEngine
+    @Inject lateinit var locationSource: Lazy<LocationSource>
+    @Inject lateinit var osrmRoutingSource: Lazy<OsrmRoutingSource>
+    @Inject lateinit var routeEvaluationEngine: Lazy<RouteEvaluationEngine>
+    @Inject lateinit var routeComparisonEngine: Lazy<RouteComparisonEngine>
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -57,20 +62,21 @@ class MainActivity : ComponentActivity() {
     @Composable
     private fun PermissionGate() {
         var hasPermissions by rememberSaveable { mutableStateOf(permissionSource.hasAllPermissions()) }
+        val lifecycleOwner = LocalLifecycleOwner.current
         val permissionLauncher = rememberLauncherForActivityResult(
             ActivityResultContracts.RequestMultiplePermissions()
-        ) { granted ->
-            val allGranted = granted.values.all { it }
-            hasPermissions = allGranted
+        ) {
+            hasPermissions = permissionSource.hasAllPermissions()
         }
 
-        // Sync state from PermissionSource on resume
-        LaunchedEffect(Unit) {
-            val currentHasPermission = permissionSource.hasAllPermissions()
-            // Only update if state is different to avoid unnecessary recompositions
-            if (hasPermissions != currentHasPermission) {
-                hasPermissions = currentHasPermission
+        DisposableEffect(lifecycleOwner, permissionSource) {
+            val observer = LifecycleEventObserver { _, event ->
+                if (event == Lifecycle.Event.ON_RESUME) {
+                    hasPermissions = permissionSource.hasAllPermissions()
+                }
             }
+            lifecycleOwner.lifecycle.addObserver(observer)
+            onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
         }
 
         // Collect onboarding completion from DataStore

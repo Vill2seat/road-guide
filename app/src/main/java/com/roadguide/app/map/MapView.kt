@@ -1,18 +1,19 @@
 package com.roadguide.app.map
 
 import android.content.Context
+import android.content.ComponentCallbacks2
+import android.content.res.Configuration
 import android.os.Bundle
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.lifecycle.DefaultLifecycleObserver
+import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleOwner
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import org.maplibre.android.annotations.IconFactory
 import org.maplibre.android.annotations.MarkerOptions
 import org.maplibre.android.annotations.PolylineOptions
@@ -20,7 +21,7 @@ import org.maplibre.android.camera.CameraUpdateFactory
 import org.maplibre.android.geometry.LatLng
 import org.maplibre.android.geometry.LatLngBounds
 import org.maplibre.android.maps.MapLibreMap
-import org.maplibre.android.maps.MapView
+import org.maplibre.android.maps.MapView as MapLibreAndroidMapView
 import org.maplibre.android.maps.OnMapReadyCallback
 import com.roadguide.app.map.model.MapPoint
 
@@ -31,56 +32,120 @@ fun MapView(
     onMapUpdate: (MapLibreMap) -> Unit = {},
     onMapReady: (MapLibreMap) -> Unit = {}
 ) {
-    val context = LocalContext.current
-    val lifecycleOwner = context as? LifecycleOwner
-    val lifecycle = lifecycleOwner?.lifecycle
-
+    val lifecycleOwner = LocalLifecycleOwner.current
     val mapRef = remember { mutableStateOf<MapLibreMap?>(null) }
-    val mapViewState = remember { mutableStateOf<MapView?>(null) }
+    val lifecycleBinding = remember { mutableStateOf<MapViewLifecycleBinding?>(null) }
 
     AndroidView(
         modifier = modifier,
         factory = { ctx ->
-            val mv = MapView(ctx).apply {
+            val mv = MapLibreAndroidMapView(ctx).apply {
                 onCreate(Bundle())
             }
-            mapViewState.value = mv
+            lifecycleBinding.value = MapViewLifecycleBinding(
+                mapView = mv,
+                lifecycle = lifecycleOwner.lifecycle,
+                context = ctx
+            )
             mv.getMapAsync(object : OnMapReadyCallback {
                 override fun onMapReady(mapLibreMap: MapLibreMap) {
-                    try {
-                        mapLibreMap.setStyle("https://demotiles.maplibre.org/style.json")
-                    } catch (_: Exception) { }
-                    mapRef.value = mapLibreMap
-                    try { onMapReady(mapLibreMap) } catch (_: Exception) { }
+                    mapLibreMap.setStyle(STYLE_URL) {
+                        mapRef.value = mapLibreMap
+                        onMapReady(mapLibreMap)
+                    }
                 }
             })
             mv
+        },
+        onRelease = {
+            lifecycleBinding.value?.dispose()
+            lifecycleBinding.value = null
+            mapRef.value = null
         }
     )
 
-    DisposableEffect(lifecycle, mapViewState.value) {
-        val mv = mapViewState.value
-        val observer = object : DefaultLifecycleObserver {
-            override fun onStart(owner: LifecycleOwner) { mv?.onStart() }
-            override fun onResume(owner: LifecycleOwner) { mv?.onResume() }
-            override fun onPause(owner: LifecycleOwner) { mv?.onPause() }
-            override fun onStop(owner: LifecycleOwner) { mv?.onStop() }
-            override fun onDestroy(owner: LifecycleOwner) { mv?.onDestroy() }
-        }
-        lifecycle?.addObserver(observer)
-        mv?.onStart()
-        mv?.onResume()
-        onDispose {
-            mv?.onPause()
-            mv?.onStop()
-            mv?.onDestroy()
-            lifecycle?.removeObserver(observer)
+    LaunchedEffect(mapRef.value, mapContentKey) {
+        mapRef.value?.let(onMapUpdate)
+    }
+}
+
+private const val STYLE_URL = "https://demotiles.maplibre.org/style.json"
+
+private class MapViewLifecycleBinding(
+    private val mapView: MapLibreAndroidMapView,
+    private val lifecycle: Lifecycle,
+    private val context: Context
+) : DefaultLifecycleObserver, ComponentCallbacks2 {
+    private var isStarted = false
+    private var isResumed = false
+    private var isDisposed = false
+
+    init {
+        context.registerComponentCallbacks(this)
+        lifecycle.addObserver(this)
+    }
+
+    override fun onStart(owner: LifecycleOwner) {
+        if (isDisposed || isStarted) return
+        mapView.onStart()
+        isStarted = true
+    }
+
+    override fun onResume(owner: LifecycleOwner) {
+        if (isDisposed) return
+        if (!isStarted) onStart(owner)
+        if (!isResumed) {
+            mapView.onResume()
+            isResumed = true
         }
     }
 
-    LaunchedEffect(mapRef.value, mapContentKey) {
-        mapRef.value?.let { map ->
-            try { onMapUpdate(map) } catch (_: Exception) { }
+    override fun onPause(owner: LifecycleOwner) {
+        pauseIfNeeded()
+    }
+
+    override fun onStop(owner: LifecycleOwner) {
+        pauseIfNeeded()
+        stopIfNeeded()
+    }
+
+    override fun onDestroy(owner: LifecycleOwner) {
+        dispose()
+    }
+
+    override fun onConfigurationChanged(newConfig: Configuration) = Unit
+
+    override fun onLowMemory() {
+        if (!isDisposed) mapView.onLowMemory()
+    }
+
+    override fun onTrimMemory(level: Int) {
+        if (!isDisposed && level >= ComponentCallbacks2.TRIM_MEMORY_RUNNING_LOW) {
+            mapView.onLowMemory()
+        }
+    }
+
+    fun dispose() {
+        if (isDisposed) return
+        isDisposed = true
+        lifecycle.removeObserver(this)
+        context.unregisterComponentCallbacks(this)
+        pauseIfNeeded()
+        stopIfNeeded()
+        mapView.onDestroy()
+    }
+
+    private fun pauseIfNeeded() {
+        if (isResumed) {
+            mapView.onPause()
+            isResumed = false
+        }
+    }
+
+    private fun stopIfNeeded() {
+        if (isStarted) {
+            mapView.onStop()
+            isStarted = false
         }
     }
 }

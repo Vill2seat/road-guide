@@ -25,6 +25,7 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -52,6 +53,7 @@ import com.roadguide.app.feature.profile.ProfileScreen
 import com.roadguide.app.feature.settings.SettingsScreen
 import com.roadguide.app.feature.timeline.TimelineScreen
 import com.roadguide.app.feature.tracker.TrackerScreen
+import dagger.Lazy
 
 private data class BottomNavItem(
     val route: String,
@@ -64,10 +66,10 @@ private data class BottomNavItem(
 fun AppNavHost(
     permissionSource: PermissionSource,
     permissionLauncher: ActivityResultLauncher<Array<String>>,
-    locationSource: LocationSource? = null,
-    osrmRoutingSource: OsrmRoutingSource? = null,
-    routeEvaluationEngine: RouteEvaluationEngine? = null,
-    routeComparisonEngine: RouteComparisonEngine? = null
+    locationSource: Lazy<LocationSource>? = null,
+    osrmRoutingSource: Lazy<OsrmRoutingSource>? = null,
+    routeEvaluationEngine: Lazy<RouteEvaluationEngine>? = null,
+    routeComparisonEngine: Lazy<RouteComparisonEngine>? = null
 ) {
     val navController = rememberNavController()
     val items = listOf(
@@ -129,11 +131,17 @@ fun AppNavHost(
                 )
             }
             composable(ScreenRoutes.Planner) {
+                val plannerLocationSource = remember(locationSource) { locationSource?.get() }
+                val plannerRoutingSource = remember(osrmRoutingSource) { osrmRoutingSource?.get() }
+                val plannerEvaluationEngine =
+                    remember(routeEvaluationEngine) { routeEvaluationEngine?.get() }
+                val plannerComparisonEngine =
+                    remember(routeComparisonEngine) { routeComparisonEngine?.get() }
                 PlannerScreen(
-                    locationSource = locationSource,
-                    osrmRoutingSource = osrmRoutingSource,
-                    routeEvaluationEngine = routeEvaluationEngine,
-                    routeComparisonEngine = routeComparisonEngine
+                    locationSource = plannerLocationSource,
+                    osrmRoutingSource = plannerRoutingSource,
+                    routeEvaluationEngine = plannerEvaluationEngine,
+                    routeComparisonEngine = plannerComparisonEngine
                 )
             }
             composable(ScreenRoutes.History) {

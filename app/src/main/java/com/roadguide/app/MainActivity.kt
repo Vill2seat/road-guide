@@ -11,23 +11,17 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
-import androidx.lifecycle.compose.LocalLifecycleOwner
+import androidx.compose.compose.LocalLifecycleOwner
 import com.roadguide.app.core.ui.theme.RoadGuideTheme
 import com.roadguide.app.core.ui.theme.LoadingPlaceholder
 import com.roadguide.app.data.source.PermissionSource
-import com.roadguide.app.data.source.LocationSource
-import com.roadguide.app.data.source.OsrmRoutingSource
-import com.roadguide.app.domain.usecase.impl.RouteComparisonEngine
-import com.roadguide.app.domain.usecase.impl.RouteEvaluationEngine
 import com.roadguide.app.feature.onboarding.OnboardingFlow
 import com.roadguide.app.feature.permissions.PermissionScreen
 import dagger.hilt.android.AndroidEntryPoint
@@ -38,10 +32,6 @@ import javax.inject.Inject
 class MainActivity : ComponentActivity() {
 
     @Inject lateinit var permissionSource: PermissionSource
-    @Inject lateinit var locationSource: LocationSource
-    @Inject lateinit var osrmRoutingSource: OsrmRoutingSource
-    @Inject lateinit var routeEvaluationEngine: RouteEvaluationEngine
-    @Inject lateinit var routeComparisonEngine: RouteComparisonEngine
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -59,47 +49,33 @@ class MainActivity : ComponentActivity() {
 
     @Composable
     private fun PermissionGate() {
-        var hasPermissions by remember { mutableStateOf(permissionSource.hasAllPermissions()) }
-        var pendingPermissionRequest by remember { mutableStateOf<Array<String>?>(null) }
-        val lifecycleOwner = LocalLifecycleOwner.current
-
+        // Use rememberSaveable to persist state across configuration changes
+        var hasPermissions by rememberSaveable { mutableStateOf(permissionSource.hasAllPermissions()) }
+        var hasBeenAsked by rememberSaveable { mutableStateOf(false) }
         val permissionLauncher = rememberLauncherForActivityResult(
             ActivityResultContracts.RequestMultiplePermissions()
         ) { granted ->
-            hasPermissions = permissionSource.hasAllPermissions()
-            if (!hasPermissions) {
-                val missing = permissionSource.getMissingPermissions()
-                if (missing.isNotEmpty() && missing.none(granted::containsKey)) {
-                    pendingPermissionRequest = missing.toTypedArray()
-                }
+            val allGranted = granted.values.all { it }
+            hasPermissions = allGranted
+            hasBeenAsked.value = true
+        }
+
+        // Sync state from PermissionSource on resume
+        LaunchedEffect(Unit) {
+            val currentHasPermission = permissionSource.hasAllPermissions()
+            // Only update if state is different to avoid unnecessary recompositions
+            if (hasPermissions != currentHasPermission) {
+                hasPermissions = currentHasPermission
             }
         }
 
-        var onboardingDone by remember { mutableStateOf<Boolean?>(null) }
-        LaunchedEffect(permissionSource) {
-            permissionSource.hasCompletedOnboarding().collect { onboardingDone = it }
-        }
+        // Collect onboarding completion from DataStore
+        val onboardingDone by permissionSource.hasCompletedOnboarding().collectAsState(initial = false)
 
-        DisposableEffect(lifecycleOwner) {
-            val observer = LifecycleEventObserver { _, event ->
-                if (event == Lifecycle.Event.ON_RESUME) {
-                    hasPermissions = permissionSource.hasAllPermissions()
-                }
-            }
-            lifecycleOwner.lifecycle.addObserver(observer)
-            onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
-        }
-
-        LaunchedEffect(pendingPermissionRequest) {
-            pendingPermissionRequest?.let { permissions ->
-                pendingPermissionRequest = null
-                permissionLauncher.launch(permissions)
-            }
-        }
-
-        LaunchedEffect(hasPermissions) {
-            if (!hasPermissions && permissionSource.hasAllPermissions()) {
-                hasPermissions = true
+        // Sync hasPermissions from PermissionSource when onboarding completes
+        LaunchedEffect(onboardingDone) {
+            if (onboardingDone == true && !hasPermissions) {
+                hasPermissions = permissionSource.hasAllPermissions()
             }
         }
 
@@ -108,9 +84,8 @@ class MainActivity : ComponentActivity() {
         } else if (onboardingDone == false) {
             OnboardingFlow(
                 onFinished = {
-                    hasPermissions = permissionSource.hasAllPermissions()
-                },
-                modifier = Modifier.fillMaxSize()
+                    // State will be synced by the LaunchedEffect above
+                }
             )
         } else if (!hasPermissions) {
             PermissionScreen(
@@ -121,8 +96,7 @@ class MainActivity : ComponentActivity() {
                     } else {
                         hasPermissions = true
                     }
-                },
-                modifier = Modifier.fillMaxSize()
+                }
             )
         } else {
             AppNavHost(

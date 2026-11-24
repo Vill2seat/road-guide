@@ -42,8 +42,12 @@ import com.roadguide.app.feature.onboarding.viewmodel.OnboardingViewModel
 import com.roadguide.app.feature.permissions.PermissionScreen
 import com.roadguide.app.data.local.settings.TrackingPreferences
 import com.roadguide.app.domain.model.TrackingSettingsState
+import com.roadguide.app.domain.model.RouteEvaluation
 import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.launch
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.async
+import com.roadguide.app.R
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -90,9 +94,9 @@ fun OnboardingFlow(
         PermissionDeniedDialog(
             onRetry = {
                 showPermissionDeniedDialog = false
-                val missing = permissionSource.getMissingPermissions()
-                if (missing.isNotEmpty()) {
-                    permissionLauncher.launch(missing.toTypedArray())
+                pendingPermissionRequest = permissionSource.getMissingPermissions()
+                if (pendingPermissionRequest.isNotEmpty()) {
+                    permissionLauncher.launch(pendingPermissionRequest.toTypedArray())
                 } else {
                     finishOnboarding()
                 }
@@ -142,7 +146,6 @@ fun OnboardingFlow(
                 else -> LoadingPlaceholder(modifier = Modifier.fillMaxSize())
             }
         }
-    }
 }
 
 @Composable

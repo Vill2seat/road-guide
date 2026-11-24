@@ -10,29 +10,39 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
-import androidx.compose.runtime.rememberCoroutineScope
-import com.roadguide.app.data.local.settings.TrackingPrefs
-import com.roadguide.app.data.repository.TrackingSettingsRepositoryImpl
+import kotlinx.coroutines.flow.collectAsState
+import kotlinx.coroutines.flow.flow
 import com.roadguide.app.data.local.settings.TrackingPreferences
+import com.roadguide.app.data.repository.TrackingSettingsRepositoryImpl
+import com.roadguide.app.feature.onboarding.viewmodel.OnboardingViewModel
+import androidx.lifecycle.viewmodel.compose.viewModel
+import com.roadguide.app.R
 import com.roadguide.app.data.source.PermissionSource
-import com.roadguide.app.service.TrackingServiceController
-import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SettingsScreen() {
     val context = LocalContext.current.applicationContext
-    val trackingPrefs = remember(context) { TrackingPrefs(context) }
+    var trackingPrefs by rememberSaveable { TrackingPrefs(context) }
     val trackingSettingsRepository = remember(trackingPrefs) {
         TrackingSettingsRepositoryImpl(trackingPrefs)
     }
-    val trackingServiceController = remember(context, trackingPrefs) {
-        TrackingServiceController(context, trackingPrefs, PermissionSource(context))
+    val trackingServiceController = remember(trackingPrefs) {
+        try {
+            TrackingServiceController(context, trackingPrefs, PermissionSource(context))
+        } catch (e: Exception) {
+            null
+        }
     }
     val scope = rememberCoroutineScope()
     val snackbarHostState = remember { SnackbarHostState() }
 
-    val prefsState by trackingSettingsRepository.preferencesFlow.collectAsState(initial = TrackingPreferences())
+    // Collect preferences flow with proper error handling
+    val prefsState = try {
+        trackingSettingsRepository.preferencesFlow.collectAsState(initial = TrackingPreferences())
+    } catch (e: Exception) {
+        TrackingPreferences()
+    }
 
     Scaffold(
         modifier = Modifier.fillMaxSize(),
@@ -66,18 +76,14 @@ fun SettingsScreen() {
                             Text("Автоматическое отслеживание", style = MaterialTheme.typography.bodyMedium)
                             Switch(
                                 checked = prefsState.trackingEnabled,
-                                onCheckedChange = { enabled ->
-                                    scope.launch {
-                                        try {
-                                            trackingServiceController.setTrackingEnabled(enabled)
-                                        } catch (e: Exception) {
-                                            snackbarHostState.showSnackbar(
-                                                e.message ?: "Не удалось изменить состояние трекинга"
-                                            )
-                                        }
+                                onCheckedChange = { enabled -> scope.launch {
+                                    try {
+                                        trackingServiceController?.setTrackingEnabled(enabled) ?: Unit
+                                    } catch (e: Exception) {
+                                        snackbarHostState.showSnackbar("Не удалось изменить состояние трекинга")
                                     }
                                 }
-                            )
+                            }
                         }
                         Spacer(modifier = Modifier.height(8.dp))
                         var expandedInterval by remember { mutableStateOf(false) }

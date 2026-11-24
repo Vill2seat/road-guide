@@ -21,16 +21,15 @@ these cases are logged.
 
 ---
 
-## Foreground Service: LocationForegroundService
+## Foreground Service: TrackingRecordingService
 
 ### Manifest Declaration
 
 ```xml
 <service
-    android:name=".service.LocationForegroundService"
+    android:name=".service.TrackingRecordingService"
     android:foregroundServiceType="location"
-    android:exported="false"
-    android:stopWithTask="false" />
+    android:exported="false" />
 
 <!-- Permissions -->
 <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
@@ -41,14 +40,12 @@ these cases are logged.
 <uses-permission android:name="android.permission.ACTIVITY_RECOGNITION" />
 <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
 <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
-<uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />  <!-- Android 14+ for restart -->
-<uses-permission android:name="android.permission.USE_EXACT_ALARM" />
 ```
 
 ### Service Implementation
 
 ```kotlin
-class LocationForegroundService : Service(), LifecycleOwner {
+class TrackingRecordingService : Service() {
     private val fusedLocationClient by lazy { LocationServices.getFusedLocationProviderClient(this) }
     private val locationRequest by lazy { createLocationRequest() }
     private val locationCallback = object : LocationCallback() {
@@ -162,7 +159,7 @@ private fun updateInterval(intervalMs: Long) {
 ```
 
 **Actions** (PendingIntents):
-- `PAUSE_TRACKING` → `LocationForegroundService#pauseTracking()`
+- `ACTION_PAUSE_RECORDING` → `TrackingRecordingService#pauseTracking()`
 - `OPEN_DAILY_REPORT` → `MainActivity` deep link `roadguide://report?date=today`
 - `OPEN_APP` → `MainActivity` (tap notification body)
 
@@ -187,7 +184,7 @@ sequenceDiagram
     participant User
     participant Onboarding
     participant System as Android System
-    participant Service as LocationForegroundService
+    participant Service as TrackingRecordingService
     
     Onboarding->>User: "Track your day" (Onboarding p1)
     Onboarding->>User: "Understand exposure" (Onboarding p2)
@@ -268,7 +265,7 @@ data class BatteryDiagnostics(
 | Scenario | Recovery Mechanism |
 |----------|-------------------|
 | **User swipes app from recents** | `START_STICKY` → service recreated → `onStartCommand(null, 0, 0)` → resume tracking |
-| **OS kills for memory** | Same as above; `LocationForegroundService` restarts |
+| **OS kills for memory** | `START_STICKY` requests restart, subject to Android/OEM restrictions |
 | **Phone reboot** | `BootReceiver` → check `Settings.trackingEnabled` → start service |
 | **Permission revoked** | `PermissionChangeReceiver` → stop service, show warning |
 | **GPS disabled** | `LocationProviderChangeReceiver` → pause updates, show banner |
@@ -283,8 +280,8 @@ class BootReceiver : BroadcastReceiver() {
             
             val prefs = DataStorePrefs(context)
             if (prefs.getBoolean(TRACKING_ENABLED_KEY, false)) {
-                val startIntent = Intent(context, LocationForegroundService::class.java)
-                    .setAction(LocationForegroundService.ACTION_START_TRACKING)
+                val startIntent = Intent(context, TrackingRecordingService::class.java)
+                    .setAction(TrackingRecordingService.ACTION_START_RECORDING)
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
                     context.startForegroundService(startIntent)
                 } else {
@@ -336,7 +333,7 @@ The current app evaluates circular `PrivacyZone` records in the tracking and rea
 |---------|----------------|
 | **Local Storage Default** | Room DB only; no network sync unless user enables |
 | **No Third-Party Tracking** | No analytics SDK; no crash reporting to external services (v1) |
-| **Pause Monitoring** | `LocationForegroundService#pauseTracking()` → `removeLocationUpdates()` |
+| **Pause Monitoring** | `TrackingRecordingService#pauseTracking()` |
 | **Private Zones** | Local circular checks + data filtering; no Android geofence registration |
 | **Delete Daily History** | `RouteRepository.deleteByDate(date)` + cascades |
 | **Delete All Data** | `RoomDatabase.clearAllTables()` + DataStore clear |

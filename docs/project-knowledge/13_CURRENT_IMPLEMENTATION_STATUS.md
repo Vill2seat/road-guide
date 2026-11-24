@@ -4,7 +4,7 @@
 Fact-based status of major components.
 
 **Last Updated**: 2026-11-24
-**Based On**: `ROAD GUIDE.txt`, `docs/project-knowledge/*`, repository inspection, and the prior local build verification. Environmental AQ changes are not build-verified.
+**Based On**: `ROAD GUIDE.txt`, `docs/project-knowledge/*`, repository inspection, build/test configuration, and the prior local build verification.
 
 ## Status Legend
 | Status | Meaning |
@@ -17,12 +17,15 @@ Fact-based status of major components.
 
 ## Build / Verification (verified)
 - **Toolchain:** Gradle wrapper 8.10.2, AGP 8.7.3, Kotlin 2.0.21 (+ compose plugin), KSP 2.0.21-1.0.28, Compose BOM 2024.10.01, compileSdk/targetSdk 35, minSdk 26, Java 17.
-- **JDK:** build verified with `JAVA_HOME=/usr/local/sdkman/candidates/java/17.0.21.0+2-ms` (JDK 17 installed in env). Default system JDK is 25 and **not compatible** with this toolchain.
+- **JDK:** verification re-run on 2026-11-24 with `JAVA_HOME=/usr/local/sdkman/candidates/java/17.0.21.1-ms`. Default system JDK is 25 and **not compatible** with this toolchain.
 - **Constrained flags:** `-Dorg.gradle.jvmargs="-Xmx1536m -XX:MaxMetaspaceSize=512m" -Dorg.gradle.daemon=false --no-build-cache` (persisted in `gradle.properties` for daemon/jvmargs).
-- **Results (2026-11-13):**
+- **Prior build results (2026-11-13):**
   - `:app:assembleDebug` → **BUILD SUCCESSFUL** (APK: `app/build/outputs/apk/debug/app-debug.apk`)
   - `:app:lint` → **BUILD SUCCESSFUL** (report: `app/build/reports/lint-results-debug.html`)
-- The current Places/privacy changes have **not** been built or tested, as requested.
+- **Documentation verification (2026-11-24):**
+  - `:app:testDebugUnitTest` → **BUILD SUCCESSFUL**
+  - `:app:lint` → **BUILD SUCCESSFUL**
+- This documentation update does not replace the need to rerun verification after subsequent code changes.
 
 ## Component Status Matrix
 
@@ -30,9 +33,9 @@ Fact-based status of major components.
 | Component | Status | Notes |
 |-----------|--------|-------|
 | Gradle / Build Config | ✅ Implemented | Wrapper 8.10.2, root/app scripts + `libs.versions.toml` aligned (Room/KSP/DataStore, Compose BOM). |
-| Room Database (v1 skeleton) | 🟡 Partially Implemented | `RoadGuideDatabase` (v1, `exportSchema=true`, `Converters`), entities and DAOs present/compiling; schema aligned to spec baseline, needs migration strategy hardening and integration/use. |
+| Room Database | 🟡 Partially Implemented | `RoadGuideDatabase` is version 4 with exported schemas, entities/DAOs, and migrations 1→2, 2→3, and 3→4. Migration coverage and production strategy should continue to be verified. |
 | DataStore (tracking prefs) | 🟡 Implemented | Persists enabled/paused state, interval, units, and AQI threshold; tracking defaults off. |
-| DI (Hilt/Koin) | 📋 Planned | Not set up. |
+| DI (Hilt) | ✅ Implemented | `RoadGuideApplication` enables Hilt; `AppModule` provides database, DAOs, repositories, sources, and use cases. |
 | Navigation (Compose) | 🟡 Partially Implemented | M3 `AppNavHost`/bottom nav + routes/screens scaffolded. |
 | Theme / Design System | 🟡 Partially Implemented | Tokens/theme/placeholders from Figma export; components incomplete. |
 
@@ -61,7 +64,7 @@ Fact-based status of major components.
 
 ## Notes / Known Gaps
 - Room schema is an initial compiling baseline; verify field-level parity with `03_DATA_MODEL_AND_DATABASE.md` as features integrate and add migrations before production.
-- `fallbackToDestructiveMigration()` is enabled in DB builder for dev; replace with proper migrations for persisted data.
+- Database builders use the explicit 1→2, 2→3, and 3→4 migrations; do not remove or weaken migration coverage.
 - Lint/build may emit deprecation warnings; no blocking errors observed in verified run.
 - Focused unit and instrumentation tests now cover database migrations, privacy-zone decisions, exposure aggregation/calculation, and movement segmentation; the latest interface changes have not been built or run through tests.
 - Privacy zones are evaluated locally from stored circles; there is no Android geofence registration. Adding a zone does not scrub pre-existing raw coordinates from Room. The export policy is not yet connected to a JSON/file exporter.

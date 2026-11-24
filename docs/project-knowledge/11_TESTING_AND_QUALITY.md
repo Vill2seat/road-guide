@@ -4,7 +4,7 @@
 
 Test strategy, quality criteria, and validation procedures for Road Guide.
 
-**Status**: 📋 Planned — No tests exist.
+**Status**: 🟡 Partially implemented — Unit and instrumentation suites exist; CI and some end-to-end/device coverage remain incomplete.
 
 ---
 
@@ -400,5 +400,5 @@ fun `constants match spec exactly`() {
 
 ## Planned vs Implemented
 
-> **All tests are 📋 Planned** — no test files, no CI, no test infrastructure exists.
+> Unit and instrumentation test infrastructure exists under `app/src/test` and `app/src/androidTest`. Coverage is strongest around data/DAO behavior, exposure, privacy, movement, and tracking pipeline logic. CI, complete Compose UI journeys, live API validation, and production device/OEM recovery testing remain incomplete.
 > This document defines target test strategy per `ROAD GUIDE.txt` (Parts 31, 32, 33).

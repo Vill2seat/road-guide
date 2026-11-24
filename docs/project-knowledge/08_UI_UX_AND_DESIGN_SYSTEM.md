@@ -455,5 +455,5 @@ roadguide://settings?section=tracking
 
 ## Planned vs Implemented
 
-> **All UI components and screens are 📋 Planned** — no Jetpack Compose code exists.
+> The app contains Jetpack Compose navigation, theme foundations, reusable components, and the Tracker, Timeline, Planner, History, Places, Profile, Settings, Permission, Weather, Daily Report, and Onboarding routes. Several screens and flows are partial and must be checked against the implementation matrix before further UI work.
 > This document defines target design per `ROAD GUIDE.txt` (Parts 15, 16, 17, 21, 22, 27).

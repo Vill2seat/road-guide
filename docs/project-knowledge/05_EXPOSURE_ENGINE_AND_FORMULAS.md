@@ -6,7 +6,7 @@ The Exposure Engine calculates a **relative Environmental Exposure Score (0–10
 
 **Critical**: This is an **estimation model**, not a measured dose. No medical claims. Units are dimensionless (0–100 scale).
 
-**Status**: 📋 Planned — Formulas defined in spec, no implementation exists.
+**Status**: 🟡 Partially implemented — segment factors, normalization, aggregation, confidence, and coverage are coded and tested; configurable user preferences and parts of the original target model remain incomplete.
 
 ---
 
@@ -364,18 +364,19 @@ Confidence = (Σ duration_i × segmentConfidence_i) / totalTrackedDuration × Co
 
 | Component | Status | File |
 |-----------|--------|------|
-| `calculateTimeFactor(duration)` | 📋 Planned | `ExposureCalculationEngine.kt` |
-| `getActivityFactor(activityType)` | 📋 Planned | `ExposureCalculationEngine.kt` |
-| `calculateRoadFactor(context)` | 📋 Planned | `ExposureCalculationEngine.kt` |
-| `calculateWeatherFactor(weather)` | 📋 Planned | `ExposureCalculationEngine.kt` |
-| `calculatePollutionFactor(envSample)` | 📋 Planned | `ExposureCalculationEngine.kt` |
-| `calculateSegmentExposure(...)` | 📋 Planned | `ExposureCalculationEngine.kt` |
-| `DailyExposureAggregator.aggregate()` | 📋 Planned | `DailyExposureAggregator.kt` |
-| `normalize(rawScore)` | 📋 Planned | `DailyExposureAggregator.kt` |
-| `calculateConfidence()` | 📋 Planned | `DailyExposureAggregator.kt` |
-| `calculateCoverage()` | 📋 Planned | `DailyExposureAggregator.kt` |
-| Unit tests for each factor | 📋 Planned | `ExposureEngineTest.kt` |
-| Integration test: known day → expected score | 📋 Planned | `ExposureIntegrationTest.kt` |
+| `calculateTimeFactor(duration)` | ✅ Implemented | `ExposureCalculationEngine.kt` |
+| `getActivityFactor(activityType)` | ✅ Implemented | `ExposureCalculationEngine.kt` |
+| `calculateRoadFactor(context)` | ✅ Implemented | `ExposureCalculationEngine.kt` |
+| `calculateWeatherFactor(weather)` | ✅ Implemented | `ExposureCalculationEngine.kt` |
+| `calculatePollutionFactor(envSample)` | ✅ Implemented | `ExposureCalculationEngine.kt` |
+| `calculateSegmentExposure(...)` | ✅ Implemented | `ExposureCalculationEngine.kt` |
+| `DailyExposureAggregator.aggregate()` | ✅ Implemented | `DailyExposureAggregator.kt` |
+| `normalizeExposure(rawScore)` | ✅ Implemented | `ExposureCalculationEngine.kt` |
+| `calculateDailyExposureMetrics()` | ✅ Implemented | `DailyExposureAggregator.kt` |
+| Confidence and coverage | 🟡 Partial | Daily aggregation and segment result fields |
+| Unit tests for factors | ✅ Implemented | `ExposureCalculationEngineTest.kt` |
+| Daily aggregation tests | ✅ Implemented | `DailyExposureAggregatorTest.kt` |
+| Instrumentation exposure test | ✅ Implemented | `ExposureCalculationIntegrationTest.kt` |
 
 ---
 

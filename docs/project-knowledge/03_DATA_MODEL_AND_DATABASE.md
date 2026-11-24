@@ -40,7 +40,8 @@ data class LocationPoint(
     val isMock: Boolean = false,
     val qualityFlags: Int = 0,              // Bitmask: 1=low_accuracy, 2=mock, 4=jump_detected, 8=stale
     val routeId: Long? = null,              // FK to Route (nullable until segmented)
-    val collectionDiagnostics: String? = null // JSON: battery, interval, source
+    val collectionDiagnostics: String? = null, // JSON: battery, interval, source
+    val excludeFromExposure: Boolean = false // Privacy-zone exposure exclusion marker
 )
 ```
 

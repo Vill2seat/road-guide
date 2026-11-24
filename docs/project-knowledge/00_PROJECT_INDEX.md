@@ -65,7 +65,7 @@ Every document **must** distinguish:
 - 🟡 **Partially Implemented** — Some parts exist, gaps documented
 - 📋 **Planned** — Specified in spec, not yet coded
 
-> **Current State**: This is a greenfield project. **Everything is Planned**. No source code exists yet.
+> **Current State**: The application has substantial implemented code across build, Hilt DI, Room, Compose, domain engines, tracking, integrations, and tests. Several features remain partial or planned; use `13_CURRENT_IMPLEMENTATION_STATUS.md` as the component-level reality check.
 
 ---
 

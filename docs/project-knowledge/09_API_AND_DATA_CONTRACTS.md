@@ -4,7 +4,7 @@
 
 Data Transfer Objects (DTOs), API request/response contracts, and data transformation rules between layers.
 
-**Status**: 📋 Planned — Contracts defined per spec, no implementation exists.
+**Status**: 🟡 Partially implemented — API clients and Room contracts exist; JSON/file export and some data contracts remain incomplete.
 
 ---
 

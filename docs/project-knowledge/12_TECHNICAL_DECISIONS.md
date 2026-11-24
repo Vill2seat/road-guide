@@ -4,7 +4,7 @@
 
 Architecture Decision Records documenting significant technical choices, trade-offs, and rationale.
 
-**Status**: 📋 Planned — Decisions recorded from specification analysis.
+**Status**: 🟡 Active decision log — implemented and proposed decisions are distinguished below.
 
 ---
 

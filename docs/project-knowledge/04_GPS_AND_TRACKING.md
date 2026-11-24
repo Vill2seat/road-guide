@@ -29,7 +29,7 @@ within 50 m, matching the service's stationary sampling interval.
 
 ```xml
 <service
-    android:name=".service.LocationForegroundService"
+    android:name=".service.TrackingRecordingService"
     android:foregroundServiceType="location"
     android:exported="false" />
 
@@ -313,7 +313,7 @@ flowchart TD
 FusedLocationProvider
         │
         ▼
-LocationForegroundService (adaptive intervals)
+TrackingRecordingService (fixed source-based location updates)
         │
         ├──▶ LocationRepository.save() ──▶ Room (LocationPoint)
         │

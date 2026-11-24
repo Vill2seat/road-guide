@@ -1,24 +1,13 @@
 package com.roadguide.app.map
 
 import android.content.Context
-import android.content.ComponentCallbacks2
-import android.content.res.Configuration
-import android.graphics.Color
-import android.view.Gravity
-import android.os.Bundle
-import android.util.Log
-import android.widget.FrameLayout
-import android.widget.TextView
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.viewinterop.AndroidView
-import androidx.lifecycle.DefaultLifecycleObserver
-import androidx.lifecycle.Lifecycle
-import androidx.lifecycle.LifecycleOwner
-import androidx.lifecycle.compose.LocalLifecycleOwner
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
+import androidx.compose.ui.Alignment
 import org.maplibre.android.annotations.IconFactory
 import org.maplibre.android.annotations.MarkerOptions
 import org.maplibre.android.annotations.PolylineOptions
@@ -26,13 +15,7 @@ import org.maplibre.android.camera.CameraUpdateFactory
 import org.maplibre.android.geometry.LatLng
 import org.maplibre.android.geometry.LatLngBounds
 import org.maplibre.android.maps.MapLibreMap
-import org.maplibre.android.maps.MapView as MapLibreAndroidMapView
-import org.maplibre.android.maps.OnMapReadyCallback
-import org.maplibre.android.MapLibre
-import org.maplibre.android.RenderingEngine
-import org.maplibre.android.WellKnownTileServer
 import com.roadguide.app.map.model.MapPoint
-import com.roadguide.app.R
 
 @Composable
 fun MapView(
@@ -41,175 +24,15 @@ fun MapView(
     onMapUpdate: (MapLibreMap) -> Unit = {},
     onMapReady: (MapLibreMap) -> Unit = {}
 ) {
-    val lifecycleOwner = LocalLifecycleOwner.current
-    val onMapReadyCallback = onMapReady
-    val mapRef = remember { mutableStateOf<MapLibreMap?>(null) }
-    val lifecycleBinding = remember { mutableStateOf<MapViewLifecycleBinding?>(null) }
-
-    AndroidView(
-        modifier = modifier,
-        factory = { ctx ->
-            try {
-                if (!MapLibre.hasInstance()) {
-                    MapLibre.getInstance(
-                        ctx.applicationContext,
-                        null,
-                        WellKnownTileServer.MapLibre,
-                        RenderingEngine.Type.OPENGL
-                    )
-                }
-                val mv = MapLibreAndroidMapView(ctx).apply {
-                    onCreate(Bundle())
-                }
-                lifecycleBinding.value = MapViewLifecycleBinding(
-                    mapView = mv,
-                    lifecycle = lifecycleOwner.lifecycle,
-                    context = ctx
-                )
-                mv.getMapAsync(object : OnMapReadyCallback {
-                    override fun onMapReady(mapLibreMap: MapLibreMap) {
-                        try {
-                            mapLibreMap.setStyle(STYLE_URL) {
-                                try {
-                                    mapRef.value = mapLibreMap
-                                    onMapReadyCallback(mapLibreMap)
-                                } catch (exception: Exception) {
-                                    Log.e(TAG, "Map-ready callback failed", exception)
-                                }
-                            }
-                        } catch (exception: Exception) {
-                            Log.e(TAG, "Map style initialization failed", exception)
-                        }
-                    }
-                })
-                mv
-            } catch (exception: Exception) {
-                Log.e(TAG, "Map initialization failed", exception)
-                mapInitializationErrorView(ctx, exception)
-            } catch (error: LinkageError) {
-                Log.e(TAG, "Map native library initialization failed", error)
-                mapInitializationErrorView(ctx, error)
-            }
-        },
-        onRelease = {
-            lifecycleBinding.value?.dispose()
-            lifecycleBinding.value = null
-            mapRef.value = null
-        }
-    )
-
-    LaunchedEffect(mapRef.value, mapContentKey) {
-        mapRef.value?.let { map ->
-            try {
-                onMapUpdate(map)
-            } catch (exception: Exception) {
-                Log.e(TAG, "Map update callback failed", exception)
-            } catch (error: LinkageError) {
-                Log.e(TAG, "Map update failed because a native library is unavailable", error)
-            }
-        }
-    }
-}
-
-private const val TAG = "RoadGuideMap"
-private const val STYLE_URL = "https://demotiles.maplibre.org/style.json"
-
-private fun mapInitializationErrorView(context: Context, error: Throwable): FrameLayout =
-    FrameLayout(context).apply {
-        setBackgroundColor(Color.BLACK)
-        addView(
-            TextView(context).apply {
-                text = context.getString(
-                    R.string.map_initialization_failed,
-                    error.javaClass.simpleName
-                )
-                gravity = Gravity.CENTER
-                setTextColor(Color.WHITE)
-                setPadding(32, 32, 32, 32)
-            },
-            FrameLayout.LayoutParams(
-                FrameLayout.LayoutParams.MATCH_PARENT,
-                FrameLayout.LayoutParams.MATCH_PARENT
-            )
+    Box(
+        modifier = modifier.fillMaxSize(),
+        contentAlignment = Alignment.Center
+    ) {
+        Text(
+            text = "Карта временно недоступна",
+            style = MaterialTheme.typography.bodyLarge,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
         )
-    }
-
-private class MapViewLifecycleBinding(
-    private val mapView: MapLibreAndroidMapView,
-    private val lifecycle: Lifecycle,
-    private val context: Context
-) : DefaultLifecycleObserver, ComponentCallbacks2 {
-    private var isStarted = false
-    private var isResumed = false
-    private var isDisposed = false
-
-    init {
-        context.registerComponentCallbacks(this)
-        lifecycle.addObserver(this)
-    }
-
-    override fun onStart(owner: LifecycleOwner) {
-        if (isDisposed || isStarted) return
-        mapView.onStart()
-        isStarted = true
-    }
-
-    override fun onResume(owner: LifecycleOwner) {
-        if (isDisposed) return
-        if (!isStarted) onStart(owner)
-        if (!isResumed) {
-            mapView.onResume()
-            isResumed = true
-        }
-    }
-
-    override fun onPause(owner: LifecycleOwner) {
-        pauseIfNeeded()
-    }
-
-    override fun onStop(owner: LifecycleOwner) {
-        pauseIfNeeded()
-        stopIfNeeded()
-    }
-
-    override fun onDestroy(owner: LifecycleOwner) {
-        dispose()
-    }
-
-    override fun onConfigurationChanged(newConfig: Configuration) = Unit
-
-    override fun onLowMemory() {
-        if (!isDisposed) mapView.onLowMemory()
-    }
-
-    override fun onTrimMemory(level: Int) {
-        if (!isDisposed && level >= ComponentCallbacks2.TRIM_MEMORY_RUNNING_LOW) {
-            mapView.onLowMemory()
-        }
-    }
-
-    fun dispose() {
-        if (isDisposed) return
-        isDisposed = true
-        lifecycle.removeObserver(this)
-        context.unregisterComponentCallbacks(this)
-        pauseIfNeeded()
-        stopIfNeeded()
-        mapView.onDestroy()
-    }
-
-    private fun pauseIfNeeded() {
-        if (isResumed) {
-            mapView.onPause()
-            isResumed = false
-        }
-    }
-
-    private fun stopIfNeeded() {
-        if (isStarted) {
-            mapView.onStop()
-            isStarted = false
-        }
     }
 }
 

@@ -65,8 +65,15 @@ class MainActivity : ComponentActivity() {
         val lifecycleOwner = LocalLifecycleOwner.current
         val permissionLauncher = rememberLauncherForActivityResult(
             ActivityResultContracts.RequestMultiplePermissions()
-        ) {
-            hasPermissions = permissionSource.hasAllPermissions()
+        ) { granted ->
+            val missing = permissionSource.getMissingPermissions()
+            if (missing.isEmpty()) {
+                hasPermissions = true
+            } else if (granted.values.all { it }) {
+                hasPermissions = permissionSource.hasAllPermissions()
+            } else {
+                hasPermissions = false
+            }
         }
 
         DisposableEffect(lifecycleOwner, permissionSource) {

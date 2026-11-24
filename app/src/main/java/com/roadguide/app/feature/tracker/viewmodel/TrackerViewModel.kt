@@ -100,20 +100,21 @@ class TrackerViewModel @Inject constructor(
 
     private fun observeTodayData() {
         viewModelScope.launch {
-            combine(
+            try {
                 combine(
-                    routeRepository.observeByStatus(RouteStatus.IN_PROGRESS),
-                    routeRepository.observeByStatus(RouteStatus.PAUSED)
-                ) { inProgress, paused -> inProgress + paused },
-                routeRepository.getByDate(LocalDate.now().toString())
-            ) { activeRoutes, todayRoutes ->
-                (activeRoutes + todayRoutes).distinctBy(Route::id)
-            }.combine(
-                combine(
-                    locationPointRepository.observeAll(),
-                    privacyZoneRepository.observeActiveZones()
-                ) { points, zones -> points to zones }
-            ) { routes, pointData ->
+                    combine(
+                        routeRepository.observeByStatus(RouteStatus.IN_PROGRESS),
+                        routeRepository.observeByStatus(RouteStatus.PAUSED)
+                    ) { inProgress, paused -> inProgress + paused },
+                    routeRepository.getByDate(LocalDate.now().toString())
+                ) { activeRoutes, todayRoutes ->
+                    (activeRoutes + todayRoutes).distinctBy(Route::id)
+                }.combine(
+                    combine(
+                        locationPointRepository.observeAll(),
+                        privacyZoneRepository.observeActiveZones()
+                    ) { points, zones -> points to zones }
+                ) { routes, pointData ->
                 val (allPoints, activeZones) = pointData
                 val route = routes.maxByOrNull(Route::startTime)
                 val routePoints = route?.let { activeRoute ->
@@ -189,11 +190,17 @@ class TrackerViewModel @Inject constructor(
                         storedRoute
                     }
                 }
-                Triple(visibleRoute, summaries, routeLines)
-            }.collect { (route, points, lines) ->
-                _todayRoute.value = route
-                _currentRoutePoints.value = points
-                _routeLineChunks.value = lines
+                    Triple(visibleRoute, summaries, routeLines)
+                }.collect { (route, points, lines) ->
+                    _todayRoute.value = route
+                    _currentRoutePoints.value = points
+                    _routeLineChunks.value = lines
+                }
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                android.util.Log.e("TrackerViewModel", "Failed to observe today's tracker data", e)
+                _uiState.value = ScreenState.Error("Не удалось открыть данные трекера")
             }
         }
     }

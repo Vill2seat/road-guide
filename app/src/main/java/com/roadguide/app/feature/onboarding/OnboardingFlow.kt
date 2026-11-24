@@ -65,12 +65,15 @@ fun OnboardingFlow(
 
     val permissionLauncher: ActivityResultLauncher<Array<String>> = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions()
-    ) {
+    ) { granted ->
+        val denied = granted.any { (_, isGranted) -> !isGranted }
         val missing = permissionSource.getMissingPermissions()
         if (missing.isEmpty()) {
             finishOnboarding()
-        } else {
+        } else if (denied) {
             showPermissionDeniedDialog = true
+        } else {
+            pendingPermissionRequest = missing.toTypedArray()
         }
     }
 

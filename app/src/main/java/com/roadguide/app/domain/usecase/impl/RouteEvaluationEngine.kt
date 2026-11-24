@@ -15,6 +15,7 @@ class RouteEvaluationEngine(
 
     companion object {
         private const val SEGMENT_STEP_POINTS = 5
+        private const val MIN_AIR_QUALITY_COVERAGE = 30.0
     }
 
     suspend fun evaluateRoute(
@@ -30,12 +31,13 @@ class RouteEvaluationEngine(
                 distanceMeters = 0.0,
                 durationSeconds = durationSeconds,
                 geometry = emptyList(),
-                exposureScore = 50.0,
+                exposureScore = 0.0,
                 confidence = 0.0,
                 coverage = 0.0,
                 pollutionContext = null,
                 roadProximity = 0.0,
                 greenAreaProximity = 0.0,
+                hasAirQualityData = false,
                 category = category,
                 summary = "Нет данных для оценки"
             )
@@ -59,18 +61,25 @@ class RouteEvaluationEngine(
         var greenCount = 0
         var roadCount = 0
 
-        for (point in segmentPoints) {
+        val routeStartTime = System.currentTimeMillis()
+        for ((sampleIndex, point) in segmentPoints.withIndex()) {
             val roadFactor = geographicContextEngine.getRoadFactor(point.latitude, point.longitude)
-
-            val envSample = environmentalSampleRepository.fetchAndSave(point.latitude, point.longitude)
-            if (envSample != null) {
-                pointsWithEnv++
+            val requestedTime = routeStartTime + if (segmentPoints.size > 1) {
+                durationSeconds.coerceAtLeast(0L) * sampleIndex / (segmentPoints.size - 1) * 1_000L
+            } else {
+                0L
             }
+
+            val envSample = environmentalSampleRepository.fetchAndSave(
+                point.latitude,
+                point.longitude,
+                requestedTime
+            )
 
             val segment = com.roadguide.app.data.local.entity.RouteSegment(
                 routeId = 0,
                 startTime = 0,
-                endTime = 60,
+                endTime = 60_000,
                 activityType = when (profile) {
                     RouteProfile.WALKING -> com.roadguide.app.data.local.entity.ActivityType.WALKING
                     RouteProfile.CYCLING -> com.roadguide.app.data.local.entity.ActivityType.CYCLING
@@ -92,23 +101,33 @@ class RouteEvaluationEngine(
                 roadFactor = roadFactor
             )
 
-            totalRawExposure += rawExposure
-            validSegments++
+            if (rawExposure != null) {
+                totalRawExposure += rawExposure
+                validSegments++
+                pointsWithEnv++
+                totalConfidenceSum += segment.confidence
+            }
 
             val context = geographicContextEngine.getContext(point.latitude, point.longitude)
             if (context.isGreenArea) greenCount++
             if (context.isMajorRoad || context.roadType != null) roadCount++
 
-            totalConfidenceSum += segment.confidence
         }
 
-        val avgRawExposure = if (validSegments > 0) totalRawExposure / validSegments else 0.0
-        val exposureScore = com.roadguide.app.domain.usecase.impl.ExposureCalculationEngine.normalizeExposure(avgRawExposure)
+        val coverage = if (segmentPoints.isNotEmpty()) {
+            (pointsWithEnv.toDouble() / segmentPoints.size) * 100.0
+        } else {
+            0.0
+        }
+        val hasAirQualityData = validSegments > 0 && coverage >= MIN_AIR_QUALITY_COVERAGE
+        val avgRawExposure = if (hasAirQualityData) totalRawExposure / validSegments else 0.0
+        val exposureScore = if (hasAirQualityData) {
+            com.roadguide.app.domain.usecase.impl.ExposureCalculationEngine.normalizeExposure(avgRawExposure)
+        } else 0.0
 
-        val confidence = if (validSegments > 0) totalConfidenceSum / validSegments else 0.0
-        val coverage = if (segmentPoints.isNotEmpty()) (pointsWithEnv.toDouble() / segmentPoints.size) * 100.0 else 0.0
+        val confidence = if (hasAirQualityData) totalConfidenceSum / validSegments else 0.0
 
-        val pollutionContext = when {
+        val pollutionContext = if (!hasAirQualityData) null else when {
             greenCount > segmentPoints.size / 2 -> "green_area"
             roadCount > segmentPoints.size / 2 -> "major_road"
             else -> "mixed"
@@ -117,7 +136,11 @@ class RouteEvaluationEngine(
         val roadProximity = if (segmentPoints.isNotEmpty()) roadCount.toDouble() / segmentPoints.size else 0.0
         val greenAreaProximity = if (segmentPoints.isNotEmpty()) greenCount.toDouble() / segmentPoints.size else 0.0
 
-        val summary = buildSummary(exposureScore, confidence, coverage, distanceMeters, durationSeconds)
+        val summary = if (hasAirQualityData) {
+            buildSummary(exposureScore, confidence, coverage, distanceMeters, durationSeconds)
+        } else {
+            "Недостаточно данных о качестве воздуха для оценки экспозиции"
+        }
 
         return RouteEvaluation(
             id = id,
@@ -130,6 +153,7 @@ class RouteEvaluationEngine(
             pollutionContext = pollutionContext,
             roadProximity = roadProximity,
             greenAreaProximity = greenAreaProximity,
+            hasAirQualityData = hasAirQualityData,
             category = category,
             summary = summary
         )

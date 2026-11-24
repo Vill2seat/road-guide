@@ -12,6 +12,8 @@ interface DailyReportRepository {
     fun observeRecent(limit: Int): Flow<List<DailyReport>>
 
     suspend fun update(report: DailyReport)
+
+    suspend fun deleteByDate(date: String): Int
 }
 
 class DailyReportRepositoryImpl(private val dao: DailyReportDao) : DailyReportRepository {
@@ -23,4 +25,6 @@ class DailyReportRepositoryImpl(private val dao: DailyReportDao) : DailyReportRe
     override fun observeRecent(limit: Int): Flow<List<DailyReport>> = dao.getRecent(limit)
 
     override suspend fun update(report: DailyReport) = dao.update(report)
+
+    override suspend fun deleteByDate(date: String): Int = dao.deleteByDate(date)
 }

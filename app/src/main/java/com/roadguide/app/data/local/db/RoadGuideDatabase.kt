@@ -40,7 +40,7 @@ import com.roadguide.app.data.local.entity.Stay
         PrivacyZone::class,
         DataRetentionPolicy::class
     ],
-    version = 3,
+    version = 4,
     exportSchema = true
 )
 @TypeConverters(Converters::class)
@@ -77,13 +77,72 @@ abstract class RoadGuideDatabase : RoomDatabase() {
             }
         }
 
+        // Add the route foreign key while retaining points with missing parent routes.
+        val MIGRATION_3_4 = object : Migration(3, 4) {
+            override fun migrate(database: androidx.sqlite.db.SupportSQLiteDatabase) {
+                database.execSQL(
+                    """
+                    CREATE TABLE location_points_new (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                        latitude REAL NOT NULL,
+                        longitude REAL NOT NULL,
+                        timestamp INTEGER NOT NULL,
+                        accuracyMeters REAL NOT NULL,
+                        speedMetersPerSecond REAL,
+                        bearing REAL,
+                        altitude REAL,
+                        provider TEXT NOT NULL,
+                        isMock INTEGER NOT NULL,
+                        qualityFlags INTEGER NOT NULL,
+                        routeId INTEGER,
+                        collectionDiagnostics TEXT,
+                        excludeFromExposure INTEGER NOT NULL,
+                        FOREIGN KEY(routeId) REFERENCES routes(id)
+                            ON UPDATE NO ACTION ON DELETE CASCADE
+                    )
+                    """.trimIndent()
+                )
+                database.execSQL(
+                    """
+                    INSERT INTO location_points_new (
+                        id, latitude, longitude, timestamp, accuracyMeters,
+                        speedMetersPerSecond, bearing, altitude, provider, isMock,
+                        qualityFlags, routeId, collectionDiagnostics, excludeFromExposure
+                    )
+                    SELECT
+                        id, latitude, longitude, timestamp, accuracyMeters,
+                        speedMetersPerSecond, bearing, altitude, provider, isMock,
+                        qualityFlags,
+                        CASE
+                            WHEN routeId IS NOT NULL AND EXISTS (
+                                SELECT 1 FROM routes WHERE routes.id = location_points.routeId
+                            ) THEN routeId
+                            ELSE NULL
+                        END,
+                        collectionDiagnostics, excludeFromExposure
+                    FROM location_points
+                    """.trimIndent()
+                )
+                database.execSQL("DROP TABLE location_points")
+                database.execSQL(
+                    "ALTER TABLE location_points_new RENAME TO location_points"
+                )
+                database.execSQL(
+                    "CREATE INDEX index_location_points_timestamp ON location_points(timestamp)"
+                )
+                database.execSQL(
+                    "CREATE INDEX index_location_points_routeId ON location_points(routeId)"
+                )
+            }
+        }
+
         fun getInstance(context: Context): RoadGuideDatabase {
             return INSTANCE ?: synchronized(this) {
                 INSTANCE ?: Room.databaseBuilder(
                     context.applicationContext,
                     RoadGuideDatabase::class.java,
                     "road_guide.db"
-                ).addMigrations(MIGRATION_1_2, MIGRATION_2_3)
+                ).addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4)
                     .build()
                     .also { INSTANCE = it }
             }

@@ -4,7 +4,7 @@
 
 Catalog of all external API integrations for environmental, geographic, and routing data.
 
-**Status**: 📋 Planned — Integration specs defined, no implementation exists.
+**Status**: 🟡 Partially implemented — Open-Meteo weather and air-quality clients are wired into the data layer; Overpass, routing and tile integrations remain planned.
 
 ---
 
@@ -12,8 +12,8 @@ Catalog of all external API integrations for environmental, geographic, and rout
 
 | Service | Purpose | Auth | Rate Limits | Cache TTL |
 |---------|---------|------|-------------|-----------|
-| Open-Meteo Weather | Temperature, wind, precipitation, humidity | None | 10,000/day | 1 hour |
-| Open-Meteo Air Quality | PM2.5, PM10, NO₂, O₃, SO₂, CO, AQI | None | 10,000/day | 1 hour |
+| Open-Meteo Weather | Temperature, wind, precipitation, humidity | None | 10,000/day | 15 min |
+| Open-Meteo Air Quality | PM2.5, PM10, NO₂, O₃, SO₂, CO, AQI | None | 10,000/day | 15 min |
 | Overpass API (OSM) | Roads, green areas, industrial, POIs | None | ~1 req/sec (public) | 24 hours |
 | OSRM / Valhalla | Route alternatives, geometry, duration | None/Optional | Varies | 1 hour |
 | OpenFreeMap / MapLibre | Map tiles, styles | Attribution | Tile CDN limits | Browser cache |
@@ -27,17 +27,16 @@ Catalog of all external API integrations for environmental, geographic, and rout
 https://api.open-meteo.com/v1/forecast
 ```
 
-### Parameters (Per Spec)
+### Parameters (Implemented)
 | Param | Value | Description |
 |-------|-------|-------------|
 | `latitude` | Decimal | WGS84 lat |
 | `longitude` | Decimal | WGS84 lon |
-| `hourly` | `temperature_2m,relative_humidity_2m,apparent_temperature,precipitation,rain,showers,wind_speed_10m,wind_direction_10m,cloud_cover,uv_index` | Comma-separated |
-| `timezone` | `auto` | Returns local time |
-| `timeformat` | `unixtime` | Unix seconds |
+| `current` | Temperature, apparent temperature, humidity, wind, precipitation, rain, clouds, UV | Current values |
+| `hourly` | Temperature, humidity, wind, precipitation, rain, clouds, UV | Hourly series |
+| `timezone` | `UTC` | Stable timestamp parsing |
 | `wind_speed_unit` | `ms` | m/s |
-| `forecast_hours` | `48` | Minimum needed |
-| `past_hours` | `24` | For historical matching |
+| `start_date` / `end_date` | Requested UTC date | Date-limited forecast query |
 
 ### Response Format (Hourly Arrays)
 ```json
@@ -91,17 +90,16 @@ https://api.open-meteo.com/v1/forecast
 https://air-quality-api.open-meteo.com/v1/air-quality
 ```
 
-### Parameters (Per Spec)
+### Parameters (Implemented)
 | Param | Value |
 |-------|-------|
 | `latitude` | Decimal |
 | `longitude` | Decimal |
-| `hourly` | `pm10,pm2_5,nitrogen_dioxide,ozone,sulphur_dioxide,carbon_monoxide,us_aqi,european_aqi` |
-| `timezone` | `auto` |
-| `timeformat` | `unixtime` |
-| `forecast_hours` | `48` |
-| `past_hours` | `24` |
-| `domains` | `cams_europe` or `cams_global` (auto by coords) |
+| `hourly` | `pm2_5,pm10,nitrogen_dioxide,ozone,sulphur_dioxide,carbon_monoxide,us_aqi,european_aqi` |
+| `timezone` | `UTC` |
+| `start_date` / `end_date` | Requested UTC date |
+
+The client selects the closest hourly result within 30 minutes of the requested route/point time. Values are model output, not station measurements. The app does not score a route point when no valid AQI or pollutant value is available.
 
 ### Response Format
 ```json
@@ -113,7 +111,7 @@ https://air-quality-api.open-meteo.com/v1/air-quality
     "nitrogen_dioxide": [22.1, 23.5, ...],
     "ozone": [45.0, 42.3, ...],
     "sulphur_dioxide": [2.1, 2.0, ...],
-    "carbon_monoxide": [0.3, 0.3, ...],
+    "carbon_monoxide": [180.0, 180.0, ...],
     "us_aqi": [38, 42, ...],
     "european_aqi": [28, 31, ...]
   },
@@ -123,7 +121,7 @@ https://air-quality-api.open-meteo.com/v1/air-quality
     "nitrogen_dioxide": "μg/m³",
     "ozone": "μg/m³",
     "sulphur_dioxide": "μg/m³",
-    "carbon_monoxide": "mg/m³",
+    "carbon_monoxide": "μg/m³",
     "us_aqi": "index",
     "european_aqi": "index"
   }
@@ -455,7 +453,8 @@ Display in Settings → About → Data Sources.
 
 ---
 
-## Planned vs Implemented
+## Implemented vs Planned
 
-> **All integrations are 📋 Planned** — no HTTP clients, parsers, or cache layer exists.
-> This document defines target contracts per `ROAD GUIDE.txt` (Parts 8, 9, 12, 25).
+Open-Meteo weather and Air Quality HTTP clients are implemented and injected into the environmental fetch pipeline. Valid AQ data is checked before exposure scoring; weather-only samples remain available for weather display but cannot produce an exposure score. Environmental samples are cached for 15 minutes near the requested coordinates, with hourly AQ samples matched by time. No live API or Android build verification is implied by these source changes.
+
+Overpass, OSRM/Valhalla and map-tile integrations remain planned. This document also retains their target contracts per `ROAD GUIDE.txt` (Parts 8, 9, 12, 25).

@@ -42,8 +42,8 @@ import com.roadguide.app.data.repository.StayRepositoryImpl
 import com.roadguide.app.data.repository.TrackingSettingsRepository
 import com.roadguide.app.data.repository.TrackingSettingsRepositoryImpl
 import com.roadguide.app.data.source.ActivityRecognitionSource
-import com.roadguide.app.data.source.CamsSource
 import com.roadguide.app.data.source.EnvironmentalDataFetcher
+import com.roadguide.app.data.source.OpenMeteoAirQualitySource
 import com.roadguide.app.data.source.LocationSource
 import com.roadguide.app.data.source.OsrmRoutingSource
 import com.roadguide.app.data.source.OverpassApiSource
@@ -78,7 +78,11 @@ object AppModule {
             context.applicationContext,
             RoadGuideDatabase::class.java,
             "road_guide.db"
-        ).addMigrations(RoadGuideDatabase.MIGRATION_1_2, RoadGuideDatabase.MIGRATION_2_3)
+        ).addMigrations(
+            RoadGuideDatabase.MIGRATION_1_2,
+            RoadGuideDatabase.MIGRATION_2_3,
+            RoadGuideDatabase.MIGRATION_3_4
+        )
             .build()
     }
 
@@ -156,11 +160,20 @@ object AppModule {
 
     @Provides
     @Singleton
+    fun provideOpenMeteoAirQualitySource(
+        @ApplicationContext context: Context,
+        okHttpClient: OkHttpClient
+    ): OpenMeteoAirQualitySource =
+        OpenMeteoAirQualitySource(context, okHttpClient)
+
+    @Provides
+    @Singleton
     fun provideEnvironmentalDataFetcher(
         openMeteo: OpenMeteoWeatherSource,
+        airQualitySource: OpenMeteoAirQualitySource,
         validator: EnvironmentalValidator
     ): EnvironmentalDataFetcher =
-        EnvironmentalDataFetcher(openMeteo, validator)
+        EnvironmentalDataFetcher(openMeteo, airQualitySource, validator)
 
     @Provides
     @Singleton
@@ -182,9 +195,10 @@ object AppModule {
     fun provideEnvironmentalSampleRepository(
         dao: EnvironmentalSampleDao,
         fetcher: EnvironmentalDataFetcher,
-        trackingPrefs: TrackingPrefs
+        trackingPrefs: TrackingPrefs,
+        validator: EnvironmentalValidator
     ): EnvironmentalSampleRepository =
-        EnvironmentalSampleRepositoryImpl(dao, fetcher, trackingPrefs)
+        EnvironmentalSampleRepositoryImpl(dao, fetcher, trackingPrefs, validator)
 
     @Provides
     @Singleton
@@ -244,9 +258,18 @@ object AppModule {
     @Singleton
     fun provideGetRouteSummaries(
         repository: RouteRepository,
-        mapper: RouteMapper
+        mapper: RouteMapper,
+        locationPointRepository: LocationPointRepository,
+        routeSegmentRepository: RouteSegmentRepository,
+        privacyZoneRepository: PrivacyZoneRepository
     ): GetRouteSummaries =
-        GetRouteSummariesImpl(repository, mapper)
+        GetRouteSummariesImpl(
+            routeRepository = repository,
+            routeMapper = mapper,
+            locationPointRepository = locationPointRepository,
+            routeSegmentRepository = routeSegmentRepository,
+            privacyZoneRepository = privacyZoneRepository
+        )
 
     @Provides
     @Singleton
@@ -271,6 +294,8 @@ object AppModule {
         exposureResultRepository: ExposureResultRepository,
         stayRepository: StayRepository,
         dailyReportRepository: DailyReportRepository,
+        locationPointRepository: LocationPointRepository,
+        privacyZoneRepository: PrivacyZoneRepository,
     ): AggregateDailyExposure =
         DailyExposureAggregator(
             routeRepository = routeRepository,
@@ -278,6 +303,8 @@ object AppModule {
             exposureResultRepository = exposureResultRepository,
             stayRepository = stayRepository,
             dailyReportRepository = dailyReportRepository,
+            locationPointRepository = locationPointRepository,
+            privacyZoneRepository = privacyZoneRepository,
         )
 
     @Provides

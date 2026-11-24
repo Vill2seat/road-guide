@@ -1,6 +1,7 @@
 package com.roadguide.app.data.local.entity
 
 import androidx.room.Entity
+import androidx.room.ForeignKey
 import androidx.room.Index
 import androidx.room.PrimaryKey
 
@@ -9,6 +10,14 @@ import androidx.room.PrimaryKey
     indices = [
         Index(value = ["timestamp"]),
         Index(value = ["routeId"])
+    ],
+    foreignKeys = [
+        ForeignKey(
+            entity = Route::class,
+            parentColumns = ["id"],
+            childColumns = ["routeId"],
+            onDelete = ForeignKey.CASCADE
+        )
     ]
 )
 data class LocationPoint(

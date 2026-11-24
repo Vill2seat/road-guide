@@ -12,6 +12,8 @@ interface RouteSegmentRepository {
     fun getById(id: Long): Flow<RouteSegment?>
 
     fun observeByRoute(routeId: Long): Flow<List<RouteSegment>>
+
+    fun observeAll(): Flow<List<RouteSegment>>
 }
 
 class RouteSegmentRepositoryImpl(private val dao: RouteSegmentDao) : RouteSegmentRepository {
@@ -23,4 +25,6 @@ class RouteSegmentRepositoryImpl(private val dao: RouteSegmentDao) : RouteSegmen
     override fun getById(id: Long): Flow<RouteSegment?> = dao.getById(id)
 
     override fun observeByRoute(routeId: Long): Flow<List<RouteSegment>> = dao.observeByRoute(routeId)
+
+    override fun observeAll(): Flow<List<RouteSegment>> = dao.observeAll()
 }

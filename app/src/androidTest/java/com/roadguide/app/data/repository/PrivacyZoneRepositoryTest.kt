@@ -1,16 +1,15 @@
 package com.roadguide.app.data.repository
 
-import android.content.Context
 import androidx.room.Room
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import com.roadguide.app.data.local.db.RoadGuideDatabase
 import com.roadguide.app.data.local.entity.PrivacyZone
-import com.roadguide.app.data.local.entity.PrivacyZoneType
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
 import org.junit.After
 import org.junit.Assert.assertEquals
-import org.junit.Assert.assertNotNull
+import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -45,7 +44,6 @@ class PrivacyZoneRepositoryTest {
     @Test
     fun `insert and get privacy zone`() = runBlocking {
         val zone = PrivacyZone(
-            id = 1L,
             name = "Home Zone",
             centerLatitude = 55.7558,
             centerLongitude = 37.6173,
@@ -57,11 +55,9 @@ class PrivacyZoneRepositoryTest {
         )
 
         val insertedId = repository.insert(zone)
-        assertNotNull(insertedId)
-
-        val fetched = repository.getById(insertedId).first()
-        assertNotNull(fetched)
-        assertEquals("Home Zone", fetched?.name)
-        assertEquals(100.0, fetched?.radiusMeters, 0.0)
+        val fetched = repository.observeAll().first().single()
+        assertTrue(insertedId == fetched.id)
+        assertEquals("Home Zone", fetched.name)
+        assertEquals(100.0, fetched.radiusMeters, 0.0)
     }
 }

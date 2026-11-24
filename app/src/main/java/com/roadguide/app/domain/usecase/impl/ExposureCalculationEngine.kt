@@ -1,6 +1,7 @@
 package com.roadguide.app.domain.usecase.impl
 
 import com.roadguide.app.data.local.entity.ActivityType
+import com.roadguide.app.data.local.entity.DataQuality
 import com.roadguide.app.data.local.entity.EnvironmentalSample
 import com.roadguide.app.domain.model.ExposureConstants
 import com.roadguide.app.data.local.entity.RouteSegment
@@ -80,27 +81,49 @@ object ExposureCalculationEngine {
     }
 
     /** Pollution factor: max normalized pollutant value */
-    fun calculatePollutionFactor(sample: EnvironmentalSample): Double {
-        val pollutants = listOfNotNull(
-            sample.pm2_5, sample.pm10, sample.nitrogenDioxide, sample.ozone,
-            sample.sulphurDioxide, sample.carbonMonoxide
-        ).map { it.coerceAtLeast(0.0) }
+    fun calculatePollutionFactor(sample: EnvironmentalSample): Double? {
+        if (!hasSufficientAirQualityData(sample)) return null
 
-        if (pollutants.isEmpty()) return 1.0
+        val normalized = listOfNotNull(
+            sample.pm2_5?.let { normalizePollutant(it, PM2_5_GUIDELINE) },
+            sample.pm10?.let { normalizePollutant(it, PM10_GUIDELINE) },
+            sample.nitrogenDioxide?.let { normalizePollutant(it, NO2_GUIDELINE) },
+            sample.ozone?.let { normalizePollutant(it, OZONE_GUIDELINE) },
+            sample.sulphurDioxide?.let { normalizePollutant(it, SO2_GUIDELINE) },
+            sample.carbonMonoxide?.let { normalizePollutant(it, CO_GUIDELINE) }
+        )
 
-        // Normalize each pollutant against WHO guideline thresholds
-        val normalized = pollutants.map { value ->
-            when {
-                value <= 12.0 -> 0.5          // PM2.5 safe
-                value <= 25.0 -> 0.8           // PM2.5 moderate
-                value <= 50.0 -> 1.0           // PM2.5 elevated
-                value <= 100.0 -> 1.5           // PM2.5 high
-                else -> 2.0                     // PM2.5 very high
-            }
-        }
-
-        return normalized.maxOf { it }
+        val aqiFactor = (sample.europeanAqi ?: sample.usAqi)
+            ?.takeIf { it in 0..500 }
+            ?.let { (it / 100.0).coerceIn(0.5, 2.0) }
+        return (normalized + listOfNotNull(aqiFactor)).maxOrNull()
     }
+
+    private fun normalizePollutant(value: Double, guideline: Double): Double? {
+        if (!value.isFinite() || value !in 0.0..100_000.0) return null
+        val ratio = value / guideline
+        return when {
+            ratio <= 1.0 -> 0.5
+            ratio <= 2.0 -> 0.8
+            ratio <= 4.0 -> 1.0
+            ratio <= 8.0 -> 1.5
+            else -> 2.0
+        }
+    }
+
+    private const val PM2_5_GUIDELINE = 15.0
+    private const val PM10_GUIDELINE = 45.0
+    private const val NO2_GUIDELINE = 25.0
+    private const val OZONE_GUIDELINE = 100.0
+    private const val SO2_GUIDELINE = 40.0
+    private const val CO_GUIDELINE = 4_000.0
+
+    fun hasSufficientAirQualityData(sample: EnvironmentalSample?): Boolean =
+        sample != null &&
+            sample.dataQuality != DataQuality.UNKNOWN &&
+            sample.dataQuality != DataQuality.STALE &&
+            sample.dataQuality != DataQuality.OUT_OF_RANGE &&
+            sample.hasValidAirQualityData()
 
     /**
      * Calculate segment exposure score (pre-normalization)
@@ -110,10 +133,12 @@ object ExposureCalculationEngine {
         segment: RouteSegment,
         sample: EnvironmentalSample?,
         roadFactor: Double
-    ): Double {
-        val timeFactor = calculateTimeFactor(segment.endTime - segment.startTime)
+    ): Double? {
+        val pollutionFactor = sample?.let(::calculatePollutionFactor) ?: return null
+        val durationSeconds = (segment.endTime - segment.startTime)
+            .coerceAtLeast(0L) / 1_000L
+        val timeFactor = calculateTimeFactor(durationSeconds)
         val activityFactor = getActivityFactor(segment.activityType)
-        val pollutionFactor = sample?.let { calculatePollutionFactor(it) } ?: 1.0
         val weatherFactor = sample?.let {
             calculateWeatherFactor(
                 it.temperatureCelsius,

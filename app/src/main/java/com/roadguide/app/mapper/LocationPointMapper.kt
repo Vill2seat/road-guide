@@ -15,7 +15,7 @@ object LocationPointMapper {
             latitude = entity.latitude,
             longitude = entity.longitude,
             timestamp = entity.timestamp,
-            activityType = "walking",
+            activityType = "unknown",
             speedMps = entity.speedMetersPerSecond?.toDouble() ?: 0.0,
             altitudeMeters = entity.altitude ?: 0.0
         )

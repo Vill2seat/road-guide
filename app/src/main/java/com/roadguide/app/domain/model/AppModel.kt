@@ -30,3 +30,17 @@ data class LocationPointSummary(
     val speedMps: Double = 0.0,
     val altitudeMeters: Double = 0.0
 )
+
+data class RouteTimeline(
+    val route: RouteSummary,
+    val events: List<TimelineEvent>
+)
+
+data class TimelineEvent(
+    val id: String,
+    val startTime: Long,
+    val endTime: Long,
+    val activityType: String,
+    val distanceMeters: Double,
+    val isStay: Boolean
+)

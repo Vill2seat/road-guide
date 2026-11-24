@@ -3,7 +3,7 @@
     <string name="app_name">Road Guide</string>
 
     <!-- Bottom navigation -->
-    <string name="nav_map">Карта</string>
+    <string name="nav_map">Трекер</string>
     <string name="nav_timeline">Хронология</string>
     <string name="nav_planner">Планировщик</string>
     <string name="nav_history">История</string>
@@ -29,6 +29,7 @@
 
     <!-- Tracker screen -->
     <string name="tracker_start">Старт</string>
+    <string name="tracker_pause">Пауза</string>
     <string name="tracker_stop">Стоп</string>
     <string name="tracker_resume">Возобновить</string>
 
@@ -46,6 +47,8 @@
 
     <!-- AQI -->
     <string name="aqi">AQI: </string>
+    <string name="air_quality_insufficient">Недостаточно данных о качестве воздуха</string>
+    <string name="exposure_unavailable">Недоступна</string>
 
     <!-- Weather -->
     <string name="weather">Погода</string>
@@ -106,6 +109,8 @@
     <string name="daily_report_empty_desc">
         Завершите день трекинга, чтобы увидеть детальный отчёт.
     </string>
+    <string name="daily_report_no_exposure_title">Недостаточно данных об экспозиции</string>
+    <string name="daily_report_no_exposure_desc">За этот день не записаны валидные сегменты экспозиции по качеству воздуха. Продолжайте трекинг, чтобы сформировать отчёт.</string>
     <string name="daily_report_score_title">Оценка дня</string>
     <string name="daily_report_stats_title">Статистика дня</string>
     <string name="daily_report_recommendations_title">Рекомендации</string>
@@ -117,6 +122,21 @@
 
     <!-- Planner screen -->
     <string name="planner_build_route">Построить маршрут</string>
+    <string name="planner_description">Сравните время в пути и расчетную экспозицию загрязняющих веществ.</string>
+    <string name="planner_from">Откуда</string>
+    <string name="planner_to">Куда</string>
+    <string name="planner_current_location">Текущее положение</string>
+    <string name="planner_origin_example">Например: текущее положение, город или адрес</string>
+    <string name="planner_destination">Адрес назначения</string>
+    <string name="planner_route_building">Построение маршрута…</string>
+    <string name="planner_origin_required">Укажите начальную точку.</string>
+    <string name="planner_destination_required">Укажите пункт назначения.</string>
+    <string name="planner_location_unavailable">Текущее положение недоступно. Проверьте разрешение на геолокацию.</string>
+    <string name="planner_geocoder_unavailable">Поиск адресов недоступен на этом устройстве.</string>
+    <string name="planner_address_not_found">Не удалось найти указанный адрес.</string>
+    <string name="planner_invalid_coordinates">Введите координаты в формате широта, долгота в допустимом диапазоне.</string>
+    <string name="planner_routing_unavailable">Маршрут не найден. Проверьте адреса и подключение к сети.</string>
+    <string name="planner_route_failed">Не удалось построить маршрут. Попробуйте еще раз.</string>
 
     <!-- History screen -->
     <string name="history_empty_title">Нет истории</string>
@@ -137,4 +157,120 @@
     <string name="place_category_restaurant">Ресторан</string>
     <string name="place_category_transit">Транспорт</string>
     <string name="place_category_other">Другое</string>
+    <string name="places_tab">Места</string>
+    <string name="places_search">Поиск сохранённых мест</string>
+    <string name="places_empty">Нет сохранённых мест</string>
+    <string name="places_empty_hint">Добавьте место, чтобы сохранить его в списке.</string>
+    <string name="places_no_search_results">Места не найдены</string>
+    <string name="places_search_hint">Попробуйте изменить запрос.</string>
+    <string name="places_invalid_form">Укажите название, корректные координаты и положительный радиус.</string>
+    <string name="place_add">Добавить место</string>
+    <string name="place_edit">Изменить</string>
+    <string name="place_delete">Удалить</string>
+    <string name="place_delete_title">Удалить место?</string>
+    <string name="place_delete_message">Удалить «%1$s» из сохранённых мест?</string>
+    <string name="place_name">Название</string>
+    <string name="place_address">Адрес (необязательно)</string>
+    <string name="place_latitude">Широта</string>
+    <string name="place_longitude">Долгота</string>
+    <string name="place_radius">Радиус в метрах</string>
+    <string name="place_category">Категория</string>
+    <string name="place_private_toggle">Скрывать место только в списках публичных мест</string>
+    <string name="place_save">Сохранить</string>
+    <string name="place_cancel">Отмена</string>
+    <string name="place_category_value">Категория: %1$s</string>
+    <string name="place_radius_value">Радиус: %1$.0f м</string>
+    <string name="place_coordinates_value">%1$.5f, %2$.5f</string>
+    <string name="privacy_zones_tab">Приватные зоны</string>
+    <string name="privacy_zone_add">Добавить зону</string>
+    <string name="privacy_zone_edit">Изменить приватную зону</string>
+    <string name="privacy_zone_name">Название зоны</string>
+    <string name="privacy_zone_active">Защита активна</string>
+    <string name="privacy_zone_exclude_history">Не сохранять местоположение в истории</string>
+    <string name="privacy_zone_exclude_exposure">Исключить из расчёта экспозиции</string>
+    <string name="privacy_zone_radius_value">Радиус: %1$.0f м</string>
+    <string name="privacy_zone_coordinates_value">%1$.5f, %2$.5f</string>
+    <string name="privacy_zone_policy_value">Исключать из истории: %1$s · из экспозиции: %2$s</string>
+    <string name="privacy_zone_empty">Нет приватных зон</string>
+    <string name="privacy_zone_empty_hint">Добавьте зону, чтобы управлять сохранением данных о местоположении и экспозиции.</string>
+    <string name="privacy_zone_delete_title">Удалить приватную зону?</string>
+    <string name="privacy_zone_delete_message">Удалить «%1$s»? Существующие отчёты будут пересчитаны.</string>
+    <string name="privacy_yes">Да</string>
+    <string name="privacy_no">Нет</string>
+
+    <!-- Permission flow -->
+    <string name="onboarding_title">Первоначальная настройка</string>
+    <string name="permission_denied_title">Необходимы разрешения</string>
+    <string name="permission_denied_message">Road Guide требуется доступ к местоположению и уведомлениям, чтобы записывать маршруты и предоставлять данные об окружающей среде. Предоставьте эти разрешения, чтобы продолжить.</string>
+    <string name="permission_retry">Повторить</string>
+    <string name="permission_skip">Пропустить</string>
+    <string name="daily_report_day_label">День: %1$s</string>
+    <string name="daily_report_confidence">Надёжность</string>
+    <string name="daily_report_coverage">Покрытие</string>
+    <string name="daily_report_distance">Расстояние</string>
+    <string name="daily_report_distance_km">%1$.1f км</string>
+    <string name="daily_report_travel_time">В пути</string>
+    <string name="daily_report_places">Места</string>
+    <string name="daily_report_walking">Пешком</string>
+    <string name="daily_report_transport">Транспорт</string>
+    <string name="daily_report_stationary">Остановка</string>
+    <string name="daily_report_recommendations_empty">Рекомендации появятся, когда будет достаточно данных.</string>
+    <string name="daily_report_score_value">Оценка: %1$d / 100</string>
+    <string name="daily_report_minutes">%1$d мин</string>
+    <string name="tracker_state_stopped">Трекинг выключен</string>
+    <string name="tracker_state_paused">Пауза</string>
+    <string name="tracker_state_recording">Идёт запись</string>
+    <string name="tracker_today_route">Маршрут за сегодня</string>
+    <string name="tracker_route_summary">%1$.1f км · %2$d мин</string>
+    <string name="tracker_route_points">Записано точек: %1$d</string>
+    <string name="tracker_environment_title">Последний образец окружающей среды</string>
+    <string name="tracker_environment_sample_time">Время образца: %1$s</string>
+    <string name="tracker_report_summary">Оценка %1$d/100 · надёжность %2$d%% · покрытие %3$d%%</string>
+    <string name="tracker_report_unavailable">Дневной отчёт пока недоступен.</string>
+    <string name="tracker_open_timeline">Хронология</string>
+    <string name="tracker_open_report">Дневной отчёт</string>
+    <string name="tracker_current_location">Текущее местоположение</string>
+    <string name="tracker_speed_value">%1$.1f м/с</string>
+    <string name="tracker_accuracy_value">Точность: %1$.0f м</string>
+    <string name="tracker_temperature_value">%1$.1f °C</string>
+    <string name="timeline_title">Хронология дня</string>
+    <string name="timeline_empty_title">Нет записанной активности</string>
+    <string name="timeline_empty_description">Начните трекинг, чтобы увидеть хронологию маршрутов, активностей и остановок.</string>
+    <string name="timeline_previous_day">Предыдущий день</string>
+    <string name="timeline_today">Сегодня</string>
+    <string name="timeline_next_day">Следующий день</string>
+    <string name="timeline_summary">Маршрутов: %1$d · событий: %2$d</string>
+    <string name="timeline_open_report">Открыть дневной отчёт</string>
+    <string name="timeline_exposure_label">Расчётная экспозиция</string>
+    <string name="timeline_no_events">Детали активности появятся после обработки маршрута.</string>
+    <string name="timeline_event_long_stop">Длительная остановка</string>
+    <string name="timeline_event_stop">Остановка</string>
+    <string name="timeline_event_walking">Пешком</string>
+    <string name="timeline_event_running">Бег</string>
+    <string name="timeline_event_cycling">Велосипед</string>
+    <string name="timeline_event_public_transport">Общественный транспорт</string>
+    <string name="timeline_event_vehicle">Транспорт</string>
+    <string name="timeline_event_activity">Активность</string>
+    <string name="timeline_duration_minutes">%1$d мин</string>
+    <string name="timeline_distance_meters">%1$d м</string>
+    <string name="planner_title">Экомаршруты</string>
+    <string name="planner_travel_mode">Способ передвижения</string>
+    <string name="planner_mode_driving">Автомобиль</string>
+    <string name="planner_mode_walking">Пешком</string>
+    <string name="planner_mode_cycling">Велосипед</string>
+    <string name="planner_available_routes">Доступные маршруты</string>
+    <string name="planner_fastest_route">Самый быстрый</string>
+    <string name="planner_lowest_exposure_route">Минимальная экспозиция</string>
+    <string name="planner_balanced_route">Сбалансированный</string>
+    <string name="planner_route_data_summary">Покрытие AQ %1$d%% · надёжность %2$d%%</string>
+    <string name="planner_exposure_label">Экспозиция</string>
+    <string name="planner_route_built">Маршрут построен (%1$d точек)</string>
+    <string name="planner_distance">Расстояние</string>
+    <string name="planner_distance_km">~%1$.1f км</string>
+    <string name="planner_exposure_estimate">Расчётное воздействие окружающей среды</string>
+    <string name="planner_exposure_low">Низкое</string>
+    <string name="planner_exposure_moderate">Умеренное</string>
+    <string name="planner_exposure_high">Повышенное</string>
+    <string name="planner_insufficient_data_warning">Данных о качестве воздуха недостаточно, чтобы рекомендовать маршрут с минимальной экспозицией. Также сравните время и расстояние.</string>
+    <string name="planner_empty_hint">Введите начало и пункт назначения, выберите способ передвижения и постройте маршрут.</string>
 </resources>

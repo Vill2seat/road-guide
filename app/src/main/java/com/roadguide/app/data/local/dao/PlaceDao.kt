@@ -17,6 +17,9 @@ interface PlaceDao {
     @Update
     suspend fun update(place: Place)
 
+    @Query("DELETE FROM places WHERE id = :id")
+    suspend fun deleteById(id: Long)
+
     @Query("SELECT * FROM places WHERE id = :id")
     fun getById(id: Long): Flow<Place?>
 
@@ -25,5 +28,8 @@ interface PlaceDao {
 
     @Query("SELECT * FROM places")
     fun observeAll(): Flow<List<Place>>
+
+    @Query("SELECT * FROM places WHERE isPrivate = 0")
+    fun observePublicPlaces(): Flow<List<Place>>
 
 }

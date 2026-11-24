@@ -4,7 +4,22 @@
 
 Continuous, automatic background location monitoring is the foundation of Road Guide. The system collects GPS points via a Foreground Service, classifies movement, segments into routes/stays, and enriches with environmental data.
 
-**Status**: 📋 Planned — No implementation exists yet.
+**Status**: 🟡 Partially implemented. The app now starts, pauses, resumes, and stops a
+location foreground service; persistent route IDs, staged permission requests, and
+boot recovery are implemented. On route completion, saved location points are
+classified and segmented into activity periods and sustained stays; route distance
+ignores GPS gaps longer than five minutes. Timeline observes routes, segments, and
+stays as live database flows. Other detailed sections below remain target design
+where they describe features not yet present in code.
+
+**Current implementation**: `TrackingRecordingService`, `TrackingServiceController`,
+`LocationSource`, `PermissionSource`, and `BootReceiver`. Tracking requires foreground
+and background location permission on Android 10+; Android notification permission
+is requested separately. Service startup enters foreground synchronously before
+asynchronous route/database work. Startup reuses an in-progress or paused route.
+Activity classification and segmentation currently run at route completion, not
+incrementally; stays require at least two low-speed points spanning five minutes
+within 50 m, matching the service's stationary sampling interval.
 
 ---
 
@@ -256,16 +271,15 @@ flowchart TD
 
 ## Private Zones
 
-**Implementation**: Geofence (circular) → `PrivacyZone` entity.
+`PrivacyZone` is a circular, user-managed rule evaluated against each recorded point and route edge. The current implementation does not register Android `GeofencingClient` transitions.
 
-**Behavior**:
-- Points inside zone: saved with `qualityFlags |= PRIVATE_ZONE` (new bit)
-- Stays inside zone: `privacyStatus = EXCLUDED`
-- Timeline: shows "Private Zone" placeholder, no coordinates/place name
-- Exposure: optionally excluded from calculation (user choice)
-- Export/Delete: user can wipe zone data independently
-
-**Geofence API**: `GeofencingClient` with `GEOFENCE_TRANSITION_ENTER/EXIT` → update point flags in real-time.
+**Current behavior**:
+- An active zone with `excludeFromHistory` prevents new points inside it from being stored. Route edges crossing that circle are split; history and Timeline filter matching points, segments, and stays.
+- An active zone with `excludeFromExposure` preserves location history but marks points as ineligible for exposure. Environmental fetches and report calculations exclude affected intervals; these intervals do not count toward exposure coverage.
+- Overlapping active zones combine their independent flags. Inactive zones have no effect. If privacy-zone state cannot be read while recording, that location sample is dropped.
+- Changing zones filters existing history and recalculates affected daily reports, but already-stored raw coordinates are not physically purged from Room.
+- `prepareForExport` defines filtering rules (history-excluded points omitted; exposure-only points retained without exposure data). There is no export screen/file writer wired to this policy yet.
+- `Place.isPrivate` only marks a saved place for public-list filtering; it is not a geofence and does not change tracking, history, or exposure retention.
 
 ---
 
@@ -320,7 +334,14 @@ LocationForegroundService (adaptive intervals)
 
 ---
 
-## Planned vs Implemented
+## Implemented Scope and Remaining Work
 
-> **All components are 📋 Planned** — no Foreground Service, Movement Engine, or Segmentation Engine exists in codebase.
-> This document defines target behavior per `ROAD GUIDE.txt` (Parts 5, 6, 7).
+The service persists GPS points and, when a route stops, `MovementDetectionEngine`
+and `RouteSegmentationEngine` derive time-bounded activity segments and sustained
+stays. Segments and stays are saved to Room and observed by the Timeline. Points are
+timestamp-sorted, duplicate timestamps are ignored, and gaps over five minutes split
+segments and are excluded from route distance.
+
+The richer event stream, incremental classification during recording, map matching,
+transport-mode correction, GPS quality filtering, and on-device tuning described
+above remain planned work; see `13_CURRENT_IMPLEMENTATION_STATUS.md`.

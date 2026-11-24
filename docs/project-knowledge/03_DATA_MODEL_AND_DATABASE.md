@@ -3,8 +3,8 @@
 ## Database: Room
 
 **Database Name**: `RoadGuideDatabase`
-**Version**: 1 (initial)
-**Migration Strategy**: Incremental versioned migrations; fallback destructive for dev
+**Version**: 4
+**Migration Strategy**: Incremental versioned migrations; no destructive fallback
 
 ---
 
@@ -19,7 +19,13 @@ Raw GPS points from Foreground Service.
     indices = [
         Index(value = ["timestamp"]),
         Index(value = ["routeId"]),
-    ]
+    ],
+    foreignKeys = [ForeignKey(
+        entity = Route::class,
+        parentColumns = ["id"],
+        childColumns = ["routeId"],
+        onDelete = ForeignKey.CASCADE
+    )]
 )
 data class LocationPoint(
     @PrimaryKey(autoGenerate = true) val id: Long = 0,
@@ -613,71 +619,24 @@ interface DailyReportRepository {
 
 ---
 
-## Migrations
+## Implemented Migration Chain
 
-```kotlin
-// Version 1 → 2 example: Add indoorConfidence to Stay
-val MIGRATION_1_2 = object : Migration(1, 2) {
-    override fun migrate(database: SupportSQLiteDatabase) {
-        database.execSQL("ALTER TABLE stays ADD COLUMN indoorConfidence REAL NOT NULL DEFAULT 0.0")
-    }
-}
+The app's current Room schema is **version 4**. Migrations are registered in both
+`RoadGuideDatabase.getInstance()` and Hilt's database provider; there is no destructive fallback.
 
-// Version 2 → 3: Add calculationVersion to ExposureResult
-val MIGRATION_2_3 = object : Migration(2, 3) {
-    override fun migrate(database: SupportSQLiteDatabase) {
-        database.execSQL("ALTER TABLE exposure_results ADD COLUMN calculationVersion INTEGER NOT NULL DEFAULT 1")
-    }
-}
+| Migration | Schema change |
+|-----------|---------------|
+| 1 → 2 | Adds `rawExposureScore` to `exposure_results`, defaulting existing rows to `0.0`. |
+| 2 → 3 | Adds `excludeFromExposure` to `location_points`, defaulting existing rows to `false`. |
+| 3 → 4 | Rebuilds `location_points` to add a cascading foreign key to `routes`. Existing points are retained; points whose `routeId` has no matching route are migrated with `routeId = NULL`. |
 
-@Database(
-    entities = [
-        LocationPoint::class,
-        Route::class,
-        RouteSegment::class,
-        Stay::class,
-        Place::class,
-        EnvironmentalSample::class,
-        ExposureResult::class,
-        DailyReport::class,
-        PrivacyZone::class,
-        DataRetentionPolicy::class
-    ],
-    version = 1, // Increment with each migration
-    exportSchema = true
-)
-abstract class RoadGuideDatabase : RoomDatabase() {
-    abstract fun locationPointDao(): LocationPointDao
-    abstract fun routeDao(): RouteDao
-    abstract fun routeSegmentDao(): RouteSegmentDao
-    abstract fun stayDao(): StayDao
-    abstract fun placeDao(): PlaceDao
-    abstract fun environmentalSampleDao(): EnvironmentalSampleDao
-    abstract fun exposureResultDao(): ExposureResultDao
-    abstract fun dailyReportDao(): DailyReportDao
-    abstract fun privacyZoneDao(): PrivacyZoneDao
-    
-    companion object {
-        @Volatile private var INSTANCE: RoadGuideDatabase? = null
-        
-        fun getInstance(context: Context): RoadGuideDatabase {
-            return INSTANCE ?: synchronized(this) {
-                INSTANCE ?: Room.databaseBuilder(
-                    context.applicationContext,
-                    RoadGuideDatabase::class.java,
-                    "road_guide.db"
-                ).addMigrations(MIGRATION_1_2, MIGRATION_2_3) // Add as needed
-                    .fallbackToDestructiveMigration() // Dev only; remove for prod
-                    .build().also { INSTANCE = it }
-            }
-        }
-    }
-}
-```
+Historical schemas are exported under `app/schemas/`. The Room contract tests load
+those exported schemas, upgrade databases from versions 1, 2, and 3, and verify
+that Room accepts the resulting version-4 schema and the retained data.
 
 ---
 
 ## Planned vs Implemented
 
-> **All entities and DAOs are 📋 Planned** — no Room database exists in codebase yet.
-> This document defines the target schema per `ROAD GUIDE.txt` specification (Part 13).
+> Entities, DAOs, migrations, and exported Room schemas are implemented. The schema files under
+> `app/schemas/` are the migration contract; tests exercise upgrades from each supported historical version.

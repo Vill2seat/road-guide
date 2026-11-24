@@ -16,7 +16,8 @@ import java.util.Locale
 private val Context.trackingDataStore by preferencesDataStore(name = "tracking_prefs")
 
 data class TrackingPreferences(
-    val trackingEnabled: Boolean = true,
+    val trackingEnabled: Boolean = false,
+    val trackingPaused: Boolean = false,
     val intervalSeconds: Int = 60,
     val units: String = "metric",
     val aqiThreshold: Int = 100
@@ -30,7 +31,8 @@ class TrackingPrefs(private val context: Context) {
 
     val preferencesFlow: Flow<TrackingPreferences> = context.trackingDataStore.data.map { prefs ->
         TrackingPreferences(
-            trackingEnabled = prefs[TRACKING_ENABLED] ?: true,
+            trackingEnabled = prefs[TRACKING_ENABLED] ?: false,
+            trackingPaused = prefs[TRACKING_PAUSED] ?: false,
             intervalSeconds = prefs[INTERVAL_SECONDS] ?: 60,
             units = prefs[UNITS] ?: "metric",
             aqiThreshold = prefs[AQI_THRESHOLD] ?: 100
@@ -38,7 +40,14 @@ class TrackingPrefs(private val context: Context) {
     }
 
     suspend fun setTrackingEnabled(enabled: Boolean) {
-        context.trackingDataStore.edit { it[TRACKING_ENABLED] = enabled }
+        context.trackingDataStore.edit {
+            it[TRACKING_ENABLED] = enabled
+            if (!enabled) it[TRACKING_PAUSED] = false
+        }
+    }
+
+    suspend fun setTrackingPaused(paused: Boolean) {
+        context.trackingDataStore.edit { it[TRACKING_PAUSED] = paused }
     }
 
     suspend fun setIntervalSeconds(seconds: Int) {
@@ -101,6 +110,7 @@ class TrackingPrefs(private val context: Context) {
 
     companion object {
         private val TRACKING_ENABLED = booleanPreferencesKey("tracking_enabled")
+        private val TRACKING_PAUSED = booleanPreferencesKey("tracking_paused")
         private val INTERVAL_SECONDS = intPreferencesKey("interval_seconds")
         private val UNITS = stringPreferencesKey("units")
         private val AQI_THRESHOLD = intPreferencesKey("aqi_threshold")

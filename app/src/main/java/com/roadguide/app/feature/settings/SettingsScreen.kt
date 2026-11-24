@@ -14,19 +14,29 @@ import androidx.compose.runtime.rememberCoroutineScope
 import com.roadguide.app.data.local.settings.TrackingPrefs
 import com.roadguide.app.data.repository.TrackingSettingsRepositoryImpl
 import com.roadguide.app.data.local.settings.TrackingPreferences
+import com.roadguide.app.data.source.PermissionSource
+import com.roadguide.app.service.TrackingServiceController
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SettingsScreen() {
-    val context = LocalContext.current
-    val trackingSettingsRepository = remember { TrackingSettingsRepositoryImpl(TrackingPrefs(context)) }
+    val context = LocalContext.current.applicationContext
+    val trackingPrefs = remember(context) { TrackingPrefs(context) }
+    val trackingSettingsRepository = remember(trackingPrefs) {
+        TrackingSettingsRepositoryImpl(trackingPrefs)
+    }
+    val trackingServiceController = remember(context, trackingPrefs) {
+        TrackingServiceController(context, trackingPrefs, PermissionSource(context))
+    }
     val scope = rememberCoroutineScope()
+    val snackbarHostState = remember { SnackbarHostState() }
 
     val prefsState by trackingSettingsRepository.preferencesFlow.collectAsState(initial = TrackingPreferences())
 
     Scaffold(
         modifier = Modifier.fillMaxSize(),
+        snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
             TopAppBar(
                 title = { Text("Настройки") },
@@ -56,7 +66,17 @@ fun SettingsScreen() {
                             Text("Автоматическое отслеживание", style = MaterialTheme.typography.bodyMedium)
                             Switch(
                                 checked = prefsState.trackingEnabled,
-                                onCheckedChange = { scope.launch { trackingSettingsRepository.setTrackingEnabled(it) } }
+                                onCheckedChange = { enabled ->
+                                    scope.launch {
+                                        try {
+                                            trackingServiceController.setTrackingEnabled(enabled)
+                                        } catch (e: Exception) {
+                                            snackbarHostState.showSnackbar(
+                                                e.message ?: "Не удалось изменить состояние трекинга"
+                                            )
+                                        }
+                                    }
+                                }
                             )
                         }
                         Spacer(modifier = Modifier.height(8.dp))

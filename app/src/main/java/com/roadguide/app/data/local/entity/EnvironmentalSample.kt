@@ -38,7 +38,26 @@ data class EnvironmentalSample(
     val dataQuality: DataQuality = DataQuality.UNKNOWN,
     val modelResolutionKm: Double? = null,
     val fetchedAt: Long = 0L
-)
+) {
+    fun hasValidAirQualityData(): Boolean =
+        usAqi?.let { it in 0..500 } == true ||
+            europeanAqi?.let { it in 0..500 } == true ||
+            hasValidPollutantData()
+
+    fun hasValidPollutantData(): Boolean =
+        listOfNotNull(
+            pm2_5,
+            pm10,
+            nitrogenDioxide,
+            ozone,
+            sulphurDioxide,
+            carbonMonoxide
+        ).any { it.isFinite() && it in 0.0..MAX_VALID_POLLUTANT_CONCENTRATION }
+
+    private companion object {
+        const val MAX_VALID_POLLUTANT_CONCENTRATION = 100_000.0
+    }
+}
 
 enum class DataSource { OPEN_METEO, OPEN_METEO_AQ, OVERPASS, MANUAL }
 enum class DataQuality { HIGH, MEDIUM, LOW, UNKNOWN, STALE, OUT_OF_RANGE }

@@ -18,6 +18,9 @@ interface StayDao {
     @Query("SELECT * FROM stays WHERE routeId = :routeId ORDER BY startTime")
     fun observeByRoute(routeId: Long): Flow<List<Stay>>
 
+    @Query("SELECT * FROM stays ORDER BY startTime")
+    fun observeAll(): Flow<List<Stay>>
+
     @Query("SELECT * FROM stays WHERE placeId = :placeId ORDER BY startTime DESC")
     fun observeByPlace(placeId: Long): Flow<List<Stay>>
 }

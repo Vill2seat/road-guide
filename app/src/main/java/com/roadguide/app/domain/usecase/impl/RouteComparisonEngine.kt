@@ -42,7 +42,9 @@ class RouteComparisonEngine {
 
         // LOWEST_EXPOSURE: только если есть маршрут с достаточными данными
         val eligibleForEco = result.filter { r ->
-            r.confidence >= MIN_CONFIDENCE_FOR_ECO && r.coverage >= MIN_COVERAGE_FOR_ECO
+            r.hasAirQualityData &&
+                r.confidence >= MIN_CONFIDENCE_FOR_ECO &&
+                r.coverage >= MIN_COVERAGE_FOR_ECO
         }
         if (eligibleForEco.isNotEmpty()) {
             val lowestExposure = eligibleForEco.minByOrNull { it.exposureScore }!!
@@ -74,6 +76,7 @@ class RouteComparisonEngine {
         // Предпочитаем экологичный маршрут только если данные достаточны
         val ecoRoute = routes.firstOrNull { r ->
             r.category == RouteCategory.LOWEST_EXPOSURE &&
+                r.hasAirQualityData &&
                 r.confidence >= MIN_CONFIDENCE_FOR_ECO &&
                 r.coverage >= MIN_COVERAGE_FOR_ECO
         }
@@ -88,10 +91,13 @@ class RouteComparisonEngine {
     private fun selectBalanced(routes: List<RouteEvaluation>): RouteEvaluation? {
         if (routes.isEmpty()) return null
 
-        val maxDuration = routes.maxOfOrNull { it.durationSeconds.toDouble() } ?: 1.0
-        val maxExposure = routes.maxOfOrNull { it.exposureScore } ?: 100.0
+        val routesWithAirQuality = routes.filter { it.hasAirQualityData }
+        if (routesWithAirQuality.isEmpty()) return null
 
-        return routes.minByOrNull { route ->
+        val maxDuration = routesWithAirQuality.maxOfOrNull { it.durationSeconds.toDouble() } ?: 1.0
+        val maxExposure = routesWithAirQuality.maxOfOrNull { it.exposureScore } ?: 100.0
+
+        return routesWithAirQuality.minByOrNull { route ->
             // Нормализованный скор: чем меньше время и экспозиция, тем лучше
             val timeNorm = route.durationSeconds.toDouble() / maxDuration
             val exposureNorm = route.exposureScore / maxExposure
@@ -109,7 +115,9 @@ class RouteComparisonEngine {
         if (ecoRoutes.isEmpty()) return null
 
         val insufficient = ecoRoutes.filter { r ->
-            r.confidence < MIN_CONFIDENCE_FOR_ECO || r.coverage < MIN_COVERAGE_FOR_ECO
+            !r.hasAirQualityData ||
+                r.confidence < MIN_CONFIDENCE_FOR_ECO ||
+                r.coverage < MIN_COVERAGE_FOR_ECO
         }
         if (insufficient.isNotEmpty()) {
             return "Маршрут с наименьшей экспозицией имеет недостаточные данные (уверенность: ${(insufficient.first().confidence * 100).roundToInt()}%, покрытие: ${insufficient.first().coverage.roundToInt()}%). Рекомендуется использовать альтернативный маршрут."

@@ -3,12 +3,15 @@ package com.roadguide.app.domain.usecase.impl
 import com.roadguide.app.data.local.entity.ActivityType
 import com.roadguide.app.domain.model.LocationPointSummary
 import kotlin.math.abs
+import kotlin.math.cos
+import kotlin.math.sin
+import kotlin.math.sqrt
 
 object MovementDetectionEngine {
 
     private const val WALKING_MAX_SPEED_MS = 2.0
     private const val RUNNING_MAX_SPEED_MS = 6.0
-    private const val CYCLING_MIN_SPEED_MS = 6.0
+    private const val CYCLING_MAX_SPEED_MS = 10.0
     private const val STATIONARY_MAX_SPEED_MS = 0.5
 
     private const val IN_VEHICLE_MAX_SPEED_MS = 30.0
@@ -17,6 +20,8 @@ object MovementDetectionEngine {
     private const val PT_MIN_STOPS_IN_WINDOW = 2
     private const val PT_STOP_SPEED_MS = 0.5
     private const val PT_STOP_DURATION_MS = 30_000
+    private const val STAY_MAX_RADIUS_METERS = 50.0
+    private const val MAX_CONTIGUOUS_GAP_MS = 5 * 60 * 1000L
 
     data class ClassificationResult(
         val activity: ActivityType,
@@ -80,8 +85,9 @@ object MovementDetectionEngine {
             avgSpeed < STATIONARY_MAX_SPEED_MS -> ActivityType.STATIONARY
             avgSpeed < WALKING_MAX_SPEED_MS -> ActivityType.WALKING
             avgSpeed < RUNNING_MAX_SPEED_MS -> ActivityType.RUNNING
-            avgSpeed < CYCLING_MIN_SPEED_MS -> ActivityType.CYCLING
+            avgSpeed < CYCLING_MAX_SPEED_MS -> ActivityType.CYCLING
             avgSpeed <= IN_VEHICLE_MAX_SPEED_MS && accScore >= 0.5 -> ActivityType.IN_VEHICLE
+            avgSpeed > IN_VEHICLE_MAX_SPEED_MS -> ActivityType.IN_VEHICLE
             else -> ActivityType.CYCLING
         }
 
@@ -106,11 +112,46 @@ object MovementDetectionEngine {
     fun classify(points: List<LocationPointSummary>): ActivityType =
         classifyWithResult(points).activity
 
-    fun detectStationary(points: List<LocationPointSummary>, thresholdMs: Long = 300_000): Boolean =
-        if (points.size < 3) false else {
-            val avg = points.takeLast(3).mapNotNull { it.speedMps }.average()
-            avg < STATIONARY_MAX_SPEED_MS
+    fun detectStationary(points: List<LocationPointSummary>, thresholdMs: Long = 300_000): Boolean {
+        if (points.size < 2) return false
+        val ordered = points.sortedBy { it.timestamp }
+        if (ordered.zipWithNext().any { (previous, current) ->
+                current.timestamp - previous.timestamp > MAX_CONTIGUOUS_GAP_MS
+            }
+        ) {
+            return false
         }
+        if (ordered.last().timestamp - ordered.first().timestamp < thresholdMs) return false
+        if (ordered.any { it.speedMps >= STATIONARY_MAX_SPEED_MS }) return false
+
+        val centerLatitude = ordered.map { it.latitude }.average()
+        val centerLongitude = ordered.map { it.longitude }.average()
+        return ordered.all { point ->
+            distanceMeters(
+                point.latitude,
+                point.longitude,
+                centerLatitude,
+                centerLongitude
+            ) <= STAY_MAX_RADIUS_METERS
+        }
+    }
+
+    private fun distanceMeters(
+        firstLatitude: Double,
+        firstLongitude: Double,
+        secondLatitude: Double,
+        secondLongitude: Double
+    ): Double {
+        val earthRadiusMeters = 6_371_000.0
+        val latitudeDelta = Math.toRadians(secondLatitude - firstLatitude)
+        val longitudeDelta = Math.toRadians(secondLongitude - firstLongitude)
+        val firstLatitudeRadians = Math.toRadians(firstLatitude)
+        val secondLatitudeRadians = Math.toRadians(secondLatitude)
+        val a = sin(latitudeDelta / 2) * sin(latitudeDelta / 2) +
+            cos(firstLatitudeRadians) * cos(secondLatitudeRadians) *
+            sin(longitudeDelta / 2) * sin(longitudeDelta / 2)
+        return earthRadiusMeters * 2 * kotlin.math.atan2(sqrt(a), sqrt(1 - a))
+    }
 
     fun calculateConfidence(activity: ActivityType, sampleCount: Int): Double {
         val sf = if (sampleCount >= 10) 1.0 else if (sampleCount >= 5) 0.7 else 0.5

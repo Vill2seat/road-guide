@@ -4,6 +4,7 @@ import android.content.Context
 import android.os.Bundle
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -13,7 +14,6 @@ import androidx.compose.ui.viewinterop.AndroidView
 import androidx.lifecycle.DefaultLifecycleObserver
 import androidx.lifecycle.LifecycleOwner
 import org.maplibre.android.annotations.IconFactory
-import org.maplibre.android.annotations.Marker
 import org.maplibre.android.annotations.MarkerOptions
 import org.maplibre.android.annotations.PolylineOptions
 import org.maplibre.android.camera.CameraUpdateFactory
@@ -38,6 +38,8 @@ import com.roadguide.app.map.model.MapPoint
 @Composable
 fun MapView(
     modifier: Modifier = Modifier,
+    mapContentKey: Any? = null,
+    onMapUpdate: (MapLibreMap) -> Unit = {},
     onMapReady: (MapLibreMap) -> Unit = {}
 ) {
     val context = LocalContext.current
@@ -62,6 +64,10 @@ fun MapView(
             mv
         }
     )
+
+    LaunchedEffect(mapRef.value, mapContentKey) {
+        mapRef.value?.let(onMapUpdate)
+    }
 
     DisposableEffect(lifecycle) {
         val observer = object : DefaultLifecycleObserver {
@@ -116,6 +122,32 @@ fun MapLibreMap.addLocationMarker(
     moveCamera(CameraUpdateFactory.newLatLng(latLng))
 }
 
+fun MapLibreMap.removeLocationMarker() {
+    getMarkers()
+        .filter { it.title == "location_marker" }
+        .forEach { marker -> removeMarker(marker) }
+}
+
+fun MapLibreMap.addRouteEndpointMarker(
+    context: Context,
+    title: String,
+    latitude: Double,
+    longitude: Double,
+    iconRes: Int = com.roadguide.app.R.drawable.ic_launcher_background
+) {
+    getMarkers()
+        .filter { it.title == title }
+        .forEach { marker -> removeMarker(marker) }
+
+    val icon = IconFactory.getInstance(context).fromResource(iconRes)
+    addMarker(
+        MarkerOptions()
+            .position(LatLng(latitude, longitude))
+            .icon(icon)
+            .title(title)
+    )
+}
+
 /**
  * Adds a route polyline to the map using native MapLibre Polyline.
  * Removes any previously added route polyline before adding a new one.
@@ -125,21 +157,28 @@ fun MapLibreMap.addRoutePolyline(
     color: Int = -8947314,
     strokeWidth: Float = 6f
 ) {
+    addRoutePolylines(listOf(routePoints), color, strokeWidth)
+}
+
+fun MapLibreMap.addRoutePolylines(
+    routeLines: List<List<MapPoint>>,
+    color: Int = -8947314,
+    strokeWidth: Float = 6f
+) {
     // Remove previous route polyline
     val polylines = getPolylines()
     polylines.forEach { polyline ->
         removePolyline(polyline)
     }
 
-    if (routePoints.isEmpty()) return
-
-    val latLngs = routePoints.map { LatLng(it.latitude, it.longitude) }
-
-    val options = PolylineOptions()
-        .addAll(latLngs)
-        .color(color)
-        .width(strokeWidth)
-    addPolyline(options)
+    routeLines.filter { it.size >= 2 }.forEach { routePoints ->
+        val latLngs = routePoints.map { LatLng(it.latitude, it.longitude) }
+        val options = PolylineOptions()
+            .addAll(latLngs)
+            .color(color)
+            .width(strokeWidth)
+        addPolyline(options)
+    }
 }
 
 /**

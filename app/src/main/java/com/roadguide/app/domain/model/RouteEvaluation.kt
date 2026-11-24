@@ -16,6 +16,7 @@ data class RouteEvaluation(
     val pollutionContext: String?,
     val roadProximity: Double,    // 0-1 (выше = ближе к дорогам)
     val greenAreaProximity: Double, // 0-1 (выше = ближе к зеленым зонам)
+    val hasAirQualityData: Boolean,
     var category: RouteCategory,
     val summary: String
 )

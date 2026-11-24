@@ -1,23 +1,20 @@
 package com.roadguide.app.data.database
 
-import android.content.Context
 import androidx.room.Room
-import com.roadguide.app.data.local.db.RoadGuideDatabase
-import com.roadguide.app.data.local.entity.LocationPoint
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
+import com.roadguide.app.data.local.dao.LocationPointDao
+import com.roadguide.app.data.local.db.RoadGuideDatabase
+import com.roadguide.app.data.local.entity.LocationPoint
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.runBlocking
 import org.junit.After
 import org.junit.Assert.assertEquals
-import org.junit.Assert.assertNotNull
+import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
-import java.util.concurrent.CountDownLatch
-import java.util.concurrent.TimeUnit
 
-/**
- * Instrumentation test for LocationPoint database operations.
- */
 @RunWith(AndroidJUnit4::class)
 class LocationPointDatabaseTest {
 
@@ -27,10 +24,7 @@ class LocationPointDatabaseTest {
     @Before
     fun setUp() {
         val context = InstrumentationRegistry.getInstrumentation().targetContext
-        database = Room.inMemoryDatabaseBuilder(
-            context,
-            RoadGuideDatabase::class.java
-        )
+        database = Room.inMemoryDatabaseBuilder(context, RoadGuideDatabase::class.java)
             .allowMainThreadQueries()
             .build()
         dao = database.locationPointDao()
@@ -42,60 +36,42 @@ class LocationPointDatabaseTest {
     }
 
     @Test
-    fun `insert and get location point`() {
+    fun insertPersistsLocationPoint() = runBlocking {
         val point = LocationPoint(
-            id = 1L,
             latitude = 55.7558,
             longitude = 37.6173,
-            timestamp = 1000000000L,
+            timestamp = 1_000L,
             accuracyMeters = 5f,
             speedMetersPerSecond = 2.5f,
-            bearing = 90f,
-            altitude = 100.0,
-            provider = "fused",
-            isMock = false,
-            qualityFlags = 0,
-            routeId = 1L
+            provider = "fused"
         )
 
         val insertedId = dao.insert(point)
-        assertNotNull(insertedId)
+        val saved = dao.observeAll().first().single()
 
-        val fetched = dao.getById(insertedId).first()
-        assertNotNull(fetched)
-        assertEquals(55.7558, fetched?.latitude, 0.0)
-        assertEquals(37.6173, fetched?.longitude, 0.0)
-        assertEquals(2.5f, fetched?.speedMetersPerSecond ?: 0f, 0.0f)
+        assertTrue(insertedId > 0L)
+        assertEquals(insertedId, saved.id)
+        assertEquals(point.latitude, saved.latitude, 0.0)
+        assertEquals(point.longitude, saved.longitude, 0.0)
+        assertEquals(point.speedMetersPerSecond, saved.speedMetersPerSecond)
     }
 
     @Test
-    fun `observe all location points`() {
-        val point1 = LocationPoint(
-            id = 1L,
-            latitude = 55.7558,
-            longitude = 37.6173,
-            timestamp = 1000000000L,
-            accuracyMeters = 5f,
-            provider = "fused",
-            isMock = false,
-            routeId = 1L
+    fun observeAllReturnsPointsNewestFirst() = runBlocking {
+        dao.insert(locationPoint(timestamp = 1_000L))
+        dao.insert(locationPoint(timestamp = 2_000L))
+
+        assertEquals(
+            listOf(2_000L, 1_000L),
+            dao.observeAll().first().map(LocationPoint::timestamp)
         )
-
-        val point2 = LocationPoint(
-            id = 2L,
-            latitude = 55.7560,
-            longitude = 37.6175,
-            timestamp = 2000000000L,
-            accuracyMeters = 5f,
-            provider = "fused",
-            isMock = false,
-            routeId = 1L
-        )
-
-        dao.insert(point1)
-        dao.insert(point2)
-
-        val allPoints = dao.observeAll().first()
-        assertEquals(2, allPoints.size)
     }
+
+    private fun locationPoint(timestamp: Long) = LocationPoint(
+        latitude = 55.7558,
+        longitude = 37.6173,
+        timestamp = timestamp,
+        accuracyMeters = 5f,
+        provider = "fused"
+    )
 }

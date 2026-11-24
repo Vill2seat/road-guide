@@ -11,7 +11,9 @@ import androidx.room.PrimaryKey
 data class DailyReport(
     @PrimaryKey val date: String,
     val totalScore: Double = 0.0,
+    /** Confidence as a percent in the range 0..100. */
     val confidence: Double = 0.0,
+    /** Valid AQ exposure coverage as a percent in the range 0..100. */
     val coverage: Double = 0.0,
     val totalDistanceMeters: Double = 0.0,
     val totalDurationSeconds: Long = 0,

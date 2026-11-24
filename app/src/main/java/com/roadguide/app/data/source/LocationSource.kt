@@ -1,12 +1,11 @@
 package com.roadguide.app.data.source
 
 import android.Manifest
-import android.app.Activity
 import android.content.Context
 import android.content.pm.PackageManager
 import android.location.Location
+import android.os.Build
 import android.os.Looper
-import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import com.google.android.gms.location.FusedLocationProviderClient
 import com.google.android.gms.location.LocationCallback
@@ -14,12 +13,15 @@ import com.google.android.gms.location.LocationRequest
 import com.google.android.gms.location.LocationResult
 import com.google.android.gms.location.LocationServices
 import com.google.android.gms.location.Priority
+import com.google.android.gms.tasks.CancellationTokenSource
 import com.google.android.gms.tasks.Tasks
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
-import kotlin.math.abs
+import kotlinx.coroutines.withContext
+import java.util.concurrent.TimeUnit
 
 /**
  * Source of location updates from Android FusedLocationProviderClient.
@@ -52,33 +54,27 @@ class LocationSource(private val context: Context) {
      * Checks if both foreground and background location permissions are granted.
      */
     fun hasLocationPermission(): Boolean {
+        val background = Build.VERSION.SDK_INT < Build.VERSION_CODES.Q ||
+            ContextCompat.checkSelfPermission(
+                context,
+                Manifest.permission.ACCESS_BACKGROUND_LOCATION
+            ) == PackageManager.PERMISSION_GRANTED
+        return hasForegroundLocationPermission() && background
+    }
+
+    /**
+     * Checks foreground location access, which is sufficient for a user-initiated route lookup.
+     */
+    fun hasForegroundLocationPermission(): Boolean {
         val fine = ContextCompat.checkSelfPermission(
             context,
             Manifest.permission.ACCESS_FINE_LOCATION
         ) == PackageManager.PERMISSION_GRANTED
-        val background = ContextCompat.checkSelfPermission(
+        val coarse = ContextCompat.checkSelfPermission(
             context,
-            Manifest.permission.ACCESS_BACKGROUND_LOCATION
+            Manifest.permission.ACCESS_COARSE_LOCATION
         ) == PackageManager.PERMISSION_GRANTED
-        return fine && background
-    }
-
-    /**
-     * Requests location permissions from the calling Activity.
-     */
-    fun requestLocationPermission(activity: Activity) {
-        ActivityCompat.requestPermissions(
-            activity,
-            arrayOf(
-                Manifest.permission.ACCESS_FINE_LOCATION,
-                Manifest.permission.ACCESS_BACKGROUND_LOCATION
-            ),
-            LOCATION_PERMISSION_REQUEST_CODE
-        )
-    }
-
-    companion object {
-        const val LOCATION_PERMISSION_REQUEST_CODE = 1002
+        return fine || coarse
     }
 
     /**
@@ -142,18 +138,37 @@ class LocationSource(private val context: Context) {
      */
     @Suppress("MissingPermission")
     suspend fun getLastLocation(): Location? {
-        if (!hasLocationPermission()) return null
+        if (!hasForegroundLocationPermission()) return null
         return Tasks.await(fusedLocationClient.lastLocation)
     }
+
+    /**
+     * Requests a fresh foreground location. The blocking Tasks bridge runs off the main thread.
+     */
+    @Suppress("MissingPermission")
+    suspend fun getCurrentLocation(): Location? = withContext(Dispatchers.IO) {
+        if (!hasForegroundLocationPermission()) return@withContext null
+        val cancellation = CancellationTokenSource()
+        try {
+            Tasks.await(
+                fusedLocationClient.getCurrentLocation(
+                    Priority.PRIORITY_HIGH_ACCURACY,
+                    cancellation.token
+                ),
+                15,
+                TimeUnit.SECONDS
+            )
+        } finally {
+            cancellation.cancel()
+        }
+    }
+
     /**
      * Updates the location update interval.
      * Removes existing updates and starts with the new interval.
      */
     suspend fun updateInterval(intervalSeconds: Long) {
-        locationMutex.withLock {
-            locationCallback?.let { removeLocationUpdates() }
-        locationCallback = null
-            requestLocationUpdates(intervalSeconds)
-        }
+        removeLocationUpdates()
+        requestLocationUpdates(intervalSeconds)
     }
 }

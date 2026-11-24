@@ -3,8 +3,8 @@
 ## Overview
 Fact-based status of major components.
 
-**Last Updated**: 2026-11-13  
-**Based On**: `ROAD GUIDE.txt`, `docs/project-knowledge/*`, repository inspection, and local build verification.
+**Last Updated**: 2026-11-24
+**Based On**: `ROAD GUIDE.txt`, `docs/project-knowledge/*`, repository inspection, and the prior local build verification. Environmental AQ changes are not build-verified.
 
 ## Status Legend
 | Status | Meaning |
@@ -22,6 +22,7 @@ Fact-based status of major components.
 - **Results (2026-11-13):**
   - `:app:assembleDebug` → **BUILD SUCCESSFUL** (APK: `app/build/outputs/apk/debug/app-debug.apk`)
   - `:app:lint` → **BUILD SUCCESSFUL** (report: `app/build/reports/lint-results-debug.html`)
+- The current Places/privacy changes have **not** been built or tested, as requested.
 
 ## Component Status Matrix
 
@@ -30,7 +31,7 @@ Fact-based status of major components.
 |-----------|--------|-------|
 | Gradle / Build Config | ✅ Implemented | Wrapper 8.10.2, root/app scripts + `libs.versions.toml` aligned (Room/KSP/DataStore, Compose BOM). |
 | Room Database (v1 skeleton) | 🟡 Partially Implemented | `RoadGuideDatabase` (v1, `exportSchema=true`, `Converters`), entities and DAOs present/compiling; schema aligned to spec baseline, needs migration strategy hardening and integration/use. |
-| DataStore (tracking prefs) | ✅ Partially Implemented | `TrackingPrefs` skeleton (enabled/interval/units/aqi threshold) compiles. |
+| DataStore (tracking prefs) | 🟡 Implemented | Persists enabled/paused state, interval, units, and AQI threshold; tracking defaults off. |
 | DI (Hilt/Koin) | 📋 Planned | Not set up. |
 | Navigation (Compose) | 🟡 Partially Implemented | M3 `AppNavHost`/bottom nav + routes/screens scaffolded. |
 | Theme / Design System | 🟡 Partially Implemented | Tokens/theme/placeholders from Figma export; components incomplete. |
@@ -46,9 +47,12 @@ Fact-based status of major components.
 ### Tracking / Domain / Features
 | Component | Status | Notes |
 |-----------|--------|-------|
-| Background tracking, permissions, geofencing | 📋 Planned | Stubs only (`service/TrackingServiceStub`). |
-| Movement/segmentation/exposure/routing/map integrations | 📋 Planned | Not implemented (`map/MapViewStub`, domain/usecase stubs). |
-| Feature screens content | 🟡 Partially Implemented | Placeholder screens (tracker/timeline/planner/history/places/profile). |
+| Background tracking, permissions, geofencing | 🟡 Partially Implemented | Foreground service start/pause/resume/stop, staged runtime permissions, privacy-zone checks, route ID persistence, and boot recovery are wired. Device/OEM recovery behavior still needs instrumentation testing. |
+| Movement/segmentation | 🟡 Partially Implemented | On route completion, speed-based activity classification produces persisted route segments and stable stays; GPS gaps over five minutes split segments and are excluded from route distance. Incremental processing, accuracy filtering, and richer movement signals remain. |
+| Environmental data | 🟡 Partially Implemented | Open-Meteo weather and hourly Air Quality clients are connected through DI and sample persistence. Invalid/missing AQ values do not produce exposure scores; time-aligned AQ is matched to route points and recent samples are cached. Data are modeled estimates, not station observations; historical API availability and live-network behavior still need verification. |
+| Exposure/routing/map integrations | 🟡 Partially Implemented | Exposure aggregation and routing/map components exist but are not fully connected to the recorded activity timeline. |
+| Places and privacy zones | 🟡 Partially Implemented | Places and zones have add/edit/delete/search controls. Active circular rules filter recorded history, Timeline, and reports; export has a filtering contract but no file-export flow. Existing private coordinates remain in Room, and `Place.isPrivate` is list metadata only. |
+| Feature screens content | 🟡 Partially Implemented | Tracker/timeline/planner/history/profile still have incomplete flows; Places has CRUD and privacy-zone controls. |
 
 ### Assets
 | Component | Status | Notes |
@@ -59,11 +63,12 @@ Fact-based status of major components.
 - Room schema is an initial compiling baseline; verify field-level parity with `03_DATA_MODEL_AND_DATABASE.md` as features integrate and add migrations before production.
 - `fallbackToDestructiveMigration()` is enabled in DB builder for dev; replace with proper migrations for persisted data.
 - Lint/build may emit deprecation warnings; no blocking errors observed in verified run.
-- No unit/instrumentation coverage yet for data layer or domain logic.
+- Focused unit and instrumentation tests now cover database migrations, privacy-zone decisions, exposure aggregation/calculation, and movement segmentation; the latest interface changes have not been built or run through tests.
+- Privacy zones are evaluated locally from stored circles; there is no Android geofence registration. Adding a zone does not scrub pre-existing raw coordinates from Room. The export policy is not yet connected to a JSON/file exporter.
 
 ## Immediate Next Steps
 1. Validate Room schema details against spec during repository/usecase integration; add schema tests/migrations policy.
-2. Wire repositories/use cases to Room/DataStore and implement tracking/segmentation/exposure pipelines per specs.
+2. Verify environmental API parsing, time matching, and AQ-data handling on device; then continue connecting route exposure to the recorded activity timeline.
 3. Expand UI from placeholders using Figma tokens/components and complete remaining asset exports.
 
 ### Domain Layer (TASK-012)
@@ -92,23 +97,25 @@ Fact-based status of major components.
 | Component | Status | Notes |
 |-----------|--------|-------|
 | TrackingPipeline | ✅ Skeleton | Location collection, segmentation, exposure calculation, daily report skeleton |
-| Exposure calculation | ✅ Skeleton | Uses ExposureConstants formula E = K × P × T × A × R × W × S |
-| Stay detection | 📋 Planned | Skeleton - real implementation pending segmentation criteria |
-| DailyReport creation | 📋 Planned | Skeleton - normalization 0-100 pending |
+| Exposure calculation | 🟡 Partially Implemented | Uses valid AQ values and millisecond segment timestamps converted to seconds; stores raw and normalized exposure separately. |
+| Stay detection | 🟡 Implemented | Requires at least five minutes of low-speed points within a 50 m radius; saved on route completion. |
+| DailyReport creation | 🟡 Partially Implemented | Aggregates duration-weighted valid segment results; confidence and AQ coverage are stored as 0–100 percentages. No report is emitted when valid exposure data are absent. |
 
 ### UI Layer Integration (TASK-014)
 
 | Item | Status | Notes |
 |------|--------|-------|
-| TrackerViewModel | ✅ Implemented | StateFlow for tracking state, toggle tracking action |
-| TimelineViewModel | ✅ Implemented | StateFlow for routes, tracking state |
+| TrackerViewModel | 🟡 Partially Implemented | Reads persisted route points and daily report, observes latest environmental sample, filters private points, and drives start/pause/resume/stop. |
+| TimelineViewModel | 🟡 Partially Implemented | Emits privacy-filtered chronological activity/stay events and supports local-day selection. |
 | HistoryViewModel | ✅ Implemented | StateFlow for historical reports |
 | PlacesViewModel | ✅ Implemented | StateFlow for places list |
-| ProfileViewModel | ✅ Implemented | StateFlow for tracking settings, toggle action |
-| TrackerScreen | ✅ Updated | Connected to ViewModel with Loading/Empty/Error states |
-| TimelineScreen | ✅ Updated | Display route summaries with Loading/Empty/Error states |
-| HistoryScreen | ✅ Updated | Display reports with Loading/Empty/Error states |
-| PlacesScreen | ✅ Updated | Display places with Loading/Empty/Error states |
+| ProfileViewModel | ✅ Implemented | StateFlow for tracking settings; toggle starts/stops the service. |
+| TrackerScreen | 🟡 Partially Implemented | Live map, recorded route summary, environmental-data fallback, report summary, and Timeline/Report navigation; visual bottom sheet and device recovery checks remain. |
+| TimelineScreen | 🟡 Partially Implemented | Daily date navigation, chronological route/activity/stay events, privacy filtering, and empty states; corrections and exposure details remain. |
+| DailyReportScreen | 🟡 Partially Implemented | Loads today's report by default, observes updates, lets users select recent dates, and regenerates on refresh; pollutant breakdown and explainability remain. |
+| PlannerScreen | 🟡 Partially Implemented | Resolves origin/destination, offers driving/walking/cycling, uses routed geometry, compares available alternatives, and surfaces insufficient AQ data; waypoints and reliable alternatives remain. |
+| HistoryScreen | ✅ Updated | Displays reports with Loading/Empty/Error states |
+| PlacesScreen | ✅ Updated | CRUD for places and privacy zones with Loading/Empty/Error states |
 | ProfileScreen | ✅ Updated | Tracking settings toggle with Loading/Empty/Error states |
 
 ### TASK-011: Map Integration & Route Recording
@@ -122,7 +129,7 @@ Fact-based status of major components.
 | LocationMarker model | ✅ Created | `map/model/LocationMarker.kt` - Location data wrapper |
 | TrackerViewModel | ✅ Updated | Added recording state, route points |
 | TrackerScreen | ✅ Updated | Map display + bottom controls |
-| TrackingRecordingService | ✅ Created | Foreground service for background tracking |
+| TrackingRecordingService | 🟡 Implemented | Location foreground service; persists real route ID, reuses active route, and restores after process death. |
 | AppNavHost | ✅ Verified | Tracker route wired correctly |
 
 ### Instrumentation Tests (TASK-016)

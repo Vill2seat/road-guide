@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -18,8 +19,12 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import com.roadguide.app.core.ui.theme.RoadGuideTheme
 import com.roadguide.app.data.source.PermissionSource
+import com.roadguide.app.data.source.LocationSource
 import com.roadguide.app.data.source.OsrmRoutingSource
 import com.roadguide.app.domain.usecase.impl.RouteComparisonEngine
 import com.roadguide.app.domain.usecase.impl.RouteEvaluationEngine
@@ -32,6 +37,7 @@ import javax.inject.Inject
 class MainActivity : ComponentActivity() {
 
     @Inject lateinit var permissionSource: PermissionSource
+    @Inject lateinit var locationSource: LocationSource
     @Inject lateinit var osrmRoutingSource: OsrmRoutingSource
     @Inject lateinit var routeEvaluationEngine: RouteEvaluationEngine
     @Inject lateinit var routeComparisonEngine: RouteComparisonEngine
@@ -53,16 +59,39 @@ class MainActivity : ComponentActivity() {
     @Composable
     private fun PermissionGate() {
         var hasPermissions by remember { mutableStateOf(permissionSource.hasAllPermissions()) }
-        var hasBeenAsked by remember { mutableStateOf(false) }
+        var pendingPermissionRequest by remember { mutableStateOf<Array<String>?>(null) }
+        val lifecycleOwner = LocalLifecycleOwner.current
 
         val permissionLauncher = rememberLauncherForActivityResult(
             ActivityResultContracts.RequestMultiplePermissions()
         ) { granted ->
             hasPermissions = permissionSource.hasAllPermissions()
-            hasBeenAsked = true
+            if (!hasPermissions) {
+                val missing = permissionSource.getMissingPermissions()
+                if (missing.isNotEmpty() && missing.none(granted::containsKey)) {
+                    pendingPermissionRequest = missing.toTypedArray()
+                }
+            }
         }
 
         val onboardingDone by permissionSource.hasCompletedOnboarding().collectAsState(initial = false)
+
+        DisposableEffect(lifecycleOwner) {
+            val observer = LifecycleEventObserver { _, event ->
+                if (event == Lifecycle.Event.ON_RESUME) {
+                    hasPermissions = permissionSource.hasAllPermissions()
+                }
+            }
+            lifecycleOwner.lifecycle.addObserver(observer)
+            onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
+        }
+
+        LaunchedEffect(pendingPermissionRequest) {
+            pendingPermissionRequest?.let { permissions ->
+                pendingPermissionRequest = null
+                permissionLauncher.launch(permissions)
+            }
+        }
 
         LaunchedEffect(hasPermissions) {
             if (!hasPermissions && permissionSource.hasAllPermissions()) {
@@ -85,7 +114,6 @@ class MainActivity : ComponentActivity() {
                         permissionLauncher.launch(missing.toTypedArray())
                     } else {
                         hasPermissions = true
-                        hasBeenAsked = true
                     }
                 },
                 modifier = Modifier.fillMaxSize()
@@ -94,6 +122,7 @@ class MainActivity : ComponentActivity() {
             AppNavHost(
                 permissionSource = permissionSource,
                 permissionLauncher = permissionLauncher,
+                locationSource = locationSource,
                 osrmRoutingSource = osrmRoutingSource,
                 routeEvaluationEngine = routeEvaluationEngine,
                 routeComparisonEngine = routeComparisonEngine

@@ -11,10 +11,12 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import com.roadguide.app.core.ui.theme.RoadGuideTheme
 import com.roadguide.app.data.source.PermissionSource
@@ -50,36 +52,40 @@ class MainActivity : ComponentActivity() {
 
     @Composable
     private fun PermissionGate() {
-        val hasPermissions = remember { mutableStateOf(permissionSource.hasAllPermissions()) }
-        val hasBeenAsked = remember { mutableStateOf(false) }
+        var hasPermissions by remember { mutableStateOf(permissionSource.hasAllPermissions()) }
+        var hasBeenAsked by remember { mutableStateOf(false) }
 
         val permissionLauncher = rememberLauncherForActivityResult(
             ActivityResultContracts.RequestMultiplePermissions()
         ) { granted ->
-            val allGranted = granted.values.all { it }
-            hasPermissions.value = allGranted
-            hasBeenAsked.value = true
+            hasPermissions = permissionSource.hasAllPermissions()
+            hasBeenAsked = true
         }
 
         val onboardingDone by permissionSource.hasCompletedOnboarding().collectAsState(initial = false)
 
+        LaunchedEffect(hasPermissions) {
+            if (!hasPermissions && permissionSource.hasAllPermissions()) {
+                hasPermissions = true
+            }
+        }
+
         if (!onboardingDone) {
             OnboardingFlow(
                 onFinished = {
-                    hasPermissions.value = true
-                    hasBeenAsked.value = true
+                    hasPermissions = permissionSource.hasAllPermissions()
                 },
                 modifier = Modifier.fillMaxSize()
             )
-        } else if (!hasPermissions.value) {
+        } else if (!hasPermissions) {
             PermissionScreen(
                 onGrantPermissions = {
                     val missing = permissionSource.getMissingPermissions()
                     if (missing.isNotEmpty()) {
                         permissionLauncher.launch(missing.toTypedArray())
                     } else {
-                        hasPermissions.value = true
-                        hasBeenAsked.value = true
+                        hasPermissions = true
+                        hasBeenAsked = true
                     }
                 },
                 modifier = Modifier.fillMaxSize()

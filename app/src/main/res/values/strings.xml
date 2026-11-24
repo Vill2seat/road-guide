@@ -137,4 +137,9 @@
     <string name="place_category_restaurant">Restaurant</string>
     <string name="place_category_transit">Transit</string>
     <string name="place_category_other">Other</string>
+    <string name="onboarding_title">Onboarding</string>
+    <string name="permission_denied_title">Permissions Required</string>
+    <string name="permission_denied_message">Road Guide needs location and notification permissions to track your routes and provide environmental data. Please grant these permissions to continue.</string>
+    <string name="permission_retry">Retry</string>
+    <string name="permission_skip">Skip</string>
 </resources>

@@ -6,7 +6,7 @@
 **Platform**: Android (Kotlin, Jetpack Compose)
 **Async**: Kotlin Coroutines + Flow/StateFlow
 **Local DB**: Room
-**DI**: Existing project solution (Hilt/Koin — to be confirmed)
+**DI**: Hilt
 **Background**: Foreground Service (location type)
 
 ---
@@ -274,7 +274,7 @@ com.roadguide
 │   │   ├── AppNavHost.kt
 │   │   ├── BottomNavBar.kt
 │   │   └── AppDestinations.kt
-│   └── di/ (Hilt/Koin modules)
+│   └── di/ (Hilt modules)
 ├── core/
 │   ├── common/ (Result, UseCase, extensions)
 │   ├── data/ (Repository interfaces)
@@ -326,7 +326,7 @@ com.roadguide
 │   ├── onboarding/
 │   └── profile/
 ├── service/
-│   ├── LocationForegroundService.kt
+│   ├── TrackingRecordingService.kt
 │   ├── TrackingNotification.kt
 │   └── BootReceiver.kt
 └── map/
@@ -341,7 +341,7 @@ com.roadguide
 
 | Component | Responsibility | Key Methods |
 |-----------|----------------|-------------|
-| `LocationForegroundService` | Continuous GPS collection, adaptive intervals, notification | `onStartCommand`, `requestLocationUpdates`, `handleLocationResult` |
+| `TrackingRecordingService` | Continuous GPS collection, route lifecycle, segmentation, notification | `onStartCommand`, location callbacks, pause/resume/stop |
 | `MovementDetectionEngine` | Classify point sequences → Activity state | `classifyMovement(points)`, `detectStay(points)` |
 | `RouteSegmentationEngine` | Build Routes, Segments, Stays from classified points | `segmentRoute(points)`, `mergeShortStops()`, `finalizeRoute()` |
 | `GeographicContextEngine` | Query OSM for road type, green areas, industrial | `getContext(lat, lon, radius)`, `classifyRoadType(way)` |
@@ -409,5 +409,5 @@ com.roadguide
 
 ## Planned vs Implemented Status
 
-> **All components are 📋 Planned** — no source code exists in repository yet.
+> The repository contains implemented infrastructure, domain engines, repositories, Compose screens, and test suites. Status is mixed: foundational components are implemented or partially implemented, while complete user flows, migrations, device recovery validation, export, and some integrations remain incomplete. Use `13_CURRENT_IMPLEMENTATION_STATUS.md` for component-level status.
 > This document defines the target architecture per `ROAD GUIDE.txt` specification.

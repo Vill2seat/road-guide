@@ -77,25 +77,25 @@
 
 ---
 
-## Current State (2024-11-12)
+## Current State (2026-11-24)
 
-> **Greenfield project** — No source code exists yet.
+The application is implemented as a local-first Android project and contains working source code across infrastructure, domain, data, UI, and test layers.
 
 | Area | Status |
 |------|--------|
-| Build config (Gradle) | 📋 Planned |
-| Room database | 📋 Planned |
-| Foreground Service | 📋 Planned |
-| Movement/Segmentation engines | 📋 Planned |
-| Environmental API clients | 📋 Planned |
-| Exposure Engine | 📋 Planned |
-| Routing clients | 📋 Planned |
-| MapLibre integration | 📋 Planned |
-| Jetpack Compose UI | 📋 Planned |
-| Design System | 📋 Planned |
-| Tests | 📋 Planned |
+| Build config (Gradle) | ✅ Implemented |
+| Room database | 🟡 Partially implemented |
+| Hilt dependency injection | ✅ Implemented |
+| Foreground Service | 🟡 Partially implemented |
+| Movement/segmentation engines | 🟡 Partially implemented |
+| Environmental API clients | 🟡 Partially implemented |
+| Exposure Engine | 🟡 Partially implemented |
+| Routing and MapLibre | 🟡 Partially implemented |
+| Jetpack Compose UI | 🟡 Partially implemented |
+| Design System | 🟡 Partially implemented |
+| Unit/instrumentation tests | 🟡 Partially implemented |
 
-See `docs/project-knowledge/13_CURRENT_IMPLEMENTATION_STATUS.md` for full matrix.
+See `docs/project-knowledge/13_CURRENT_IMPLEMENTATION_STATUS.md` for the component matrix and known gaps.
 
 ---
 
@@ -116,11 +116,11 @@ Full rules: `docs/project-knowledge/14_AI_WORK_RULES.md`
 
 ---
 
-## Quick Commands (When Project Initialized)
+## Quick Commands
 
 ```bash
 # Build
-./gradlew assembleDebug
+./gradlew :app:assembleDebug
 
 # Test
 ./gradlew test          # Unit

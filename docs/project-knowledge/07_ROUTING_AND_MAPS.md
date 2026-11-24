@@ -4,7 +4,7 @@
 
 Map display, route calculation, and eco-routing comparison for both automatic tracking and manual Eco Route Planner.
 
-**Status**: 📋 Planned — No implementation exists.
+**Status**: 🟡 Partially implemented — MapLibre rendering and OSRM/Overpass clients exist; full route alternatives and planner integration remain incomplete.
 
 ---
 
@@ -325,5 +325,5 @@ For each route alternative:
 
 ## Planned vs Implemented
 
-> **All routing and map components are 📋 Planned** — no MapLibre integration, no routing client, no planner UI exists.
+> MapLibre, OSRM, Overpass, route evaluation/comparison, and a planner screen contain implemented code. Remaining gaps include reliable alternative selection, complete waypoints, production tile configuration, and end-to-end validation. Use `13_CURRENT_IMPLEMENTATION_STATUS.md` for the exact snapshot.
 > This document defines target architecture per `ROAD GUIDE.txt` (Parts 12, 15, 16, 22).

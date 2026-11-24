@@ -8,7 +8,7 @@
 
 ## Rule 1: Knowledge Base First
 
-> **Before any task, read `docs/project-knowledge/PROJECT_INDEX.md`**
+> **Before any task, read `docs/project-knowledge/00_PROJECT_INDEX.md`**
 > Then read task-relevant documents from the knowledge base.
 > Do NOT re-read the full 1800-line `ROAD GUIDE.txt` unless resolving a specific contradiction.
 
@@ -295,7 +295,12 @@ road-guide/
 │       ├── assets/
 │       ├── styles/
 │       └── FIGMA_EXPORT_INDEX.md
-└── (source code - to be created)
+├── app/
+│   ├── src/main/java/com/roadguide/app/
+│   ├── src/test/
+│   └── src/androidTest/
+├── gradle/
+└── settings.gradle.kts
 ```
 
 ---
@@ -306,7 +311,7 @@ These rules are **not optional**. They exist because:
 - Road Guide has precise formulas that must not drift
 - Privacy is a core product promise
 - The spec is 1800 lines — knowledge base prevents re-reading
-- Greenfield project — early decisions compound
+- Existing and in-progress implementation — early decisions still compound
 
 **If you violate a rule**: Stop, revert, re-read this file, do it correctly.
 

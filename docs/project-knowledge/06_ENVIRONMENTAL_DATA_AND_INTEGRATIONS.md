@@ -4,7 +4,7 @@
 
 Catalog of all external API integrations for environmental, geographic, and routing data.
 
-**Status**: 🟡 Partially implemented — Open-Meteo weather and air-quality clients are wired into the data layer; Overpass, routing and tile integrations remain planned.
+**Status**: 🟡 Partially implemented — Open-Meteo weather and air-quality clients, Overpass geographic context, OSRM routing, and a local MapLibre AAR integration are present; live-network reliability and complete planner/geographic coverage remain to be validated.
 
 ---
 

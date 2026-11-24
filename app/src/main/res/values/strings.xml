@@ -17,6 +17,7 @@
     <string name="screen_history">History</string>
     <string name="screen_places">Places</string>
     <string name="screen_profile">Profile</string>
+    <string name="map_initialization_failed">Map unavailable (%1$s). Other app features remain available.</string>
 
     <!-- Common -->
     <string name="common_retry">Retry</string>

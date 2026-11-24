@@ -17,6 +17,7 @@
     <string name="screen_history">История</string>
     <string name="screen_places">Места</string>
     <string name="screen_profile">Профиль</string>
+    <string name="map_initialization_failed">Карта недоступна (%1$s). Остальные функции приложения доступны.</string>
 
     <!-- Common -->
     <string name="common_retry">Повторить</string>

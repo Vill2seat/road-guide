@@ -17,6 +17,7 @@
     <string name="screen_history">Historia</string>
     <string name="screen_places">Lugares</string>
     <string name="screen_profile">Perfil</string>
+    <string name="map_initialization_failed">El mapa no está disponible (%1$s). Las demás funciones siguen disponibles.</string>
 
     <!-- Common -->
     <string name="common_retry">Reintentar</string>

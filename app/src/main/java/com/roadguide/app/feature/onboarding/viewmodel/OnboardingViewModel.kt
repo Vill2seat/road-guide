@@ -2,13 +2,13 @@ package com.roadguide.app.feature.onboarding.viewmodel
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import com.roadguide.app.data.source.PermissionSource
-import com.roadguide.app.domain.model.TrackingSettingsState
-import com.roadguide.app.domain.model.RouteEvaluation
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
 
@@ -35,7 +35,7 @@ class OnboardingViewModel @Inject constructor(
         }
     }
 
-    fun completeOnboarding(): Deferred<Unit> {
+    fun completeOnboarding(): Job {
         return viewModelScope.launch(Dispatchers.IO) {
             permissionSource.markOnboardingCompleted()
         }

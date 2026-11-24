@@ -40,14 +40,7 @@ import com.roadguide.app.R
 import com.roadguide.app.core.ui.theme.LoadingPlaceholder
 import com.roadguide.app.feature.onboarding.viewmodel.OnboardingViewModel
 import com.roadguide.app.feature.permissions.PermissionScreen
-import com.roadguide.app.data.local.settings.TrackingPreferences
-import com.roadguide.app.domain.model.TrackingSettingsState
-import com.roadguide.app.domain.model.RouteEvaluation
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.async
-import com.roadguide.app.R
+import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -65,7 +58,7 @@ fun OnboardingFlow(
     var pendingPermissionRequest by remember { mutableStateOf<Array<String>?>(null) }
     val finishOnboarding = {
         coroutineScope.launch {
-            onboardingViewModel.completeOnboarding().await()
+            onboardingViewModel.completeOnboarding().join()
             onFinished()
         }
     }
@@ -84,19 +77,18 @@ fun OnboardingFlow(
     }
 
     LaunchedEffect(pendingPermissionRequest) {
-        pendingPermissionRequest?.let { permissions ->
-            pendingPermissionRequest = null
-            permissionLauncher.launch(permissions)
-        }
+        val permissions = pendingPermissionRequest ?: return@LaunchedEffect
+        pendingPermissionRequest = null
+        permissionLauncher.launch(permissions)
     }
 
     if (showPermissionDeniedDialog) {
         PermissionDeniedDialog(
             onRetry = {
                 showPermissionDeniedDialog = false
-                pendingPermissionRequest = permissionSource.getMissingPermissions()
-                if (pendingPermissionRequest.isNotEmpty()) {
-                    permissionLauncher.launch(pendingPermissionRequest.toTypedArray())
+                val missing = permissionSource.getMissingPermissions()
+                if (missing.isNotEmpty()) {
+                    pendingPermissionRequest = missing.toTypedArray()
                 } else {
                     finishOnboarding()
                 }
@@ -146,6 +138,7 @@ fun OnboardingFlow(
                 else -> LoadingPlaceholder(modifier = Modifier.fillMaxSize())
             }
         }
+    }
 }
 
 @Composable

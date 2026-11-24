@@ -12,26 +12,33 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import androidx.lifecycle.Lifecycle
-import androidx.lifecycle.LifecycleEventObserver
-import androidx.compose.compose.LocalLifecycleOwner
 import com.roadguide.app.core.ui.theme.RoadGuideTheme
 import com.roadguide.app.core.ui.theme.LoadingPlaceholder
+import com.roadguide.app.data.source.LocationSource
+import com.roadguide.app.data.source.OsrmRoutingSource
 import com.roadguide.app.data.source.PermissionSource
+import com.roadguide.app.domain.usecase.impl.RouteComparisonEngine
+import com.roadguide.app.domain.usecase.impl.RouteEvaluationEngine
 import com.roadguide.app.feature.onboarding.OnboardingFlow
 import com.roadguide.app.feature.permissions.PermissionScreen
 import dagger.hilt.android.AndroidEntryPoint
-import kotlinx.coroutines.flow.collect
 import javax.inject.Inject
 
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
 
     @Inject lateinit var permissionSource: PermissionSource
+    @Inject lateinit var locationSource: LocationSource
+    @Inject lateinit var osrmRoutingSource: OsrmRoutingSource
+    @Inject lateinit var routeEvaluationEngine: RouteEvaluationEngine
+    @Inject lateinit var routeComparisonEngine: RouteComparisonEngine
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -49,15 +56,12 @@ class MainActivity : ComponentActivity() {
 
     @Composable
     private fun PermissionGate() {
-        // Use rememberSaveable to persist state across configuration changes
         var hasPermissions by rememberSaveable { mutableStateOf(permissionSource.hasAllPermissions()) }
-        var hasBeenAsked by rememberSaveable { mutableStateOf(false) }
         val permissionLauncher = rememberLauncherForActivityResult(
             ActivityResultContracts.RequestMultiplePermissions()
         ) { granted ->
             val allGranted = granted.values.all { it }
             hasPermissions = allGranted
-            hasBeenAsked.value = true
         }
 
         // Sync state from PermissionSource on resume
@@ -70,7 +74,8 @@ class MainActivity : ComponentActivity() {
         }
 
         // Collect onboarding completion from DataStore
-        val onboardingDone by permissionSource.hasCompletedOnboarding().collectAsState(initial = false)
+        val onboardingDone by permissionSource.hasCompletedOnboarding()
+            .collectAsState<Boolean, Boolean?>(initial = null)
 
         // Sync hasPermissions from PermissionSource when onboarding completes
         LaunchedEffect(onboardingDone) {

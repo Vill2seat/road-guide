@@ -101,7 +101,7 @@ fun TrackerScreen(
         skipHiddenState = true
     )
     val scaffoldState = rememberBottomSheetScaffoldState(bottomSheetState = sheetState)
-    val mapContentKey = Triple(todayRoute?.id, routeLineChunks, location?.time)
+    val mapContentKey = Pair(todayRoute?.id, routeLineChunks)
 
     Scaffold(modifier = modifier.fillMaxSize()) { outerPadding ->
         when (val state = uiState) {

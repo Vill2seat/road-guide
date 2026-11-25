@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -21,7 +22,6 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import com.roadguide.app.map.model.MapPoint
-import org.maplibre.android.MapLibre
 import org.maplibre.android.camera.CameraUpdateFactory
 import org.maplibre.android.geometry.LatLng
 import org.maplibre.android.maps.MapLibreMap
@@ -40,44 +40,57 @@ fun MapView(
     val lifecycle = LocalLifecycleOwner.current.lifecycle
     val mapView = remember { mutableStateOf<NativeMapView?>(null) }
     val mapLibreMap = remember { mutableStateOf<MapLibreMap?>(null) }
-    val lifecycleBinding = remember { mutableStateOf<MapViewLifecycleBinding?>(null) }
+    val isDisposed = remember { mutableStateOf(false) }
     val currentOnMapReady = rememberUpdatedState(onMapReady)
+    val currentOnMapUpdate = rememberUpdatedState(onMapUpdate)
 
     AndroidView(
         modifier = modifier.fillMaxSize(),
         factory = { viewContext ->
-            if (!MapLibre.hasInstance()) {
-                MapLibre.getInstance(viewContext.applicationContext)
-            }
             NativeMapView(viewContext).also { nativeView ->
                 nativeView.onCreate(Bundle())
-                val binding = MapViewLifecycleBinding(
-                    mapView = nativeView,
-                    lifecycle = lifecycle,
-                    context = viewContext
-                )
-                lifecycleBinding.value = binding
+                mapView.value = nativeView
                 nativeView.getMapAsync { map ->
-                    map.setStyle(Style.Builder().fromUri(MAP_STYLE_URI)) {
-                        if (binding.isDisposed) return@setStyle
-                        map.uiSettings.isAttributionEnabled = true
+                    if (isDisposed.value) return@getMapAsync
+                    try {
+                        map.setStyle(Style.Builder().fromUri(MAP_STYLE_URI)) {
+                            if (isDisposed.value) return@setStyle
+                            map.uiSettings.isAttributionEnabled = true
+                            mapLibreMap.value = map
+                            currentOnMapReady.value(map)
+                        }
+                    } catch (_: Exception) {
                         mapLibreMap.value = map
                         currentOnMapReady.value(map)
                     }
                 }
-                mapView.value = nativeView
             }
         },
-        onRelease = {
-            lifecycleBinding.value?.dispose()
-            lifecycleBinding.value = null
-            mapView.value = null
-            mapLibreMap.value = null
-        }
+        update = { }
     )
 
-    LaunchedEffect(mapContentKey, mapLibreMap.value) {
-        mapLibreMap.value?.let(onMapUpdate)
+    val binding = remember {
+        MapViewLifecycleBinding(
+            mapView = mapView.value!!,
+            lifecycle = lifecycle,
+            isDisposed = isDisposed
+        )
+    }
+
+    DisposableEffect(lifecycle) {
+        lifecycle.addObserver(binding)
+        onDispose {
+            lifecycle.removeObserver(binding)
+            binding.dispose()
+        }
+    }
+
+    LaunchedEffect(mapLibreMap.value) {
+        mapLibreMap.value?.let { map ->
+            if (!isDisposed.value) {
+                currentOnMapUpdate.value(map)
+            }
+        }
     }
 
     if (mapView.value == null) {
@@ -94,27 +107,23 @@ fun MapView(
 private class MapViewLifecycleBinding(
     private val mapView: NativeMapView,
     private val lifecycle: Lifecycle,
-    private val context: Context
+    private val isDisposed: androidx.compose.runtime.MutableState<Boolean>
 ) : DefaultLifecycleObserver, ComponentCallbacks2 {
-    var isDisposed = false
-        private set
-
     private var isStarted = false
     private var isResumed = false
 
     init {
-        context.registerComponentCallbacks(this)
         lifecycle.addObserver(this)
     }
 
     override fun onStart(owner: LifecycleOwner) {
-        if (isDisposed || isStarted) return
+        if (isDisposed.value || isStarted) return
         mapView.onStart()
         isStarted = true
     }
 
     override fun onResume(owner: LifecycleOwner) {
-        if (isDisposed) return
+        if (isDisposed.value) return
         if (!isStarted) onStart(owner)
         if (!isResumed) {
             mapView.onResume()
@@ -134,20 +143,19 @@ private class MapViewLifecycleBinding(
     override fun onConfigurationChanged(newConfig: Configuration) = Unit
 
     override fun onLowMemory() {
-        if (!isDisposed) mapView.onLowMemory()
+        if (!isDisposed.value) mapView.onLowMemory()
     }
 
     override fun onTrimMemory(level: Int) {
-        if (!isDisposed && level >= ComponentCallbacks2.TRIM_MEMORY_RUNNING_LOW) {
+        if (!isDisposed.value && level >= ComponentCallbacks2.TRIM_MEMORY_RUNNING_LOW) {
             mapView.onLowMemory()
         }
     }
 
     fun dispose() {
-        if (isDisposed) return
-        isDisposed = true
+        if (isDisposed.value) return
+        isDisposed.value = true
         lifecycle.removeObserver(this)
-        context.unregisterComponentCallbacks(this)
         pauseIfNeeded()
         stopIfNeeded()
         mapView.onDestroy()
@@ -190,7 +198,7 @@ fun MapLibreMap.addLocationMarker(
     context: Context,
     latitude: Double,
     longitude: Double,
-    iconRes: Int = com.roadguide.app.R.drawable.ic_launcher_background
+    iconRes: Int = com.roadguide.app.R.drawable.ic_launcher_foreground
 ) {
     val latLng = LatLng(latitude, longitude)
     getMarkers().filter { it.title == "location_marker" }.forEach { removeMarker(it) }
@@ -221,7 +229,7 @@ fun MapLibreMap.addRouteEndpointMarker(
     title: String,
     latitude: Double,
     longitude: Double,
-    iconRes: Int = com.roadguide.app.R.drawable.ic_launcher_background
+    iconRes: Int = com.roadguide.app.R.drawable.ic_launcher_foreground
 ) {
     getMarkers().filter { it.title == title }.forEach { removeMarker(it) }
     val icon = org.maplibre.android.annotations.IconFactory.getInstance(context)

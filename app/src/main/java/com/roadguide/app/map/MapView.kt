@@ -1,22 +1,24 @@
 package com.roadguide.app.map
 
 import android.content.Context
+import android.content.ComponentCallbacks2
+import android.content.res.Configuration
 import android.os.Bundle
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.viewinterop.AndroidView
+import androidx.lifecycle.DefaultLifecycleObserver
 import androidx.lifecycle.Lifecycle
-import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import com.roadguide.app.map.model.MapPoint
 import org.maplibre.android.MapLibre
@@ -35,64 +37,44 @@ fun MapView(
     onMapUpdate: (MapLibreMap) -> Unit = {},
     onMapReady: (MapLibreMap) -> Unit = {}
 ) {
-    val context = LocalContext.current
     val lifecycle = LocalLifecycleOwner.current.lifecycle
     val mapView = remember { mutableStateOf<NativeMapView?>(null) }
     val mapLibreMap = remember { mutableStateOf<MapLibreMap?>(null) }
+    val lifecycleBinding = remember { mutableStateOf<MapViewLifecycleBinding?>(null) }
+    val currentOnMapReady = rememberUpdatedState(onMapReady)
 
     AndroidView(
         modifier = modifier.fillMaxSize(),
         factory = { viewContext ->
-            MapLibre.getInstance(viewContext)
+            if (!MapLibre.hasInstance()) {
+                MapLibre.getInstance(viewContext.applicationContext)
+            }
             NativeMapView(viewContext).also { nativeView ->
                 nativeView.onCreate(Bundle())
+                val binding = MapViewLifecycleBinding(
+                    mapView = nativeView,
+                    lifecycle = lifecycle,
+                    context = viewContext
+                )
+                lifecycleBinding.value = binding
                 nativeView.getMapAsync { map ->
                     map.setStyle(Style.Builder().fromUri(MAP_STYLE_URI)) {
+                        if (binding.isDisposed) return@setStyle
                         map.uiSettings.isAttributionEnabled = true
                         mapLibreMap.value = map
-                        onMapReady(map)
+                        currentOnMapReady.value(map)
                     }
                 }
                 mapView.value = nativeView
             }
+        },
+        onRelease = {
+            lifecycleBinding.value?.dispose()
+            lifecycleBinding.value = null
+            mapView.value = null
+            mapLibreMap.value = null
         }
     )
-
-    DisposableEffect(mapView.value, lifecycle) {
-        val nativeView = mapView.value
-        if (nativeView == null) {
-            onDispose { }
-        } else {
-            when {
-                lifecycle.currentState.isAtLeast(Lifecycle.State.RESUMED) -> {
-                    nativeView.onStart()
-                    nativeView.onResume()
-                }
-                lifecycle.currentState.isAtLeast(Lifecycle.State.STARTED) -> nativeView.onStart()
-            }
-            val observer = LifecycleEventObserver { _, event ->
-                when (event) {
-                    Lifecycle.Event.ON_START -> nativeView.onStart()
-                    Lifecycle.Event.ON_RESUME -> nativeView.onResume()
-                    Lifecycle.Event.ON_PAUSE -> nativeView.onPause()
-                    Lifecycle.Event.ON_STOP -> nativeView.onStop()
-                    Lifecycle.Event.ON_DESTROY -> nativeView.onDestroy()
-                    else -> Unit
-                }
-            }
-            lifecycle.addObserver(observer)
-            onDispose {
-                lifecycle.removeObserver(observer)
-                if (lifecycle.currentState.isAtLeast(Lifecycle.State.RESUMED)) {
-                    nativeView.onPause()
-                }
-                if (lifecycle.currentState.isAtLeast(Lifecycle.State.STARTED)) {
-                    nativeView.onStop()
-                }
-                nativeView.onDestroy()
-            }
-        }
-    }
 
     LaunchedEffect(mapContentKey, mapLibreMap.value) {
         mapLibreMap.value?.let(onMapUpdate)
@@ -105,6 +87,83 @@ fun MapView(
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
+        }
+    }
+}
+
+private class MapViewLifecycleBinding(
+    private val mapView: NativeMapView,
+    private val lifecycle: Lifecycle,
+    private val context: Context
+) : DefaultLifecycleObserver, ComponentCallbacks2 {
+    var isDisposed = false
+        private set
+
+    private var isStarted = false
+    private var isResumed = false
+
+    init {
+        context.registerComponentCallbacks(this)
+        lifecycle.addObserver(this)
+    }
+
+    override fun onStart(owner: LifecycleOwner) {
+        if (isDisposed || isStarted) return
+        mapView.onStart()
+        isStarted = true
+    }
+
+    override fun onResume(owner: LifecycleOwner) {
+        if (isDisposed) return
+        if (!isStarted) onStart(owner)
+        if (!isResumed) {
+            mapView.onResume()
+            isResumed = true
+        }
+    }
+
+    override fun onPause(owner: LifecycleOwner) = pauseIfNeeded()
+
+    override fun onStop(owner: LifecycleOwner) {
+        pauseIfNeeded()
+        stopIfNeeded()
+    }
+
+    override fun onDestroy(owner: LifecycleOwner) = dispose()
+
+    override fun onConfigurationChanged(newConfig: Configuration) = Unit
+
+    override fun onLowMemory() {
+        if (!isDisposed) mapView.onLowMemory()
+    }
+
+    override fun onTrimMemory(level: Int) {
+        if (!isDisposed && level >= ComponentCallbacks2.TRIM_MEMORY_RUNNING_LOW) {
+            mapView.onLowMemory()
+        }
+    }
+
+    fun dispose() {
+        if (isDisposed) return
+        isDisposed = true
+        lifecycle.removeObserver(this)
+        context.unregisterComponentCallbacks(this)
+        pauseIfNeeded()
+        stopIfNeeded()
+        mapView.onDestroy()
+    }
+
+    private fun pauseIfNeeded() {
+        if (isResumed) {
+            mapView.onPause()
+            isResumed = false
+        }
+    }
+
+    private fun stopIfNeeded() {
+        if (isStarted) {
+            mapView.onStop()
+            isStarted = false
         }
     }
 }

@@ -3,8 +3,8 @@ package com.roadguide.app.core.ui.theme
 import androidx.compose.ui.unit.dp
 
 /**
- * Spacing, radius, and touch target tokens exported from
- * `design/figma-export/styles/spacing.json` and `shadows.json`.
+ * Spacing, radius, and touch target tokens.
+ * Derived from design/figma-export/styles/spacing.json + SVG screen measurements.
  */
 object RgDimens {
     // Spacing
@@ -24,6 +24,8 @@ object RgDimens {
     val RadiusSmall = 8.dp
     val RadiusMedium = 12.dp
     val RadiusLarge = 16.dp
+    val RadiusCard = 18.dp       // White cards in SVGs use rx=18
+    val RadiusSheet = 28.dp      // Bottom sheet in SVGs uses rx=28
     val RadiusFull = 999.dp
 
     // Icon sizes
@@ -35,6 +37,18 @@ object RgDimens {
     // Touch targets
     val TouchTargetMinimum = 48.dp
     val TouchTargetComfortable = 56.dp
+
+    // Map control buttons (44×44 in SVGs)
+    val MapControlSize = 44.dp
+    val MapControlRadius = 18.dp
+
+    // Drag handle
+    val DragHandleWidth = 44.dp
+    val DragHandleHeight = 4.dp
+
+    // Location pill
+    val LocationPillHeight = 28.dp
+    val LocationPillRadius = 14.dp
 
     // Elevation (per shadows.json compose mapping)
     val Elevation0 = 0.dp

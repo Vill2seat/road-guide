@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.TextButton
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.MaterialTheme
@@ -32,6 +33,7 @@ import com.roadguide.app.core.ui.components.EmptyState
 import com.roadguide.app.core.ui.components.RouteListItem
 import com.roadguide.app.core.ui.theme.ErrorPlaceholder
 import com.roadguide.app.core.ui.theme.LoadingPlaceholder
+import com.roadguide.app.core.ui.theme.RgColor
 import com.roadguide.app.core.ui.theme.RgDimens
 import com.roadguide.app.core.ui.theme.RgIcon
 import com.roadguide.app.domain.model.RouteTimeline
@@ -58,7 +60,7 @@ fun TimelineScreen(
         )
     }
 
-    Scaffold(modifier = modifier.fillMaxSize()) { padding ->
+    Scaffold(modifier = modifier.fillMaxSize(), containerColor = RgColor.Background) { padding ->
         Box(modifier = Modifier.padding(padding)) {
             when (val screenState = uiState) {
                 ScreenState.Loading -> LoadingPlaceholder(modifier = Modifier.fillMaxSize())
@@ -102,7 +104,7 @@ fun TimelineScreen(
                                 Text(
                                     text = stringResource(R.string.timeline_title),
                                     style = MaterialTheme.typography.headlineLarge,
-                                    color = MaterialTheme.colorScheme.onSurface
+                                    color = RgColor.OnBackground
                                 )
                                 TimelineDateSelector(
                                     displayDate = displayDate,
@@ -216,12 +218,14 @@ private fun TimelineEventItem(event: TimelineEvent) {
 
     Card(
         modifier = Modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
+        shape = RoundedCornerShape(RgDimens.RadiusCard),
+        colors = CardDefaults.cardColors(containerColor = RgColor.Surface),
+        elevation = CardDefaults.cardElevation(defaultElevation = RgDimens.Elevation1)
     ) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(12.dp),
+                .padding(RgDimens.Space3),
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
             Column {

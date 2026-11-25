@@ -1,6 +1,7 @@
 package com.roadguide.app.feature.dailyreport
 
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -13,6 +14,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.Canvas
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
@@ -20,9 +22,13 @@ import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.IconButton
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -46,7 +52,10 @@ import java.util.Locale
 
 @Composable
 fun DailyReportScreen(
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    onBack: () -> Unit = {},
+    onOpenTimeline: () -> Unit = {},
+    onOpenPlanner: () -> Unit = {}
 ) {
     val dailyReportViewModel: DailyReportViewModel = hiltViewModel()
 
@@ -80,11 +89,19 @@ fun DailyReportScreen(
                             .verticalScroll(rememberScrollState())
                             .padding(RgDimens.Space4)
                     ) {
-                        Text(
-                            text = stringResource(R.string.daily_report_title),
-                            style = MaterialTheme.typography.headlineLarge,
-                            color = MaterialTheme.colorScheme.onSurface
-                        )
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            IconButton(onClick = onBack) {
+                                RgIcon.RgIconComposable(
+                                    icon = RgIcon.Back,
+                                    contentDescription = stringResource(R.string.common_back)
+                                )
+                            }
+                            Text(
+                                text = stringResource(R.string.daily_report_title),
+                                style = MaterialTheme.typography.headlineLarge,
+                                color = MaterialTheme.colorScheme.onSurface
+                            )
+                        }
                         Spacer(modifier = Modifier.height(RgDimens.Space2))
                         Text(
                             text = stringResource(R.string.daily_report_day_label, displayDate),
@@ -99,6 +116,8 @@ fun DailyReportScreen(
                             ScoreCard(report = reportValue)
                             Spacer(modifier = Modifier.height(RgDimens.Space4))
                             StatisticsCard(report = reportValue)
+                            Spacer(modifier = Modifier.height(RgDimens.Space4))
+                            DataQualityCard(report = reportValue)
                             Spacer(modifier = Modifier.height(RgDimens.Space4))
                             RecommendationsCard(report = reportValue)
                             Spacer(modifier = Modifier.height(RgDimens.Space4))
@@ -115,6 +134,19 @@ fun DailyReportScreen(
                             modifier = Modifier.fillMaxWidth()
                         ) {
                             Text(stringResource(R.string.daily_report_refresh), style = MaterialTheme.typography.labelLarge)
+                        }
+                        Spacer(modifier = Modifier.height(RgDimens.Space2))
+                        OutlinedButton(
+                            onClick = onOpenTimeline,
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Text(stringResource(R.string.tracker_open_timeline))
+                        }
+                        OutlinedButton(
+                            onClick = onOpenPlanner,
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Text(stringResource(R.string.daily_report_compare_routes))
                         }
                     }
                 }
@@ -153,6 +185,12 @@ private fun EmptyDailyReportState() {
 @Composable
 private fun ScoreCard(report: DailyReport) {
     val scoreColor = scoreColorFor(report.totalScore)
+    val trackColor = MaterialTheme.colorScheme.surfaceVariant
+    val scoreProgress = if (report.totalScore.isFinite()) {
+        report.totalScore.coerceIn(0.0, 100.0).toFloat() / 100f
+    } else {
+        0f
+    }
 
     Card(
         modifier = Modifier.fillMaxWidth(),
@@ -163,36 +201,51 @@ private fun ScoreCard(report: DailyReport) {
         Column(
             modifier = Modifier.padding(16.dp)
         ) {
-            Text(
-                text = stringResource(R.string.daily_report_score_title),
-                style = MaterialTheme.typography.titleMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-            Spacer(modifier = Modifier.height(RgDimens.Space2))
-
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = androidx.compose.foundation.layout.Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = RgDimens.Space3),
+                contentAlignment = Alignment.Center
             ) {
-                Text(
-                    text = "${report.totalScore.toInt()}",
-                    style = MaterialTheme.typography.displaySmall,
-                    color = scoreColor
-                )
-                Column(
-                    horizontalAlignment = Alignment.End
-                ) {
+                Canvas(modifier = Modifier.size(164.dp)) {
+                    val strokeWidth = 9.dp.toPx()
+                    drawArc(
+                        color = trackColor,
+                        startAngle = -90f,
+                        sweepAngle = 360f,
+                        useCenter = false,
+                        style = Stroke(width = strokeWidth, cap = StrokeCap.Round)
+                    )
+                    drawArc(
+                        color = scoreColor,
+                        startAngle = -90f,
+                        sweepAngle = 360f * scoreProgress,
+                        useCenter = false,
+                        style = Stroke(width = strokeWidth, cap = StrokeCap.Round)
+                    )
+                }
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     Text(
-                        text = "/ 100",
+                        text = "${report.totalScore.toInt()}",
+                        style = MaterialTheme.typography.displaySmall,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                    Text(
+                        text = stringResource(R.string.daily_report_score_out_of),
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
             }
 
-            Spacer(modifier = Modifier.height(RgDimens.Space3))
+            Text(
+                text = stringResource(R.string.daily_report_score_title),
+                style = MaterialTheme.typography.titleMedium,
+                color = scoreColor,
+                modifier = Modifier.align(Alignment.CenterHorizontally)
+            )
 
+            Spacer(modifier = Modifier.height(RgDimens.Space3))
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = androidx.compose.foundation.layout.Arrangement.SpaceBetween
@@ -208,6 +261,50 @@ private fun ScoreCard(report: DailyReport) {
                     color = qualityColorFor(report.coverage)
                 )
             }
+        }
+    }
+}
+
+@Composable
+private fun DataQualityCard(report: DailyReport) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
+    ) {
+        Column(
+            modifier = Modifier.padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(RgDimens.Space3)
+        ) {
+            Text(
+                text = stringResource(R.string.daily_report_data_quality),
+                style = MaterialTheme.typography.titleMedium,
+                color = MaterialTheme.colorScheme.onSurface
+            )
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Text(
+                    stringResource(R.string.daily_report_coverage),
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Text(formatDailyPercentage(report.coverage))
+            }
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Text(
+                    stringResource(R.string.daily_report_confidence),
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Text(formatDailyPercentage(report.confidence))
+            }
+            Text(
+                stringResource(R.string.daily_report_estimate_disclaimer),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
         }
     }
 }

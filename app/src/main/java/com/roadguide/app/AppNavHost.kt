@@ -8,29 +8,17 @@ import androidx.activity.result.ActivityResultLauncher
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.compose.foundation.layout.padding
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Home
-import androidx.compose.material.icons.filled.Info
-import androidx.compose.material.icons.filled.Person
-import androidx.compose.material.icons.filled.Place
-import androidx.compose.material.icons.filled.Search
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.Icon
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
-import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.viewinterop.AndroidView
-import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
@@ -51,17 +39,18 @@ import com.roadguide.app.domain.usecase.impl.RouteEvaluationEngine
 import com.roadguide.app.feature.planner.PlannerScreen
 import com.roadguide.app.feature.profile.ProfileScreen
 import com.roadguide.app.feature.settings.SettingsScreen
+import com.roadguide.app.feature.settings.SettingsSection
 import com.roadguide.app.feature.timeline.TimelineScreen
 import com.roadguide.app.feature.tracker.TrackerScreen
+import com.roadguide.app.core.ui.theme.RgIcon
 import dagger.Lazy
 
 private data class BottomNavItem(
     val route: String,
     val label: Int,
-    val icon: ImageVector
+    val icon: RgIcon.IconData
 )
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AppNavHost(
     permissionSource: PermissionSource,
@@ -73,43 +62,47 @@ fun AppNavHost(
 ) {
     val navController = rememberNavController()
     val items = listOf(
-        BottomNavItem(ScreenRoutes.Tracker, R.string.nav_map, Icons.Default.Place),
-        BottomNavItem(ScreenRoutes.Timeline, R.string.nav_timeline, Icons.Default.Info),
-        BottomNavItem(ScreenRoutes.Planner, R.string.nav_planner, Icons.Default.Search),
-        BottomNavItem(ScreenRoutes.History, R.string.nav_history, Icons.Default.Home),
-        BottomNavItem(ScreenRoutes.Places, R.string.nav_places, Icons.Default.Person),
+        BottomNavItem(ScreenRoutes.Tracker, R.string.nav_map, RgIcon.MapPin),
+        BottomNavItem(ScreenRoutes.Timeline, R.string.nav_timeline, RgIcon.Calendar),
+        BottomNavItem(ScreenRoutes.Planner, R.string.nav_planner, RgIcon.Route),
+        BottomNavItem(ScreenRoutes.History, R.string.nav_history, RgIcon.History),
+        BottomNavItem(ScreenRoutes.Places, R.string.nav_places, RgIcon.Home),
     )
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = navBackStackEntry?.destination?.route
 
     Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { Text(stringResource(R.string.app_name)) },
-                actions = {
-                    TextButton(onClick = { navController.navigate(ScreenRoutes.Profile) }) {
-                        Text(stringResource(R.string.nav_profile))
-                    }
-                }
-            )
-        },
         bottomBar = {
-            NavigationBar {
-                items.forEach { item ->
-                    NavigationBarItem(
-                        selected = currentRoute == item.route,
-                        onClick = {
-                            navController.navigate(item.route) {
-                                popUpTo(navController.graph.findStartDestination().id) {
-                                    saveState = true
+            if (items.any { it.route == currentRoute }) {
+                NavigationBar {
+                    items.forEach { item ->
+                        val selected = currentRoute == item.route
+                        NavigationBarItem(
+                            selected = selected,
+                            onClick = {
+                                navController.navigate(item.route) {
+                                    popUpTo(navController.graph.findStartDestination().id) {
+                                        saveState = true
+                                    }
+                                    launchSingleTop = true
+                                    restoreState = true
                                 }
-                                launchSingleTop = true
-                                restoreState = true
-                            }
-                        },
-                        icon = { Icon(item.icon, contentDescription = stringResource(item.label)) },
-                        label = { Text(stringResource(item.label)) }
-                    )
+                            },
+                            icon = {
+                                RgIcon.RgIconComposable(
+                                    icon = item.icon.copy(
+                                        color = if (selected) {
+                                            Color(0xFF317854)
+                                        } else {
+                                            Color(0xFF596B61)
+                                        }
+                                    ),
+                                    contentDescription = null
+                                )
+                            },
+                            label = { Text(stringResource(item.label)) }
+                        )
+                    }
                 }
             }
         }
@@ -122,7 +115,9 @@ fun AppNavHost(
             composable(ScreenRoutes.Tracker) {
                 TrackerScreen(
                     onOpenTimeline = { navController.navigate(ScreenRoutes.Timeline) },
-                    onOpenDailyReport = { navController.navigate(ScreenRoutes.DailyReport) }
+                    onOpenDailyReport = { navController.navigate(ScreenRoutes.DailyReport) },
+                    onOpenProfile = { navController.navigate(ScreenRoutes.Profile) },
+                    onOpenMapSettings = { navController.navigate(ScreenRoutes.SettingsMap) }
                 )
             }
             composable(ScreenRoutes.Timeline) {
@@ -151,10 +146,28 @@ fun AppNavHost(
                 PlacesScreen()
             }
             composable(ScreenRoutes.Profile) {
-                ProfileScreen()
+                ProfileScreen(
+                    onBack = { navController.popBackStack() },
+                    onOpenSettings = { navController.navigate(ScreenRoutes.Settings) }
+                )
             }
             composable(ScreenRoutes.Settings) {
-                SettingsScreen()
+                SettingsScreen(
+                    section = SettingsSection.MAIN,
+                    onBack = { navController.popBackStack() },
+                    onOpenSection = { section -> navController.navigate(section.route) },
+                    onOpenPlaces = { navController.navigate(ScreenRoutes.Places) }
+                )
+            }
+            SettingsSection.entries.filter { it != SettingsSection.MAIN }.forEach { section ->
+                composable(section.route) {
+                    SettingsScreen(
+                        section = section,
+                        onBack = { navController.popBackStack() },
+                        onOpenSection = { next -> navController.navigate(next.route) },
+                        onOpenPlaces = { navController.navigate(ScreenRoutes.Places) }
+                    )
+                }
             }
             composable(ScreenRoutes.Permission) {
                 PermissionScreen(
@@ -178,7 +191,11 @@ fun AppNavHost(
                 WeatherScreen()
             }
             composable(ScreenRoutes.DailyReport) {
-                DailyReportScreen()
+                DailyReportScreen(
+                    onBack = { navController.popBackStack() },
+                    onOpenTimeline = { navController.navigate(ScreenRoutes.Timeline) },
+                    onOpenPlanner = { navController.navigate(ScreenRoutes.Planner) }
+                )
             }
             composable(ScreenRoutes.Onboarding) {
                 OnboardingFlow(

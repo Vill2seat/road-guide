@@ -10,6 +10,66 @@
     <string name="nav_places">Места</string>
     <string name="nav_profile">Профиль</string>
 
+    <!-- Settings -->
+    <string name="settings_title">Настройки</string>
+    <string name="settings_personalize">Настройте приложение.</string>
+    <string name="settings_tracking">Настройки отслеживания</string>
+    <string name="settings_privacy">Конфиденциальность и данные</string>
+    <string name="settings_environmental">Параметры окружающей среды</string>
+    <string name="settings_notifications">Уведомления</string>
+    <string name="settings_map">Настройки карты</string>
+    <string name="settings_units_language">Единицы измерения и язык</string>
+    <string name="settings_account">Учётная запись</string>
+    <string name="settings_about">О Road Guide</string>
+    <string name="settings_tracking_subtitle">Автоматическое отслеживание и разрешения</string>
+    <string name="settings_privacy_subtitle">Приватные зоны, экспорт и история</string>
+    <string name="settings_environmental_subtitle">Источники данных о качестве воздуха</string>
+    <string name="settings_notifications_subtitle">Выберите получаемые уведомления</string>
+    <string name="settings_map_subtitle">Слои, зелёные зоны и приватность</string>
+    <string name="settings_units_subtitle">Расстояние, температура и язык</string>
+    <string name="settings_account_subtitle">Локальный профиль и вход</string>
+    <string name="settings_about_subtitle">Версия, источники и информация</string>
+    <string name="settings_tracking_active">Отслеживание включено. Уведомление сообщает о работе приложения.</string>
+    <string name="settings_tracking_inactive">Отслеживание выключено. Включите его, когда будете готовы.</string>
+    <string name="settings_automatic_tracking">Автоматическое отслеживание</string>
+    <string name="settings_automatic_tracking_hint">Автоматически начинать мониторинг</string>
+    <string name="settings_tracking_interval">Интервал обновления местоположения</string>
+    <string name="settings_interval_10_seconds">10 секунд</string>
+    <string name="settings_interval_30_seconds">30 секунд</string>
+    <string name="settings_interval_1_minute">1 минута</string>
+    <string name="settings_interval_5_minutes">5 минут</string>
+    <string name="settings_location_permission">Геолокация · Фоновый доступ</string>
+    <string name="settings_notifications_permission">Активность · Уведомления</string>
+    <string name="settings_allowed">Разрешено</string>
+    <string name="settings_permission_missing">Разрешение не предоставлено</string>
+    <string name="settings_tracking_update_failed">Не удалось изменить отслеживание. Проверьте разрешения и повторите попытку.</string>
+    <string name="settings_save_failed">Не удалось сохранить настройку. Попробуйте ещё раз.</string>
+    <string name="settings_privacy_intro">История хранится на устройстве. Выберите места, которые нужно скрыть.</string>
+    <string name="settings_private_zones">Приватные зоны</string>
+    <string name="settings_private_zones_hint">Управление зонами, исключёнными из истории и расчётов экспозиции</string>
+    <string name="settings_local_storage">Локальное хранение</string>
+    <string name="settings_local_storage_hint">Данные отслеживания остаются на этом устройстве.</string>
+    <string name="settings_privacy_actions_unavailable">Экспорт и удаление данных пока недоступны.</string>
+    <string name="settings_environmental_notice">Оценки условий среды помогают сравнивать дни и маршруты, но не измеряют личную дозу воздействия.</string>
+    <string name="settings_data_sources">Источники данных</string>
+    <string name="settings_data_sources_hint">Данные о качестве воздуха и погоде поступают от настроенных поставщиков.</string>
+    <string name="settings_aqi_standard">Стандарт AQI</string>
+    <string name="settings_aqi_standard_value">Используется шкала доступного поставщика данных</string>
+    <string name="settings_notifications_hint">Road Guide использует уведомления Android для статуса отслеживания и предупреждений о данных. Настройте каналы уведомлений в Android.</string>
+    <string name="settings_map_layers">Слои карты</string>
+    <string name="settings_map_layers_hint">Зелёные зоны, основные дороги, экспозиция и приватные зоны</string>
+    <string name="settings_map_options_unavailable">Настройка слоёв карты пока недоступна.</string>
+    <string name="settings_units">Единицы расстояния</string>
+    <string name="settings_metric">Километры</string>
+    <string name="settings_imperial">Мили</string>
+    <string name="settings_language">Язык</string>
+    <string name="settings_language_system">Как на устройстве</string>
+    <string name="settings_local_profile">Локальный профиль</string>
+    <string name="settings_local_profile_hint">Управление локальным профилем Road Guide</string>
+    <string name="settings_account_optional">Вход необязателен. Синхронизация учётной записи в этой версии недоступна.</string>
+    <string name="settings_version">Версия 1.0.0</string>
+    <string name="settings_about_sources">Road Guide показывает расчётные условия окружающей среды на основе внешних данных. Это не медицинская рекомендация.</string>
+
     <!-- Screen titles -->
     <string name="screen_tracker">Трекер</string>
     <string name="screen_timeline">Хронология</string>
@@ -27,6 +87,7 @@
     <string name="common_back">Назад</string>
     <string name="common_save">Сохранить</string>
     <string name="common_cancel">Отмена</string>
+    <string name="common_view">Открыть</string>
 
     <!-- Tracker screen -->
     <string name="tracker_start">Старт</string>
@@ -117,6 +178,10 @@
     <string name="daily_report_recommendations_title">Рекомендации</string>
     <string name="daily_report_recent_title">Недавние отчёты</string>
     <string name="daily_report_refresh">Обновить</string>
+    <string name="daily_report_score_out_of">/ 100</string>
+    <string name="daily_report_data_quality">Качество данных</string>
+    <string name="daily_report_estimate_disclaimer">Расчётные условия, а не индивидуальная доза воздействия или медицинская рекомендация.</string>
+    <string name="daily_report_compare_routes">Сравнить маршруты</string>
 
     <!-- Weather screen -->
     <string name="weather_refresh">Обновить данные</string>
@@ -230,6 +295,9 @@
     <string name="tracker_report_unavailable">Дневной отчёт пока недоступен.</string>
     <string name="tracker_open_timeline">Хронология</string>
     <string name="tracker_open_report">Дневной отчёт</string>
+    <string name="tracker_overview_title">Обзор за сегодня</string>
+    <string name="tracker_points_label">Точки</string>
+    <string name="tracker_locate_me">Моё местоположение</string>
     <string name="tracker_current_location">Текущее местоположение</string>
     <string name="tracker_speed_value">%1$.1f м/с</string>
     <string name="tracker_accuracy_value">Точность: %1$.0f м</string>

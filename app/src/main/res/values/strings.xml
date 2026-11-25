@@ -10,6 +10,66 @@
     <string name="nav_places">Places</string>
     <string name="nav_profile">Profile</string>
 
+    <!-- Settings -->
+    <string name="settings_title">Settings</string>
+    <string name="settings_personalize">Make it yours.</string>
+    <string name="settings_tracking">Tracking Settings</string>
+    <string name="settings_privacy">Privacy &amp; Data</string>
+    <string name="settings_environmental">Environmental Preferences</string>
+    <string name="settings_notifications">Notifications</string>
+    <string name="settings_map">Map Settings</string>
+    <string name="settings_units_language">Units &amp; Language</string>
+    <string name="settings_account">Account</string>
+    <string name="settings_about">About Road Guide</string>
+    <string name="settings_tracking_subtitle">Automatic tracking &amp; permissions</string>
+    <string name="settings_privacy_subtitle">Private zones, exports &amp; history</string>
+    <string name="settings_environmental_subtitle">Air quality sources &amp; estimates</string>
+    <string name="settings_notifications_subtitle">Choose the updates you receive</string>
+    <string name="settings_map_subtitle">Layers, green areas &amp; privacy</string>
+    <string name="settings_units_subtitle">Kilometres, temperature &amp; language</string>
+    <string name="settings_account_subtitle">Local profile &amp; sign-in options</string>
+    <string name="settings_about_subtitle">Version, sources &amp; information</string>
+    <string name="settings_tracking_active">Tracking is active. The foreground notification keeps you informed.</string>
+    <string name="settings_tracking_inactive">Tracking is off. Start monitoring when you are ready.</string>
+    <string name="settings_automatic_tracking">Automatic Tracking</string>
+    <string name="settings_automatic_tracking_hint">Start monitoring automatically</string>
+    <string name="settings_tracking_interval">Location update interval</string>
+    <string name="settings_interval_10_seconds">10 seconds</string>
+    <string name="settings_interval_30_seconds">30 seconds</string>
+    <string name="settings_interval_1_minute">1 minute</string>
+    <string name="settings_interval_5_minutes">5 minutes</string>
+    <string name="settings_location_permission">Location · Background</string>
+    <string name="settings_notifications_permission">Activity · Notifications</string>
+    <string name="settings_allowed">Allowed</string>
+    <string name="settings_permission_missing">Permission not granted</string>
+    <string name="settings_tracking_update_failed">Could not update tracking. Check permissions and try again.</string>
+    <string name="settings_save_failed">Could not save this setting. Please try again.</string>
+    <string name="settings_privacy_intro">Your timeline is stored locally. Choose which places are kept private.</string>
+    <string name="settings_private_zones">Private Zones</string>
+    <string name="settings_private_zones_hint">Manage areas excluded from history and exposure calculations</string>
+    <string name="settings_local_storage">Local storage</string>
+    <string name="settings_local_storage_hint">Your tracking data stays on this device.</string>
+    <string name="settings_privacy_actions_unavailable">Export and deletion controls are not available in this version.</string>
+    <string name="settings_environmental_notice">Environmental values are estimates for comparing days and routes, not personal dose measurements.</string>
+    <string name="settings_data_sources">Data Sources</string>
+    <string name="settings_data_sources_hint">Air-quality and weather data are retrieved from configured providers.</string>
+    <string name="settings_aqi_standard">AQI Standard</string>
+    <string name="settings_aqi_standard_value">Use the AQI scale from the available provider</string>
+    <string name="settings_notifications_hint">Road Guide uses Android notifications for tracking status and data warnings. Configure notification channels in Android settings.</string>
+    <string name="settings_map_layers">Map layers</string>
+    <string name="settings_map_layers_hint">Green areas, major roads, exposure and privacy zones</string>
+    <string name="settings_map_options_unavailable">Map layer preferences are not available yet.</string>
+    <string name="settings_units">Distance units</string>
+    <string name="settings_metric">Kilometres</string>
+    <string name="settings_imperial">Miles</string>
+    <string name="settings_language">Language</string>
+    <string name="settings_language_system">Follows device language</string>
+    <string name="settings_local_profile">Local profile</string>
+    <string name="settings_local_profile_hint">Manage your local Road Guide profile</string>
+    <string name="settings_account_optional">Sign-in is optional. Account sync is not available in this version.</string>
+    <string name="settings_version">Version 1.0.0</string>
+    <string name="settings_about_sources">Road Guide provides estimated environmental conditions from external data sources. Estimates are not medical advice.</string>
+
     <!-- Screen titles -->
     <string name="screen_tracker">Tracker</string>
     <string name="screen_timeline">Timeline</string>
@@ -27,6 +87,7 @@
     <string name="common_back">Back</string>
     <string name="common_save">Save</string>
     <string name="common_cancel">Cancel</string>
+    <string name="common_view">View</string>
 
     <!-- Tracker screen -->
     <string name="tracker_start">Start</string>
@@ -117,6 +178,10 @@
     <string name="daily_report_recommendations_title">Recommendations</string>
     <string name="daily_report_recent_title">Recent reports</string>
     <string name="daily_report_refresh">Refresh</string>
+    <string name="daily_report_score_out_of">/ 100</string>
+    <string name="daily_report_data_quality">Data quality</string>
+    <string name="daily_report_estimate_disclaimer">Estimated conditions, not a personal dose or medical advice.</string>
+    <string name="daily_report_compare_routes">Compare routes</string>
 
     <!-- Weather screen -->
     <string name="weather_refresh">Refresh data</string>
@@ -228,6 +293,9 @@
     <string name="tracker_report_unavailable">A daily report is not available yet.</string>
     <string name="tracker_open_timeline">Timeline</string>
     <string name="tracker_open_report">Daily report</string>
+    <string name="tracker_overview_title">Today’s overview</string>
+    <string name="tracker_points_label">Points</string>
+    <string name="tracker_locate_me">Locate me</string>
     <string name="tracker_current_location">Current location</string>
     <string name="tracker_speed_value">%1$.1f m/s</string>
     <string name="tracker_accuracy_value">Accuracy: %1$.0f m</string>

@@ -1,12 +1,9 @@
 package com.roadguide.app.core.ui.theme
 
-import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.ColorScheme
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Shapes
 import androidx.compose.material3.Typography
-import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.Color
@@ -27,45 +24,23 @@ import androidx.compose.ui.unit.sp
  *   RoadGuideTheme { ... }
  */
 @Composable
-fun RoadGuideTheme(
-    darkTheme: Boolean = isSystemInDarkTheme(),
-    content: @Composable () -> Unit
-) {
-    val colorScheme = when {
-        darkTheme -> darkColorScheme(
-            primary = RgColor.Primary,
-            primaryContainer = RgColor.PrimaryContainer,
-            secondary = RgColor.Secondary,
-            secondaryContainer = RgColor.SecondaryContainer,
-            background = Color(0xFF121212),
-            surface = Color(0xFF1E1E1E),
-            surfaceVariant = Color(0xFF0A0A0A),
-            onPrimary = Color.Black,
-            onSecondary = Color.Black,
-            onBackground = Color(0xFFFFFFFF),
-            onSurface = Color(0xFFFFFFFF),
-            onSurfaceVariant = RgColor.OnSurfaceVariant,
-            outline = RgColor.Outline,
-            error = RgColor.Error,
-        )
-        else -> lightColorScheme(
-            primary = RgColor.Primary,
-            primaryContainer = RgColor.PrimaryContainer,
-            secondary = RgColor.Secondary,
-            secondaryContainer = RgColor.SecondaryContainer,
-            background = RgColor.Background,
-            surface = RgColor.Surface,
-            surfaceVariant = RgColor.SurfaceVariant,
-            onPrimary = Color.Black,
-            onSecondary = Color.Black,
-            onBackground = RgColor.OnBackground,
-            onSurface = RgColor.OnSurface,
-            onSurfaceVariant = RgColor.OnSurfaceVariant,
-            outline = RgColor.Outline,
-            error = RgColor.Error,
-        )
-    }
-
+fun RoadGuideTheme(content: @Composable () -> Unit) {
+    val colorScheme = lightColorScheme(
+        primary = RgColor.Primary,
+        primaryContainer = RgColor.PrimaryContainer,
+        secondary = RgColor.Secondary,
+        secondaryContainer = RgColor.SecondaryContainer,
+        background = RgColor.Background,
+        surface = RgColor.Surface,
+        surfaceVariant = RgColor.SurfaceVariant,
+        onPrimary = Color.Black,
+        onSecondary = Color.Black,
+        onBackground = RgColor.OnBackground,
+        onSurface = RgColor.OnSurface,
+        onSurfaceVariant = RgColor.OnSurfaceVariant,
+        outline = RgColor.Outline,
+        error = RgColor.Error,
+    )
     MaterialTheme(
         colorScheme = colorScheme,
         typography = RoadGuideTypography(),

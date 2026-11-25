@@ -8,7 +8,10 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.background
 import androidx.compose.material3.TextButton
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -23,13 +26,13 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.roadguide.app.R
 import com.roadguide.app.core.common.ScreenState
 import com.roadguide.app.core.ui.components.EmptyState
-import com.roadguide.app.core.ui.components.RouteListItem
 import com.roadguide.app.core.ui.theme.ErrorPlaceholder
 import com.roadguide.app.core.ui.theme.LoadingPlaceholder
 import com.roadguide.app.core.ui.theme.RgDimens
@@ -170,10 +173,15 @@ private fun TimelineDateSelector(
 @Composable
 private fun RouteTimelineItem(timeline: RouteTimeline) {
     Column(verticalArrangement = Arrangement.spacedBy(RgDimens.Space2)) {
-        RouteListItem(
-            route = timeline.route,
-            aqiLabel = stringResource(R.string.timeline_exposure_label),
-            modifier = Modifier.fillMaxWidth()
+        Text(
+            text = stringResource(
+                R.string.tracker_route_summary,
+                timeline.route.distanceMeters / 1000.0,
+                timeline.route.durationSeconds / 60
+            ),
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.padding(start = RgDimens.Space4)
         )
         if (timeline.events.isEmpty()) {
             Text(
@@ -183,15 +191,15 @@ private fun RouteTimelineItem(timeline: RouteTimeline) {
                 modifier = Modifier.padding(horizontal = RgDimens.Space2)
             )
         } else {
-            timeline.events.forEach { event ->
-                TimelineEventItem(event)
+            timeline.events.forEachIndexed { index, event ->
+                TimelineEventItem(event, isLast = index == timeline.events.lastIndex)
             }
         }
     }
 }
 
 @Composable
-private fun TimelineEventItem(event: TimelineEvent) {
+private fun TimelineEventItem(event: TimelineEvent, isLast: Boolean) {
     val timeFormatter = remember { SimpleDateFormat("HH:mm", Locale.getDefault()) }
     val timeRange = "${timeFormatter.format(Date(event.startTime))}–${timeFormatter.format(Date(event.endTime))}"
     val durationMinutes = ((event.endTime - event.startTime).coerceAtLeast(0) / 60_000)
@@ -214,33 +222,81 @@ private fun TimelineEventItem(event: TimelineEvent) {
         }
     }.joinToString(" · ")
 
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
-    ) {
+    Column {
         Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(12.dp),
-            horizontalArrangement = Arrangement.SpaceBetween
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.Top
         ) {
-            Column {
-                Text(
-                    text = activityLabel,
-                    style = MaterialTheme.typography.titleSmall,
-                    color = MaterialTheme.colorScheme.onSurface
-                )
-                Text(
-                    text = details,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
+            Box(
+                modifier = Modifier
+                    .width(52.dp)
+                    .height(48.dp),
+                contentAlignment = Alignment.TopCenter
+            ) {
+                Card(
+                    shape = androidx.compose.foundation.shape.CircleShape,
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.primaryContainer
+                    )
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .padding(RgDimens.Space2)
+                            .size(32.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        RgIcon.RgIconComposable(
+                            icon = timelineEventIcon(event).copy(color = Color(0xFF317854)),
+                            contentDescription = activityLabel
+                        )
+                    }
+                }
             }
-            Text(
-                text = timeRange,
-                style = MaterialTheme.typography.labelMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
+            Card(
+                modifier = Modifier.weight(1f),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
+            ) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(RgDimens.Space4),
+                    verticalArrangement = Arrangement.spacedBy(RgDimens.Space2)
+                ) {
+                    Text(
+                        text = timeRange,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Text(
+                        text = activityLabel,
+                        style = MaterialTheme.typography.titleMedium,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                    Text(
+                        text = details,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+        }
+        if (!isLast) {
+            Box(
+                modifier = Modifier
+                    .padding(start = 25.dp)
+                    .width(2.dp)
+                    .height(RgDimens.Space4)
+                    .background(MaterialTheme.colorScheme.primaryContainer)
             )
         }
     }
+}
+
+private fun timelineEventIcon(event: TimelineEvent): RgIcon.IconData = when {
+    event.isStay || event.activityType == "STATIONARY" -> RgIcon.Home
+    event.activityType == "WALKING" || event.activityType == "RUNNING" -> RgIcon.Footprints
+    event.activityType == "CYCLING" -> RgIcon.Bicycle
+    event.activityType == "PUBLIC_TRANSPORT" -> RgIcon.Bus
+    event.activityType == "IN_VEHICLE" -> RgIcon.Car
+    else -> RgIcon.Route
 }

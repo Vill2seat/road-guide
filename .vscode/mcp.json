@@ -1,0 +1,19 @@
+{
+  "inputs": [
+    {
+      "type": "promptString",
+      "id": "pixso_token",
+      "description": "Pixso access token",
+      "password": true
+    }
+  ],
+  "servers": {
+    "pixso-oauth-mcp": {
+      "type": "http",
+      "url": "https://pixso.net/mcp",
+      "headers": {
+        "Authorization": "Bearer ${input:pixso_token}"
+      }
+    }
+  }
+}

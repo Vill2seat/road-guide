@@ -15,8 +15,6 @@ local.properties
 .idea/
 *.iml
 .vscode/
-!.vscode/
-!.vscode/mcp.json
 *.swp
 *.swo
 

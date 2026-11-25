@@ -120,10 +120,10 @@ class MainActivity : ComponentActivity() {
             AppNavHost(
                 permissionSource = permissionSource,
                 permissionLauncher = permissionLauncher,
-                locationSource = locationSource,
-                osrmRoutingSource = osrmRoutingSource,
-                routeEvaluationEngine = routeEvaluationEngine,
-                routeComparisonEngine = routeComparisonEngine
+                locationSource = locationSource.get(),
+                osrmRoutingSource = osrmRoutingSource.get(),
+                routeEvaluationEngine = routeEvaluationEngine.get(),
+                routeComparisonEngine = routeComparisonEngine.get()
             )
         }
     }

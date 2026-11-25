@@ -9,6 +9,7 @@
     <string name="nav_history">History</string>
     <string name="nav_places">Places</string>
     <string name="nav_profile">Profile</string>
+    <string name="nav_settings">Settings</string>
 
     <!-- Settings -->
     <string name="settings_title">Settings</string>

@@ -29,3 +29,4 @@ Thumbs.db
 # Secrets
 *.properties
 local.propertiesbuilds/
+.env

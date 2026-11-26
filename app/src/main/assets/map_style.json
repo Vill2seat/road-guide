@@ -1,0 +1,31 @@
+{
+  "version": 8,
+  "name": "Road Guide Local",
+  "sources": {
+    "openfreemap": {
+      "type": "raster",
+      "tiles": [
+        "https://tile.openfreemap.org/maps/hybrid/{z}/{x}/{y}.png"
+      ],
+      "tileSize": 256,
+      "attribution": "OpenFreeMap"
+    }
+  },
+  "layers": [
+    {
+      "id": "background",
+      "type": "background",
+      "paint": {
+        "background-color": "#f7f9f7"
+      }
+    },
+    {
+      "id": "openfreemap",
+      "type": "raster",
+      "source": "openfreemap",
+      "paint": {
+        "raster-opacity": 1
+      }
+    }
+  ]
+}

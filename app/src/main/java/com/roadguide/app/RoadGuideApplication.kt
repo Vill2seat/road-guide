@@ -1,6 +1,7 @@
 package com.roadguide.app
 
 import android.app.Application
+import android.util.Log
 import dagger.hilt.android.HiltAndroidApp
 import org.maplibre.android.MapLibre
 
@@ -8,6 +9,10 @@ import org.maplibre.android.MapLibre
 class RoadGuideApplication : Application() {
     override fun onCreate() {
         super.onCreate()
-        MapLibre.getInstance(applicationContext)
+        try {
+            MapLibre.getInstance(applicationContext)
+        } catch (e: Exception) {
+            Log.e("RoadGuideApp", "MapLibre initialization failed", e)
+        }
     }
 }

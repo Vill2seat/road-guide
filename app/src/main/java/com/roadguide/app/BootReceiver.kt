@@ -8,20 +8,14 @@ import androidx.core.content.ContextCompat
 import com.roadguide.app.data.local.settings.TrackingPrefs
 import com.roadguide.app.data.source.PermissionSource
 import com.roadguide.app.service.TrackingRecordingService
-import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
-import javax.inject.Inject
 
-@AndroidEntryPoint
 class BootReceiver : BroadcastReceiver() {
     private val TAG = "BootReceiver"
-
-    @Inject lateinit var trackingPrefs: TrackingPrefs
-    @Inject lateinit var permissionSource: PermissionSource
 
     override fun onReceive(context: Context, intent: Intent) {
         if (intent.action != Intent.ACTION_BOOT_COMPLETED) return
@@ -29,6 +23,10 @@ class BootReceiver : BroadcastReceiver() {
         val pendingResult = goAsync()
         CoroutineScope(SupervisorJob() + Dispatchers.IO).launch {
             try {
+                val appContext = context.applicationContext
+                val trackingPrefs = TrackingPrefs(appContext)
+                val permissionSource = PermissionSource(appContext)
+
                 val preferences = trackingPrefs.preferencesFlow.first()
                 if (!preferences.trackingEnabled || preferences.trackingPaused) {
                     Log.d(TAG, "Tracking is disabled or paused; not restoring service")

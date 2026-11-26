@@ -87,7 +87,7 @@ class TrackingRecordingService : Service() {
             val channel = NotificationChannel(
                 "tracking_channel",
                 "Road Guide Tracking",
-                NotificationManager.IMPORTANCE_DEFAULT
+                NotificationManager.IMPORTANCE_HIGH
             )
             channel.description = "Used for background location tracking notifications"
             channel.enableLights(false)
@@ -578,7 +578,7 @@ class TrackingRecordingService : Service() {
         return android.app.Notification.Builder(this, "tracking_channel")
             .setContentTitle("Road Guide")
             .setContentText(text)
-            .setSmallIcon(android.R.drawable.ic_notification_overlay)
+            .setSmallIcon(R.mipmap.ic_launcher)
             .setOngoing(isRecording)
             .build()
     }

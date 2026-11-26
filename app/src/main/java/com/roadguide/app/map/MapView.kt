@@ -26,46 +26,55 @@ import org.maplibre.android.maps.MapView as NativeMapView
 import org.maplibre.android.maps.Style
 
 private const val MAP_STYLE_URI = "https://demotiles.maplibre.org/style.json"
+private const val MAP_STYLE_ASSET = "file:///android_asset/map_style.json"
 
 @Composable
 fun MapView(
     modifier: Modifier = Modifier,
     mapContentKey: Any? = null,
     onMapUpdate: (MapLibreMap) -> Unit = {},
-    onMapReady: (MapLibreMap) -> Unit = {}
+    onMapReady: (MapLibreMap) -> Unit = {},
+    onMapError: (Throwable) -> Unit = {}
 ) {
     val lifecycleOwner = LocalLifecycleOwner.current
     val mapView = remember { mutableStateOf<NativeMapView?>(null) }
     val mapLibreMap = remember { mutableStateOf<MapLibreMap?>(null) }
     val isDisposed = remember { mutableStateOf(false) }
+    val mapError = remember { mutableStateOf<Throwable?>(null) }
     val currentOnMapReady = rememberUpdatedState(onMapReady)
     val currentOnMapUpdate = rememberUpdatedState(onMapUpdate)
+    val currentOnMapError = rememberUpdatedState(onMapError)
 
     AndroidView(
         modifier = modifier.fillMaxSize(),
-        factory = { viewContext ->
-            NativeMapView(viewContext).also { nativeView ->
-                nativeView.onCreate(Bundle())
-                mapView.value = nativeView
-                nativeView.getMapAsync { map ->
-                    if (isDisposed.value) return@getMapAsync
-                    try {
-                        map.setStyle(Style.Builder().fromUri(MAP_STYLE_URI)) {
-                            if (isDisposed.value) return@setStyle
-                            try {
-                                map.uiSettings.isAttributionEnabled = true
-                                mapLibreMap.value = map
-                                currentOnMapReady.value(map)
-                            } catch (_: Exception) {
-                                mapLibreMap.value = map
+        factory = { viewContext: Context ->
+            var nativeView: NativeMapView? = null
+            try {
+                nativeView = NativeMapView(viewContext).also { nv ->
+                    nv.onCreate(Bundle())
+                    mapView.value = nv
+                    nv.getMapAsync { map: MapLibreMap ->
+                        if (isDisposed.value) return@getMapAsync
+                        loadStyleWithFallback(map, viewContext) { styleMap: MapLibreMap, loadException: Throwable? ->
+                            if (isDisposed.value) return@loadStyleWithFallback
+                            if (loadException != null) {
+                                mapError.value = loadException
+                                currentOnMapError.value(loadException)
                             }
+                            mapLibreMap.value = styleMap
+                            try {
+                                styleMap.uiSettings.isAttributionEnabled = true
+                            } catch (_: Exception) {
+                            }
+                            currentOnMapReady.value(styleMap)
                         }
-                    } catch (_: Exception) {
-                        mapLibreMap.value = map
-                        currentOnMapReady.value(map)
                     }
                 }
+            } catch (e: Exception) {
+                mapError.value = e
+                currentOnMapError.value(e)
             }
+            nativeView as android.view.View
         },
         update = { }
     )
@@ -111,13 +120,41 @@ fun MapView(
         }
     }
 
-    if (mapView.value == null) {
+    if (mapView.value == null && mapError.value == null) {
         Box(modifier = modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
             Text(
                 text = "Loading map…",
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
+        }
+    } else if (mapError.value != null) {
+        Box(modifier = modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+            Text(
+                text = "Map unavailable",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+    }
+}
+
+private fun loadStyleWithFallback(
+    map: MapLibreMap,
+    context: Context,
+    callback: (MapLibreMap, Throwable?) -> Unit
+) {
+    try {
+        map.setStyle(Style.Builder().fromUri(MAP_STYLE_URI)) { _: Style ->
+            callback(map, null)
+        }
+    } catch (e: Exception) {
+        try {
+            map.setStyle(Style.Builder().fromUri(MAP_STYLE_ASSET)) { _: Style ->
+                callback(map, null)
+            }
+        } catch (assetException: Exception) {
+            callback(map, assetException)
         }
     }
 }

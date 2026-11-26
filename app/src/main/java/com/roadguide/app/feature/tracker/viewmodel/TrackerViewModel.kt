@@ -215,7 +215,7 @@ class TrackerViewModel @Inject constructor(
                 throw e
             } catch (e: Exception) {
                 android.util.Log.e("TrackerViewModel", "Failed to observe latest environment", e)
-                _environmentalSample.value = null
+                _uiState.value = ScreenState.Error(e.message ?: "Environmental data unavailable")
             }
         }
     }
@@ -230,7 +230,7 @@ class TrackerViewModel @Inject constructor(
                 throw e
             } catch (e: Exception) {
                 android.util.Log.e("TrackerViewModel", "Failed to observe today's report", e)
-                _dailyReport.value = null
+                _uiState.value = ScreenState.Error(e.message ?: "Daily report unavailable")
             }
         }
     }

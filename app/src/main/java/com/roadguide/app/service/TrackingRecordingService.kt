@@ -199,7 +199,7 @@ class TrackingRecordingService : Service() {
 
         serviceScope.launch {
             try {
-                val preferences = trackingPrefs.preferencesFlow.first()
+                val preferences = trackingPrefs.preferencesFlow.firstOrNull()
                 if (preferences.trackingEnabled && !preferences.trackingPaused) {
                     startRecording()
                 } else {
@@ -244,10 +244,10 @@ class TrackingRecordingService : Service() {
         }
 
         val existingRoute = routeRepository.observeByStatus(RouteStatus.IN_PROGRESS)
-            .first()
+            .firstOrNull()
             .maxByOrNull(Route::startTime)
             ?: routeRepository.observeByStatus(RouteStatus.PAUSED)
-                .first()
+                .firstOrNull()
                 .maxByOrNull(Route::startTime)
         if (existingRoute != null) {
             val resumedRoute = existingRoute.copy(status = RouteStatus.IN_PROGRESS)
@@ -281,7 +281,7 @@ class TrackingRecordingService : Service() {
 
         val intervalSeconds: Long = try {
             withTimeout(5000) {
-                trackingPrefs.preferencesFlow.first().intervalSeconds.coerceAtLeast(30).coerceAtMost(3600).toLong()
+                trackingPrefs.preferencesFlow.firstOrNull().intervalSeconds.coerceAtLeast(30).coerceAtMost(3600).toLong()
             }
         } catch (e: Exception) {
             60L
@@ -307,7 +307,7 @@ class TrackingRecordingService : Service() {
 
         val activeZones: List<PrivacyZone>
         try {
-            activeZones = privacyZoneRepository.observeActiveZones().first()
+            activeZones = privacyZoneRepository.observeActiveZones().firstOrNull()
         } catch (e: Exception) {
             lastLocation = null
             Log.e("TrackingService", "Privacy policy unavailable; dropping location sample", e)
@@ -451,8 +451,8 @@ class TrackingRecordingService : Service() {
         }
 
         currentRoute?.let { route ->
-            val activeZones = privacyZoneRepository.observeActiveZones().first()
-            val storedPoints = locationPointRepository.observeByRoute(route.id).first()
+            val activeZones = privacyZoneRepository.observeActiveZones().firstOrNull()
+            val storedPoints = locationPointRepository.observeByRoute(route.id).firstOrNull()
             val points = PrivacyZonePolicy.filterPoints(
                 storedPoints,
                 activeZones,
@@ -501,7 +501,7 @@ class TrackingRecordingService : Service() {
         routeId: Long,
         analysis: RouteSegmentationEngine.Analysis
     ) {
-        val existingSegments = routeSegmentRepository.observeByRoute(routeId).first()
+        val existingSegments = routeSegmentRepository.observeByRoute(routeId).firstOrNull()
             .associateBy { it.startTime }
         analysis.segments.forEach { segment ->
             val existing = existingSegments[segment.startTime]
@@ -512,7 +512,7 @@ class TrackingRecordingService : Service() {
             }
         }
 
-        val existingStays = stayRepository.observeByRoute(routeId).first()
+        val existingStays = stayRepository.observeByRoute(routeId).firstOrNull()
             .associateBy { it.startTime }
         analysis.stays.forEach { stay ->
             val existing = existingStays[stay.startTime]

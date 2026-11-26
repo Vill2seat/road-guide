@@ -230,7 +230,7 @@ object RouteSegmentationEngine {
         if (endIndex <= startIndex) return
 
         val group = points.subList(startIndex, endIndex + 1)
-        val first = group.first()
+        val first = group.firstOrNull() ?: return
         val last = group.last()
         val duration = last.timestamp - first.timestamp
         if (duration < MIN_ACTIVITY_SEGMENT_DURATION_MS) return
@@ -269,8 +269,8 @@ object RouteSegmentationEngine {
         }
         return Stay(
             routeId = routeId,
-            startTime = points.first().timestamp,
-            endTime = points.last().timestamp,
+            startTime = points.firstOrNull()?.timestamp ?: routeStartTime,
+            endTime = points.lastOrNull()?.timestamp ?: routeStartTime,
             centerLatitude = centerLatitude,
             centerLongitude = centerLongitude,
             radiusMeters = radius,

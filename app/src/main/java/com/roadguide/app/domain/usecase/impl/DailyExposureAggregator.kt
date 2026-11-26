@@ -35,24 +35,24 @@ class DailyExposureAggregator(
     }
 
     private suspend fun buildReport(date: String, isRegenerated: Boolean): DailyReport? {
-        val routes = routeRepository.getByDate(date).first()
+        val routes = routeRepository.getByDate().firstOrNull()
         if (routes.isNullOrEmpty()) {
             dailyReportRepository.deleteByDate(date)
             return null
         }
 
         val routeIds = routes.map { it.id }.toSet()
-        val activeZones = privacyZoneRepository.observeActiveZones().first()
+        val activeZones = privacyZoneRepository.observeActiveZones().firstOrNull()
 
-        val allResults = exposureResultRepository.observeAll().first()
+        val allResults = exposureResultRepository.observeAll().firstOrNull()
         val allSegments = routeIds.flatMap { routeId ->
-            routeSegmentRepository.observeByRoute(routeId).first()
+            routeSegmentRepository.observeByRoute(routeId).firstOrNull()
         }
         val pointsByRoute = routeIds.associateWith { routeId ->
-            locationPointRepository.observeByRoute(routeId).first()
+            locationPointRepository.observeByRoute(routeId).firstOrNull()
         }
         val allStays = routeIds.flatMap { routeId ->
-            stayRepository.observeByRoute(routeId).first()
+            stayRepository.observeByRoute(routeId).firstOrNull()
         }
 
         val historySegments = allSegments.filterNot { segment ->

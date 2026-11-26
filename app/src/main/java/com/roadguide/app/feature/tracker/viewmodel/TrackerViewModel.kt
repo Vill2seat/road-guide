@@ -86,7 +86,7 @@ class TrackerViewModel @Inject constructor(
         viewModelScope.launch {
             try {
                 val state = getTrackingSettings.invoke()
-                val preferences = trackingPrefs.preferencesFlow.first()
+                val preferences = trackingPrefs.preferencesFlow.firstOrNull()
                 _uiState.value = ScreenState.Success
                 _trackingEnabled.value = state.trackingEnabled
                 _isPaused.value = preferences.trackingPaused

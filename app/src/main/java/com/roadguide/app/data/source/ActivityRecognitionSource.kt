@@ -118,5 +118,8 @@ class ActivityRecognitionReceiver : BroadcastReceiver() {
                 else -> ActivityType.UNKNOWN
             }
             Log.d("ARReceiver", "Detected: $activityType (${mostLikely.type})")
+        } catch (e: Exception) {
+            Log.w("ARReceiver", "Failed to process activity update", e)
+        }
     }
 }

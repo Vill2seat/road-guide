@@ -57,7 +57,7 @@ class PlacesViewModel @Inject constructor(
         loadJob = viewModelScope.launch {
             _uiState.value = ScreenState.Loading
             try {
-                val settings = trackingSettingsRepository.preferencesFlow.first()
+                val settings = trackingSettingsRepository.preferencesFlow.firstOrNull()
                 _trackingEnabled.value = settings.trackingEnabled
 
                 combine(
@@ -142,7 +142,7 @@ class PlacesViewModel @Inject constructor(
     }
 
     private suspend fun regenerateReports() {
-        val dates = routeRepository.observeAll().first().map { it.date }.distinct()
+        val dates = routeRepository.observeAll().firstOrNull().map { it.date }.distinct()
         dates.forEach { date -> aggregateDailyExposure.regenerate(date) }
     }
 }

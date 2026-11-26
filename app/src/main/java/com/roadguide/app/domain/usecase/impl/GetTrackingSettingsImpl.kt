@@ -8,7 +8,7 @@ import kotlinx.coroutines.flow.first
 class GetTrackingSettingsImpl(private val trackingSettingsRepository: TrackingSettingsRepository) : GetTrackingSettings {
 
     override suspend fun invoke(): TrackingSettingsState {
-        val prefs = trackingSettingsRepository.preferencesFlow.first()
+        val prefs = trackingSettingsRepository.preferencesFlow.firstOrNull()
         return TrackingSettingsState(
             trackingEnabled = prefs.trackingEnabled,
             intervalSeconds = prefs.intervalSeconds,

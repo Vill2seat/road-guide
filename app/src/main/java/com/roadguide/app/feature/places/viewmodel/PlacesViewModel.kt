@@ -19,6 +19,8 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.firstOrNull
+import kotlinx.coroutines.flow.take
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
@@ -57,8 +59,8 @@ class PlacesViewModel @Inject constructor(
         loadJob = viewModelScope.launch {
             _uiState.value = ScreenState.Loading
             try {
-                val settings = trackingSettingsRepository.preferencesFlow.firstOrNull()
-                _trackingEnabled.value = settings.trackingEnabled
+                val settings = trackingSettingsRepository.preferencesFlow.take(1).firstOrNull()
+                _trackingEnabled.value = settings?.trackingEnabled ?: false
 
                 combine(
                     placeRepository.observeAll(),
@@ -142,7 +144,7 @@ class PlacesViewModel @Inject constructor(
     }
 
     private suspend fun regenerateReports() {
-        val dates = routeRepository.observeAll().firstOrNull().map { it.date }.distinct()
+        val dates = routeRepository.observeAll().take(1).firstOrNull()?.map { it.date }.distinct() ?: emptyList()
         dates.forEach { date -> aggregateDailyExposure.regenerate(date) }
     }
 }

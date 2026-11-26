@@ -12,6 +12,8 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.firstOrNull
+import kotlinx.coroutines.flow.take
 import kotlinx.coroutines.launch
 
 class BootReceiver : BroadcastReceiver() {
@@ -28,7 +30,7 @@ class BootReceiver : BroadcastReceiver() {
                 val permissionSource = PermissionSource(appContext)
 
                 // Use firstOrNull instead of first to avoid NoSuchElementException on empty DataStore
-                val preferences = trackingPrefs.preferencesFlow.firstOrNull()
+                val preferences = trackingPrefs.preferencesFlow.take(1).firstOrNull()
                     ?: run {
                         Log.d(TAG, "No preferences found after reboot; not restoring service")
                         pendingResult.finish()

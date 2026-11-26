@@ -8,7 +8,9 @@ import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.take
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -93,7 +95,7 @@ class TrackingPrefs(private val context: Context) {
         }
 
         val today = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(Date())
-        val result = context.trackingDataStore.data.firstOrNull().let { prefs ->
+        val result = context.trackingDataStore.data.take(1).firstOrNull().let { prefs ->
             if (prefs == null) return@let false
             val storedDate = prefs[INTERNET_AVAILABLE_DATE]
             val available = prefs[INTERNET_AVAILABLE_TODAY] ?: false

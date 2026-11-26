@@ -73,12 +73,22 @@ fun MapView(
             } catch (e: Exception) {
                 mapError.value = e
                 currentOnMapError.value(e)
-                throw NullPointerException("NativeMapView initialization failed", e)
+                // Return placeholder view instead of throwing NPE
+                return android.widget.TextView(viewContext).apply {
+                    text = "Map initialization failed"
+                    textColor = androidx.compose.ui.graphics.Color.Red
+                    modifier = Modifier.fillMaxSize()
+                }
             }
+            // Return placeholder if nativeView is null
             if (nativeView == null) {
                 mapError.value = NullPointerException("NativeMapView was not initialized")
                 currentOnMapError.value(NullPointerException("NativeMapView was not initialized"))
-                throw NullPointerException("NativeMapView was not initialized")
+                return android.widget.TextView(viewContext).apply {
+                    text = "Map not available"
+                    textColor = androidx.compose.ui.graphics.Color.Red
+                    modifier = Modifier.fillMaxSize()
+                }
             }
             nativeView as android.view.View
         },

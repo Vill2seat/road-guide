@@ -40,6 +40,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.withTimeout
 import com.roadguide.app.data.local.settings.TrackingPrefs
@@ -199,8 +200,8 @@ class TrackingRecordingService : Service() {
 
         serviceScope.launch {
             try {
-                val preferences = trackingPrefs.preferencesFlow.firstOrNull()
-                if (preferences.trackingEnabled && !preferences.trackingPaused) {
+                val preferences = trackingPrefs.preferencesFlow.take(1).firstOrNull()
+                if (preferences?.trackingEnabled && !preferences.trackingPaused) {
                     startRecording()
                 } else {
                     stopForeground(STOP_FOREGROUND_REMOVE)
@@ -245,10 +246,10 @@ class TrackingRecordingService : Service() {
         }
 
         val existingRoute = routeRepository.observeByStatus(RouteStatus.IN_PROGRESS)
-            .firstOrNull()
+            .take(1).firstOrNull()
             .maxByOrNull(Route::startTime)
             ?: routeRepository.observeByStatus(RouteStatus.PAUSED)
-                .firstOrNull()
+                .take(1).firstOrNull()
                 .maxByOrNull(Route::startTime)
         if (existingRoute != null) {
             val resumedRoute = existingRoute.copy(status = RouteStatus.IN_PROGRESS)
@@ -282,7 +283,7 @@ class TrackingRecordingService : Service() {
 
         val intervalSeconds: Long = try {
             withTimeout(5000) {
-                trackingPrefs.preferencesFlow.firstOrNull().intervalSeconds.coerceAtLeast(30).coerceAtMost(3600).toLong()
+                trackingPrefs.preferencesFlow.take(1).firstOrNull()?.intervalSeconds.coerceAtLeast(30).coerceAtMost(3600).toLong() ?: 60L
             }
         } catch (e: Exception) {
             60L
@@ -308,7 +309,7 @@ class TrackingRecordingService : Service() {
 
         val activeZones: List<PrivacyZone>
         try {
-            activeZones = privacyZoneRepository.observeActiveZones().firstOrNull()
+            activeZones = privacyZoneRepository.observeActiveZones().take(1).firstOrNull() as List<PrivacyZone>
         } catch (e: Exception) {
             lastLocation = null
             Log.e("TrackingService", "Privacy policy unavailable; dropping location sample", e)
@@ -452,8 +453,8 @@ class TrackingRecordingService : Service() {
         }
 
         currentRoute?.let { route ->
-            val activeZones = privacyZoneRepository.observeActiveZones().firstOrNull()
-            val storedPoints = locationPointRepository.observeByRoute(route.id).firstOrNull()
+            val activeZones = privacyZoneRepository.observeActiveZones().take(1).firstOrNull() as? List<PrivacyZone> ?: emptyList()
+            val storedPoints = locationPointRepository.observeByRoute(route.id).take(1).firstOrNull()
             val points = PrivacyZonePolicy.filterPoints(
                 storedPoints,
                 activeZones,
@@ -502,7 +503,7 @@ class TrackingRecordingService : Service() {
         routeId: Long,
         analysis: RouteSegmentationEngine.Analysis
     ) {
-        val existingSegments = routeSegmentRepository.observeByRoute(routeId).firstOrNull()
+        val existingSegments = routeSegmentRepository.observeByRoute(routeId).take(1).firstOrNull()
             .associateBy { it.startTime }
         analysis.segments.forEach { segment ->
             val existing = existingSegments[segment.startTime]
@@ -513,7 +514,7 @@ class TrackingRecordingService : Service() {
             }
         }
 
-        val existingStays = stayRepository.observeByRoute(routeId).firstOrNull()
+        val existingStays = stayRepository.observeByRoute(routeId).take(1).firstOrNull()
             .associateBy { it.startTime }
         analysis.stays.forEach { stay ->
             val existing = existingStays[stay.startTime]
@@ -593,6 +594,7 @@ class TrackingRecordingService : Service() {
     }
 
     companion object {
+        const val TAG = "TrackingRecordingService"
         const val NOTIFICATION_ID = 1001
         const val ACTION_START_RECORDING = "com.roadguide.app.ACTION_START_RECORDING"
         const val ACTION_STOP_RECORDING = "com.roadguide.app.ACTION_STOP_RECORDING"

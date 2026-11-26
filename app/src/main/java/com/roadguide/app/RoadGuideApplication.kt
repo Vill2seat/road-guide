@@ -7,7 +7,7 @@ import org.maplibre.android.MapLibre
 
 @HiltAndroidApp
 class RoadGuideApplication : Application() {
-    private lateinit var mapLibreInitialized: Boolean
+    var mapLibreInitialized: Boolean = false
 
     override fun onCreate() {
         super.onCreate()

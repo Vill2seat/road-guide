@@ -29,7 +29,8 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.firstOrNull
+import kotlinx.coroutines.flow.take
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 import java.time.LocalDate
@@ -86,7 +87,8 @@ class TrackerViewModel @Inject constructor(
         viewModelScope.launch {
             try {
                 val state = getTrackingSettings.invoke()
-                val preferences = trackingPrefs.preferencesFlow.firstOrNull()
+                val preferences = trackingPrefs.preferencesFlow.take(1).firstOrNull()
+                    ?: return@launch
                 _uiState.value = ScreenState.Success
                 _trackingEnabled.value = state.trackingEnabled
                 _isPaused.value = preferences.trackingPaused

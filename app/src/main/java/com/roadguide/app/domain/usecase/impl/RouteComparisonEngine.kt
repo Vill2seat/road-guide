@@ -37,8 +37,8 @@ class RouteComparisonEngine {
         val result = routes.toMutableList()
 
         // FASTEST: маршрут с минимальной продолжительностью
-        val fastest = result.minByOrNull { it.durationSeconds }!!
-        result.find { it.id == fastest.id }?.category = RouteCategory.FASTEST
+        val fastest = result.minByOrNull { it.durationSeconds }
+        fastest?.let { result.find { it.id == it.id }?.category = RouteCategory.FASTEST }
 
         // LOWEST_EXPOSURE: только если есть маршрут с достаточными данными
         val eligibleForEco = result.filter { r ->
@@ -47,8 +47,8 @@ class RouteComparisonEngine {
                 r.coverage >= MIN_COVERAGE_FOR_ECO
         }
         if (eligibleForEco.isNotEmpty()) {
-            val lowestExposure = eligibleForEco.minByOrNull { it.exposureScore }!!
-            result.find { it.id == lowestExposure.id }?.category = RouteCategory.LOWEST_EXPOSURE
+            val lowestExposure = eligibleForEco.minByOrNull { it.exposureScore }
+            lowestExposure?.let { result.find { it.id == it.id }?.category = RouteCategory.LOWEST_EXPOSURE }
         }
 
         // BALANCED: компромисс между нормализованным временем и экспозицией

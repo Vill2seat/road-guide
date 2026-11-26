@@ -10,7 +10,8 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.firstOrNull
+import kotlinx.coroutines.flow.take
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
@@ -39,7 +40,7 @@ class HistoryViewModel @Inject constructor(
                 val settings = getTrackingSettings.invoke()
                 _trackingEnabled.value = settings.trackingEnabled
 
-                val reports = getRouteSummaries.invoke().first()
+                val reports = getRouteSummaries.invoke().take(1).firstOrNull() ?: emptyList()
                 _reports.value = reports
                 _uiState.value = ScreenState.Success
             } catch (e: Exception) {

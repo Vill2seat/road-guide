@@ -121,7 +121,7 @@ object MovementDetectionEngine {
         ) {
             return false
         }
-        if (ordered.last().timestamp - ordered.first().timestamp < thresholdMs) return false
+        if (ordered.lastOrNull()?.timestamp?.minus(ordered.firstOrNull()?.timestamp ?: 0) ?: 0 < thresholdMs) return false
         if (ordered.any { it.speedMps >= STATIONARY_MAX_SPEED_MS }) return false
 
         val centerLatitude = ordered.map { it.latitude }.average()

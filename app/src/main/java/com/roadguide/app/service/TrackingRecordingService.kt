@@ -41,6 +41,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.firstOrNull
+import kotlinx.coroutines.flow.take
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.withTimeout
 import com.roadguide.app.data.local.settings.TrackingPrefs
@@ -201,7 +202,7 @@ class TrackingRecordingService : Service() {
         serviceScope.launch {
             try {
                 val preferences = trackingPrefs.preferencesFlow.take(1).firstOrNull()
-                if (preferences?.trackingEnabled && !preferences.trackingPaused) {
+                if (preferences?.trackingEnabled == true && preferences?.trackingPaused != true) {
                     startRecording()
                 } else {
                     stopForeground(STOP_FOREGROUND_REMOVE)
@@ -229,7 +230,7 @@ class TrackingRecordingService : Service() {
         val locationSource = this.locationSource
 
         if (!locationSource.hasLocationPermission()) {
-            Log.e(TAG, "Location permissions are no longer granted")
+            Log.e("TrackingRecordingService", "Location permissions are no longer granted")
             return@startRecording
         }
 
@@ -247,10 +248,10 @@ class TrackingRecordingService : Service() {
 
         val existingRoute = routeRepository.observeByStatus(RouteStatus.IN_PROGRESS)
             .take(1).firstOrNull()
-            .maxByOrNull(Route::startTime)
+            ?.maxByOrNull(Route::startTime)
             ?: routeRepository.observeByStatus(RouteStatus.PAUSED)
                 .take(1).firstOrNull()
-                .maxByOrNull(Route::startTime)
+                ?.maxByOrNull(Route::startTime)
         if (existingRoute != null) {
             val resumedRoute = existingRoute.copy(status = RouteStatus.IN_PROGRESS)
             currentRoute = resumedRoute
@@ -283,7 +284,7 @@ class TrackingRecordingService : Service() {
 
         val intervalSeconds: Long = try {
             withTimeout(5000) {
-                trackingPrefs.preferencesFlow.take(1).firstOrNull()?.intervalSeconds.coerceAtLeast(30).coerceAtMost(3600).toLong() ?: 60L
+                (trackingPrefs.preferencesFlow.take(1).firstOrNull()?.intervalSeconds ?: 60).coerceAtLeast(30).coerceAtMost(3600).toLong()
             }
         } catch (e: Exception) {
             60L
@@ -309,7 +310,7 @@ class TrackingRecordingService : Service() {
 
         val activeZones: List<PrivacyZone>
         try {
-            activeZones = privacyZoneRepository.observeActiveZones().take(1).firstOrNull() as List<PrivacyZone>
+            activeZones = privacyZoneRepository.observeActiveZones().take(1).firstOrNull() ?: emptyList()
         } catch (e: Exception) {
             lastLocation = null
             Log.e("TrackingService", "Privacy policy unavailable; dropping location sample", e)
@@ -453,8 +454,8 @@ class TrackingRecordingService : Service() {
         }
 
         currentRoute?.let { route ->
-            val activeZones = privacyZoneRepository.observeActiveZones().take(1).firstOrNull() as? List<PrivacyZone> ?: emptyList()
-            val storedPoints = locationPointRepository.observeByRoute(route.id).take(1).firstOrNull()
+            val activeZones = privacyZoneRepository.observeActiveZones().take(1).firstOrNull() ?: emptyList()
+            val storedPoints = locationPointRepository.observeByRoute(route.id).take(1).firstOrNull() ?: emptyList()
             val points = PrivacyZonePolicy.filterPoints(
                 storedPoints,
                 activeZones,
@@ -504,7 +505,7 @@ class TrackingRecordingService : Service() {
         analysis: RouteSegmentationEngine.Analysis
     ) {
         val existingSegments = routeSegmentRepository.observeByRoute(routeId).take(1).firstOrNull()
-            .associateBy { it.startTime }
+            ?.associateBy { it.startTime } ?: emptyMap()
         analysis.segments.forEach { segment ->
             val existing = existingSegments[segment.startTime]
             if (existing == null) {
@@ -515,7 +516,7 @@ class TrackingRecordingService : Service() {
         }
 
         val existingStays = stayRepository.observeByRoute(routeId).take(1).firstOrNull()
-            .associateBy { it.startTime }
+            ?.associateBy { it.startTime } ?: emptyMap()
         analysis.stays.forEach { stay ->
             val existing = existingStays[stay.startTime]
             if (existing == null) {
@@ -543,7 +544,7 @@ class TrackingRecordingService : Service() {
 
     private suspend fun resumeTracking() {
         if (!locationSource.hasLocationPermission()) {
-            Log.e(TAG, "Location permissions are no longer granted")
+            Log.e("TrackingRecordingService", "Location permissions are no longer granted")
             return@resumeTracking
         }
         if (isRecording) return

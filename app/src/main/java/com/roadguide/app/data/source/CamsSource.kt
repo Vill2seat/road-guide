@@ -98,7 +98,7 @@ class CamsSource(
             Log.e("CamsSource", "HTTP ${response.code}: ${response.message}")
             throw java.io.IOException("Unexpected code ${response.code}")
         }
-        return response.body!!.string()
+        return response.body?.string() ?: ""
     }
 
     private fun parseCams(json: String): CamsAqis? {

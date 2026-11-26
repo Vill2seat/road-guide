@@ -7,7 +7,8 @@ import com.roadguide.app.data.local.entity.DataQuality
 import com.roadguide.app.data.local.settings.TrackingPrefs
 import com.roadguide.app.data.source.EnvironmentalDataFetcher
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.firstOrNull
+import kotlinx.coroutines.flow.take
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import android.util.Log
@@ -68,7 +69,7 @@ class EnvironmentalSampleRepositoryImpl(
             time = requestedTime,
             delta = CACHE_COORDINATE_DELTA_DEGREES,
             window = CACHE_SAMPLE_TIME_WINDOW_MS
-        ).first()
+        ).take(1).firstOrNull()
         if (cached != null && now - cached.fetchedAt in 0L..CACHE_MAX_AGE_MS) {
             val quality = validator.validate(
                 sample = cached,

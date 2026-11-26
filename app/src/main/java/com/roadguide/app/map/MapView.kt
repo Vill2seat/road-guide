@@ -14,6 +14,9 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import android.graphics.Color
+import android.widget.TextView
+import android.view.Gravity
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
@@ -49,6 +52,7 @@ fun MapView(
         modifier = modifier.fillMaxSize(),
         factory = { viewContext: Context ->
             var nativeView: NativeMapView? = null
+            var placeholderView: TextView? = null
             try {
                 nativeView = NativeMapView(viewContext).also { nv ->
                     nv.onCreate(Bundle())
@@ -73,24 +77,28 @@ fun MapView(
             } catch (e: Exception) {
                 mapError.value = e
                 currentOnMapError.value(e)
-                // Return placeholder view instead of throwing NPE
-                return android.widget.TextView(viewContext).apply {
+                // Create placeholder view instead of throwing NPE
+                placeholderView = TextView(viewContext).apply {
                     text = "Map initialization failed"
-                    textColor = androidx.compose.ui.graphics.Color.Red
-                    modifier = Modifier.fillMaxSize()
+                    setTextColor(Color.RED)
+                    gravity = Gravity.CENTER
                 }
             }
             // Return placeholder if nativeView is null
             if (nativeView == null) {
-                mapError.value = NullPointerException("NativeMapView was not initialized")
-                currentOnMapError.value(NullPointerException("NativeMapView was not initialized"))
-                return android.widget.TextView(viewContext).apply {
-                    text = "Map not available"
-                    textColor = androidx.compose.ui.graphics.Color.Red
-                    modifier = Modifier.fillMaxSize()
+                if (placeholderView == null) {
+                    mapError.value = NullPointerException("NativeMapView was not initialized")
+                    currentOnMapError.value(NullPointerException("NativeMapView was not initialized"))
+                    placeholderView = TextView(viewContext).apply {
+                        text = "Map not available"
+                        setTextColor(Color.RED)
+                        gravity = Gravity.CENTER
+                    }
                 }
+                placeholderView!!
+            } else {
+                nativeView as android.view.View
             }
-            nativeView as android.view.View
         },
         update = { }
     )

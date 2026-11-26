@@ -13,7 +13,9 @@ import com.roadguide.app.data.repository.RouteRepository
 import com.roadguide.app.data.repository.RouteSegmentRepository
 import com.roadguide.app.data.repository.StayRepository
 import com.roadguide.app.domain.usecase.AggregateDailyExposure
-import kotlinx.coroutines.flow.first
+import com.roadguide.app.domain.usecase.impl.PrivacyScope
+import kotlinx.coroutines.flow.firstOrNull
+import kotlinx.coroutines.flow.take
 import kotlin.math.roundToLong
 
 class DailyExposureAggregator(
@@ -35,30 +37,30 @@ class DailyExposureAggregator(
     }
 
     private suspend fun buildReport(date: String, isRegenerated: Boolean): DailyReport? {
-        val routes = routeRepository.getByDate().firstOrNull()
+        val routes = routeRepository.getByDate(date).take(1).firstOrNull()
         if (routes.isNullOrEmpty()) {
             dailyReportRepository.deleteByDate(date)
             return null
         }
 
         val routeIds = routes.map { it.id }.toSet()
-        val activeZones = privacyZoneRepository.observeActiveZones().firstOrNull()
+        val activeZones = privacyZoneRepository.observeActiveZones().take(1).firstOrNull() ?: emptyList()
 
-        val allResults = exposureResultRepository.observeAll().firstOrNull()
+        val allResults = exposureResultRepository.observeAll().take(1).firstOrNull() ?: emptyList()
         val allSegments = routeIds.flatMap { routeId ->
-            routeSegmentRepository.observeByRoute(routeId).firstOrNull()
+            routeSegmentRepository.observeByRoute(routeId).take(1).firstOrNull() ?: emptyList()
         }
         val pointsByRoute = routeIds.associateWith { routeId ->
-            locationPointRepository.observeByRoute(routeId).firstOrNull()
+            locationPointRepository.observeByRoute(routeId).take(1).firstOrNull() ?: emptyList()
         }
         val allStays = routeIds.flatMap { routeId ->
-            stayRepository.observeByRoute(routeId).firstOrNull()
+            stayRepository.observeByRoute(routeId).take(1).firstOrNull() ?: emptyList()
         }
 
         val historySegments = allSegments.filterNot { segment ->
             PrivacyZonePolicy.excludesSegment(
                 segment,
-                pointsByRoute[segment.routeId].orEmpty(),
+                pointsByRoute[segment.routeId] ?: emptyList(),
                 activeZones,
                 PrivacyScope.HISTORY
             )
@@ -66,7 +68,7 @@ class DailyExposureAggregator(
         val exposureSegments = historySegments.filterNot { segment ->
             PrivacyZonePolicy.excludesSegment(
                 segment,
-                pointsByRoute[segment.routeId].orEmpty(),
+                pointsByRoute[segment.routeId] ?: emptyList(),
                 activeZones,
                 PrivacyScope.EXPOSURE
             )
@@ -94,7 +96,7 @@ class DailyExposureAggregator(
 
         val hasHistoryExclusion = activeZones.any { it.isActive && it.excludeFromHistory }
         for (route in routes) {
-            val routePoints = pointsByRoute[route.id].orEmpty()
+            val routePoints = pointsByRoute[route.id] ?: emptyList()
             val routeSegments = historySegments.filter { it.routeId == route.id }
             totalDistance += when {
                 routePoints.isNotEmpty() ->

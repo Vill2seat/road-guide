@@ -82,7 +82,8 @@ object RouteSegmentationEngine {
                     activity = groupActivity,
                     segments = segments,
                     stays = stays,
-                    privacyZones = privacyZones
+                    privacyZones = privacyZones,
+                    routeStartTime = routeStartTime
                 )
                 groupStart = index
                 groupActivity = activityAt(orderedPoints, index, privacyZones)
@@ -115,7 +116,8 @@ object RouteSegmentationEngine {
                         activity = groupActivity,
                         segments = segments,
                         stays = stays,
-                        privacyZones = privacyZones
+                        privacyZones = privacyZones,
+                        routeStartTime = routeStartTime
                     )
                     groupStart = pendingStart
                     groupActivity = currentActivity
@@ -134,7 +136,8 @@ object RouteSegmentationEngine {
             activity = groupActivity,
             segments = segments,
             stays = stays,
-            privacyZones = privacyZones
+            privacyZones = privacyZones,
+            routeStartTime = routeStartTime
         )
 
         return Analysis(segments, stays)
@@ -225,7 +228,8 @@ object RouteSegmentationEngine {
         activity: ActivityType,
         segments: MutableList<RouteSegment>,
         stays: MutableList<Stay>,
-        privacyZones: List<PrivacyZone>
+        privacyZones: List<PrivacyZone>,
+        routeStartTime: Long
     ) {
         if (endIndex <= startIndex) return
 
@@ -252,11 +256,11 @@ object RouteSegmentationEngine {
         if (activity == ActivityType.STATIONARY &&
             MovementDetectionEngine.detectStationary(group, MIN_STAY_DURATION_MS)
         ) {
-            stays += makeStay(routeId, group)
+            stays += makeStay(routeId, group, routeStartTime)
         }
     }
 
-    private fun makeStay(routeId: Long, points: List<LocationPointSummary>): Stay {
+    private fun makeStay(routeId: Long, points: List<LocationPointSummary>, routeStartTime: Long): Stay {
         val centerLatitude = points.map { it.latitude }.average()
         val centerLongitude = points.map { it.longitude }.average()
         val radius = points.maxOf { point ->

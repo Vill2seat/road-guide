@@ -144,7 +144,8 @@ class PlacesViewModel @Inject constructor(
     }
 
     private suspend fun regenerateReports() {
-        val dates = routeRepository.observeAll().take(1).firstOrNull()?.map { it.date }.distinct() ?: emptyList()
+        val routes = routeRepository.observeAll().take(1).firstOrNull() ?: emptyList()
+        val dates = routes.map { it.date }.distinct()
         dates.forEach { date -> aggregateDailyExposure.regenerate(date) }
     }
 }

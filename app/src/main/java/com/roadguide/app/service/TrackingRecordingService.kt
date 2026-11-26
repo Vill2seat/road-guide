@@ -228,7 +228,8 @@ class TrackingRecordingService : Service() {
         val locationSource = this.locationSource
 
         if (!locationSource.hasLocationPermission()) {
-            return("Location permissions are no longer granted")
+            Log.e(TAG, "Location permissions are no longer granted")
+            return@startRecording
         }
 
         // Subscribe to activity recognition updates
@@ -541,7 +542,8 @@ class TrackingRecordingService : Service() {
 
     private suspend fun resumeTracking() {
         if (!locationSource.hasLocationPermission()) {
-            return("Location permissions are no longer granted")
+            Log.e(TAG, "Location permissions are no longer granted")
+            return@resumeTracking
         }
         if (isRecording) return
         isPaused = false

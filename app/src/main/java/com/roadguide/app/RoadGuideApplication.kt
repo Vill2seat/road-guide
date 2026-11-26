@@ -15,7 +15,7 @@ class RoadGuideApplication : Application() {
         try {
             MapLibre.getInstance(applicationContext)
             mapLibreInitialized = true
-        } catch (e: Exception) {
+        } catch (e: Throwable) {
             Log.e("RoadGuideApp", "MapLibre initialization failed", e)
             mapLibreInitialized = false
             Toast.makeText(applicationContext, "Map loading failed", Toast.LENGTH_LONG).show()

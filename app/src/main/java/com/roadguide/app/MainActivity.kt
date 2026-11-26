@@ -17,7 +17,6 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.Lifecycle
@@ -62,7 +61,7 @@ class MainActivity : ComponentActivity() {
     @Composable
     private fun PermissionGate() {
         // Initialise permissions state; default to false until we know the result.
-        var hasPermissions by rememberSaveable { mutableStateOf(false) }
+        var hasPermissions by remember { mutableStateOf(false) }
         val lifecycleOwner = LocalLifecycleOwner.current
         val permissionLauncher = rememberLauncherForActivityResult(
             ActivityResultContracts.RequestMultiplePermissions()

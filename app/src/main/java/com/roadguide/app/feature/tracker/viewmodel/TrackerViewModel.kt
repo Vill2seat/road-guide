@@ -207,16 +207,30 @@ class TrackerViewModel @Inject constructor(
 
     private fun observeLatestEnvironment() {
         viewModelScope.launch {
-            environmentalSampleRepository.getLatest().collect { sample ->
-                _environmentalSample.value = sample
+            try {
+                environmentalSampleRepository.getLatest().collect { sample ->
+                    _environmentalSample.value = sample
+                }
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                android.util.Log.e("TrackerViewModel", "Failed to observe latest environment", e)
+                _environmentalSample.value = null
             }
         }
     }
 
     private fun observeTodayReport() {
         viewModelScope.launch {
-            getDailyReport.observeByDate(LocalDate.now().toString()).collect { report ->
-                _dailyReport.value = report
+            try {
+                getDailyReport.observeByDate(LocalDate.now().toString()).collect { report ->
+                    _dailyReport.value = report
+                }
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                android.util.Log.e("TrackerViewModel", "Failed to observe today's report", e)
+                _dailyReport.value = null
             }
         }
     }

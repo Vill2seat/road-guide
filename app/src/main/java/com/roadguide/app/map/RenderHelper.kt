@@ -2,7 +2,6 @@ package com.roadguide.app.map
 
 import android.content.Context
 import com.roadguide.app.map.model.MapPoint
-import com.roadguide.app.map.model.LocationPointSummary
 import org.maplibre.android.camera.CameraUpdateFactory
 import org.maplibre.android.geometry.LatLng
 import org.maplibre.android.geometry.LatLngBounds
@@ -31,16 +30,6 @@ object RenderHelper {
         iconRes: Int = com.roadguide.app.R.drawable.ic_launcher_background
     ) {
         mapLibreMap.addLocationMarker(context, latitude, longitude, iconRes)
-    }
-
-    /** Draws a location marker from LocationPointSummary. */
-    fun addLocationMarker(
-        mapLibreMap: MapLibreMap,
-        context: Context,
-        point: LocationPointSummary,
-        iconRes: Int = com.roadguide.app.R.drawable.ic_launcher_background
-    ) {
-        addLocationMarker(mapLibreMap, context, point.latitude, point.longitude, iconRes)
     }
 
     /** Updates the camera to focus on a list of points. */

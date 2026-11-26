@@ -9,6 +9,7 @@
     <string name="nav_history">Historia</string>
     <string name="nav_places">Lugares</string>
     <string name="nav_profile">Perfil</string>
+    <string name="nav_settings">Ajustes</string>
 
     <!-- Screen titles -->
     <string name="screen_tracker">Rastreador</string>

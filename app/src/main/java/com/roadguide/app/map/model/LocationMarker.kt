@@ -17,17 +17,3 @@ data class LocationMarker(
     /** Create MapPoint for map rendering */
     fun toMapPoint(): MapPoint = MapPoint(latitude, longitude)
 }
-
-/**
- * Summary of location point for UI display.
- */
-data class LocationPointSummary(
-    val latitude: Double,
-    val longitude: Double,
-    val timestamp: Long,
-    val accuracyMeters: Float = 0f,
-    val speedMps: Double = 0.0,
-    val activityType: String = "unknown"
-) {
-    fun toMapPoint() = MapPoint(latitude, longitude)
-}

@@ -39,127 +39,16 @@ fun MapView(
     onMapReady: (MapLibreMap) -> Unit = {},
     onMapError: (Throwable) -> Unit = {}
 ) {
-    val lifecycleOwner = LocalLifecycleOwner.current
-    val mapView = remember { mutableStateOf<NativeMapView?>(null) }
-    val mapLibreMap = remember { mutableStateOf<MapLibreMap?>(null) }
-    val isDisposed = remember { mutableStateOf(false) }
-    val mapError = remember { mutableStateOf<Throwable?>(null) }
-    val currentOnMapReady = rememberUpdatedState(onMapReady)
-    val currentOnMapUpdate = rememberUpdatedState(onMapUpdate)
-    val currentOnMapError = rememberUpdatedState(onMapError)
-
-    AndroidView(
+    // MapLibre отключён для проверки работоспособности без карты.
+    Box(
         modifier = modifier.fillMaxSize(),
-        factory = { viewContext: Context ->
-            var nativeView: NativeMapView? = null
-            var placeholderView: TextView? = null
-            try {
-                nativeView = NativeMapView(viewContext).also { nv ->
-                    nv.onCreate(Bundle())
-                    mapView.value = nv
-                    nv.getMapAsync { map: MapLibreMap ->
-                        if (isDisposed.value) return@getMapAsync
-                        loadStyleWithFallback(map, viewContext) { styleMap: MapLibreMap, loadException: Throwable? ->
-                            if (isDisposed.value) return@loadStyleWithFallback
-                            if (loadException != null) {
-                                mapError.value = loadException
-                                currentOnMapError.value(loadException)
-                            }
-                            mapLibreMap.value = styleMap
-                            try {
-                                styleMap.uiSettings.isAttributionEnabled = true
-                            } catch (_: Exception) {
-                            }
-                            currentOnMapReady.value(styleMap)
-                        }
-                    }
-                }
-            } catch (e: Exception) {
-                mapError.value = e
-                currentOnMapError.value(e)
-                // Create placeholder view instead of throwing NPE
-                placeholderView = TextView(viewContext).apply {
-                    text = "Map initialization failed"
-                    setTextColor(Color.RED)
-                    gravity = Gravity.CENTER
-                }
-            }
-            // Return placeholder if nativeView is null
-            if (nativeView == null) {
-                if (placeholderView == null) {
-                    mapError.value = NullPointerException("NativeMapView was not initialized")
-                    currentOnMapError.value(NullPointerException("NativeMapView was not initialized"))
-                    placeholderView = TextView(viewContext).apply {
-                        text = "Map not available"
-                        setTextColor(Color.RED)
-                        gravity = Gravity.CENTER
-                    }
-                }
-                placeholderView!!
-            } else {
-                nativeView as android.view.View
-            }
-        },
-        update = { }
-    )
-
-    DisposableEffect(lifecycleOwner) {
-        val observer = LifecycleEventObserver { _, event ->
-            val view = mapView.value
-            if (view == null || isDisposed.value) return@LifecycleEventObserver
-            when (event) {
-                Lifecycle.Event.ON_START -> view.onStart()
-                Lifecycle.Event.ON_RESUME -> view.onResume()
-                Lifecycle.Event.ON_PAUSE -> view.onPause()
-                Lifecycle.Event.ON_STOP -> view.onStop()
-                Lifecycle.Event.ON_DESTROY -> {
-                    isDisposed.value = true
-                    view.onDestroy()
-                    mapView.value = null
-                    mapLibreMap.value = null
-                }
-                else -> Unit
-            }
-        }
-        lifecycleOwner.lifecycle.addObserver(observer)
-        onDispose {
-            lifecycleOwner.lifecycle.removeObserver(observer)
-            val view = mapView.value
-            if (view != null && !isDisposed.value) {
-                isDisposed.value = true
-                view.onDestroy()
-            }
-            mapView.value = null
-            mapLibreMap.value = null
-        }
-    }
-
-    LaunchedEffect(mapLibreMap.value, mapContentKey) {
-        val map = mapLibreMap.value
-        if (map != null && !isDisposed.value) {
-            try {
-                currentOnMapUpdate.value(map)
-            } catch (_: Exception) {
-            }
-        }
-    }
-
-    if (mapView.value == null && mapError.value == null) {
-        Box(modifier = modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-            Text(
-                text = "Loading map…",
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-        }
-    } else if (mapError.value != null) {
-        Box(modifier = modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-            Text(
-                text = "Map unavailable",
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-        }
+        contentAlignment = Alignment.Center
+    ) {
+        Text(
+            text = "Карта отключена (MapLibre)",
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
     }
 }
 
@@ -172,12 +61,12 @@ private fun loadStyleWithFallback(
         map.setStyle(Style.Builder().fromUri(MAP_STYLE_URI)) { _: Style ->
             callback(map, null)
         }
-    } catch (e: Exception) {
+    } catch (e: Throwable) {
         try {
             map.setStyle(Style.Builder().fromUri(MAP_STYLE_ASSET)) { _: Style ->
                 callback(map, null)
             }
-        } catch (assetException: Exception) {
+        } catch (assetException: Throwable) {
             callback(map, assetException)
         }
     }
@@ -218,7 +107,7 @@ fun MapLibreMap.addLocationMarker(
                 .icon(icon)
                 .title("location_marker")
         )
-    } catch (_: Exception) {
+    } catch (_: Throwable) {
         addMarker(
             org.maplibre.android.annotations.MarkerOptions()
                 .position(latLng)

@@ -92,8 +92,7 @@ dependencies {
 
     // MapLibre Native Android — локальный AAR из app/libs (maven.maplibre.org недоступен по DNS):
     implementation(files("libs/maplibre-android-13.5.4.aar"))
-    implementation(files("libs/timber-runtime.jar"))
-    implementation(files("libs/timber-api.jar"))
+    implementation(libs.timber)
 
     debugImplementation(libs.androidx.compose.ui.tooling)
     debugImplementation(libs.androidx.compose.ui.test.manifest)

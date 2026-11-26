@@ -93,7 +93,8 @@ class TrackingPrefs(private val context: Context) {
         }
 
         val today = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(Date())
-        val result = context.trackingDataStore.data.first().let { prefs ->
+        val result = context.trackingDataStore.data.firstOrNull().let { prefs ->
+            if (prefs == null) return@let false
             val storedDate = prefs[INTERNET_AVAILABLE_DATE]
             val available = prefs[INTERNET_AVAILABLE_TODAY] ?: false
             if (storedDate != today) {

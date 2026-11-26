@@ -87,7 +87,8 @@ class LocationSource(private val context: Context) {
             if (isUpdating) return
 
             if (!hasLocationPermission()) {
-                throw IllegalStateException("Location permissions not granted")
+                // Request permissions instead of throwing - let the caller handle it
+                return@withLock
             }
 
             val locationRequest = LocationRequest.create().apply {

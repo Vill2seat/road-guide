@@ -120,7 +120,7 @@ class OpenMeteoWeatherSource(
 
         return try {
             OpenMeteoWeather(
-                temperatureCelsius = extractDouble(current, "\"temperature_2m\"")!!,
+                temperatureCelsius = extractDouble(current, "\"temperature_2m\"") ?: 0.0,
                 apparentTemperatureCelsius = extractDouble(current, "\"apparent_temperature\"")!!,
                 relativeHumidityPercent = extractDouble(current, "\"relative_humidity_2m\"")!!,
                 windSpeedMs = extractDouble(current, "\"wind_speed_10m\"")!!,

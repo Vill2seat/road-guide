@@ -69,19 +69,23 @@ fun MapView(
         update = { }
     )
 
-    val binding = remember {
-        MapViewLifecycleBinding(
-            mapView = mapView.value!!,
-            lifecycle = lifecycle,
-            isDisposed = isDisposed
-        )
+    val binding = remember(mapView.value) {
+        mapView.value?.let { nativeView ->
+            MapViewLifecycleBinding(
+                mapView = nativeView,
+                lifecycle = lifecycle,
+                isDisposed = isDisposed
+            )
+        }
     }
 
-    DisposableEffect(lifecycle) {
-        lifecycle.addObserver(binding)
+    DisposableEffect(binding) {
+        val b = binding ?: return@DisposableEffect onDispose { }
+        lifecycle.addObserver(b)
+        b.syncToCurrentState(lifecycle)
         onDispose {
-            lifecycle.removeObserver(binding)
-            binding.dispose()
+            lifecycle.removeObserver(b)
+            b.dispose()
         }
     }
 
@@ -112,8 +116,15 @@ private class MapViewLifecycleBinding(
     private var isStarted = false
     private var isResumed = false
 
-    init {
-        lifecycle.addObserver(this)
+    fun syncToCurrentState(lifecycle: Lifecycle) {
+        when (lifecycle.currentState) {
+            Lifecycle.State.STARTED -> onStart(lifecycle)
+            Lifecycle.State.RESUMED -> {
+                onStart(lifecycle)
+                onResume(lifecycle)
+            }
+            else -> Unit
+        }
     }
 
     override fun onStart(owner: LifecycleOwner) {

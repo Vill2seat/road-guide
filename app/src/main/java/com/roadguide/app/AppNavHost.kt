@@ -77,16 +77,23 @@ fun AppNavHost(
     // Show bottom bar only on main tab screens
     val showBottomBar = currentRoute in items.map { it.route }
 
+    val showTopBar = currentRoute !in listOf(
+        ScreenRoutes.Tracker,
+        ScreenRoutes.Planner
+    )
+
     Scaffold(
         topBar = {
-            androidx.compose.material3.TopAppBar(
-                title = { Text(stringResource(R.string.app_name)) },
-                actions = {
-                    androidx.compose.material3.TextButton(onClick = { navController.navigate(ScreenRoutes.Profile) }) {
-                        Text(stringResource(R.string.nav_profile))
+            if (showTopBar) {
+                androidx.compose.material3.TopAppBar(
+                    title = { Text(stringResource(R.string.app_name)) },
+                    actions = {
+                        androidx.compose.material3.TextButton(onClick = { navController.navigate(ScreenRoutes.Profile) }) {
+                            Text(stringResource(R.string.nav_profile))
+                        }
                     }
-                }
-            )
+                )
+            }
         },
         bottomBar = {
             if (showBottomBar) {

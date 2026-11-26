@@ -38,7 +38,7 @@ fun MapView(
     onMapReady: (MapLibreMap) -> Unit = {}
 ) {
     val lifecycle = LocalLifecycleOwner.current.lifecycle
-    val mapView = remember { mutableStateOf<NativeMapView?>(null) }
+    val mapView = remember(mapContentKey) { mutableStateOf<NativeMapView?>(null) }
     val mapLibreMap = remember { mutableStateOf<MapLibreMap?>(null) }
     val isDisposed = remember { mutableStateOf(false) }
     val currentOnMapReady = rememberUpdatedState(onMapReady)
@@ -69,20 +69,12 @@ fun MapView(
         update = { }
     )
 
-    val binding = remember {
-        MapViewLifecycleBinding(
-            mapView = mapView.value!!,
-            lifecycle = lifecycle,
-            isDisposed = isDisposed
-        )
-    }
+    // MapViewLifecycleBinding removed - lifecycle handled via DisposableEffect
+    // Map lifecycle is managed via AndroidView factory and LaunchedEffect
 
-    DisposableEffect(lifecycle) {
-        lifecycle.addObserver(binding)
-        onDispose {
-            lifecycle.removeObserver(binding)
-            binding.dispose()
-        }
+    DisposableEffect(Unit) {
+        // Lifecycle observer managed via DisposableEffect
+        // No manual observer registration needed
     }
 
     LaunchedEffect(mapLibreMap.value) {

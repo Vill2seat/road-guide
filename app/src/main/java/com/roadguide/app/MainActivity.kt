@@ -61,22 +61,27 @@ class MainActivity : ComponentActivity() {
 
     @Composable
     private fun PermissionGate() {
-        var hasPermissions by rememberSaveable { mutableStateOf(permissionSource.hasAllPermissions()) }
+        // Initialise permissions state; default to false until we know the result.
+        var hasPermissions by rememberSaveable { mutableStateOf(false) }
         val lifecycleOwner = LocalLifecycleOwner.current
         val permissionLauncher = rememberLauncherForActivityResult(
             ActivityResultContracts.RequestMultiplePermissions()
         ) { granted ->
+            // Compute which permissions are still missing.
             val missing = permissionSource.getMissingPermissions()
             if (missing.isEmpty()) {
                 hasPermissions = true
             } else if (granted.values.all { it }) {
+                // User granted the requested permissions – re‑check the source.
                 hasPermissions = permissionSource.hasAllPermissions()
             } else {
+                // At least one requested permission was denied.
                 hasPermissions = false
             }
         }
 
-        DisposableEffect(lifecycleOwner, permissionSource) {
+        // Keep the state in sync when the app resumes or when onboarding finishes.
+        DisposableEffect(Unit) {
             val observer = LifecycleEventObserver { _, event ->
                 if (event == Lifecycle.Event.ON_RESUME) {
                     hasPermissions = permissionSource.hasAllPermissions()
@@ -86,37 +91,42 @@ class MainActivity : ComponentActivity() {
             onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
         }
 
-        // Collect onboarding completion from DataStore
+        // Flows from DataStore – onboarding completion flag.
         val onboardingDone by permissionSource.hasCompletedOnboarding()
-            .collectAsState<Boolean, Boolean?>(initial = null)
+            .collectAsState(initial = null)
 
-        // Sync hasPermissions from PermissionSource when onboarding completes
+        // When onboarding finishes, ensure the permission flag is up‑to‑date.
         LaunchedEffect(onboardingDone) {
             if (onboardingDone == true && !hasPermissions) {
                 hasPermissions = permissionSource.hasAllPermissions()
             }
         }
 
+        // -----------------------------------------------------------------
+        // UI flow
+        // -----------------------------------------------------------------
         if (onboardingDone == null) {
+            // Before the user has completed onboarding show a placeholder.
             LoadingPlaceholder(modifier = Modifier.fillMaxSize())
         } else if (onboardingDone == false) {
-            OnboardingFlow(
-                onFinished = {
-                    // State will be synced by the LaunchedEffect above
-                }
-            )
+            // Show the onboarding flow; the finishing callback is intentionally
+            // left empty – the LaunchedEffect above will sync the state.
+            OnboardingFlow(onFinished = {})
         } else if (!hasPermissions) {
+            // Permission screen – request any missing permissions.
             PermissionScreen(
                 onGrantPermissions = {
                     val missing = permissionSource.getMissingPermissions()
                     if (missing.isNotEmpty()) {
                         permissionLauncher.launch(missing.toTypedArray())
                     } else {
+                        // All required permissions are now granted.
                         hasPermissions = true
                     }
                 }
             )
         } else {
+            // All good – navigate to the main navigation host.
             AppNavHost(
                 permissionSource = permissionSource,
                 permissionLauncher = permissionLauncher,

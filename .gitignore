@@ -30,3 +30,6 @@ Thumbs.db
 *.properties
 local.propertiesbuilds/
 .env
+
+# Heap dumps
+*.hprof

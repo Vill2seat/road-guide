@@ -27,7 +27,13 @@ class BootReceiver : BroadcastReceiver() {
                 val trackingPrefs = TrackingPrefs(appContext)
                 val permissionSource = PermissionSource(appContext)
 
-                val preferences = trackingPrefs.preferencesFlow.first()
+                // Use firstOrNull instead of first to avoid NoSuchElementException on empty DataStore
+                val preferences = trackingPrefs.preferencesFlow.firstOrNull()
+                    ?: run {
+                        Log.d(TAG, "No preferences found after reboot; not restoring service")
+                        pendingResult.finish()
+                        return@launch
+                    }
                 if (!preferences.trackingEnabled || preferences.trackingPaused) {
                     Log.d(TAG, "Tracking is disabled or paused; not restoring service")
                     return@launch

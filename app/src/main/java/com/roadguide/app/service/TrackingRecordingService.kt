@@ -84,10 +84,17 @@ class TrackingRecordingService : Service() {
 
     private fun createNotificationChannel() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            // Use IMPORTANCE_DEFAULT when foreground service type is location (Android 12+ compatibility)
+            // IMPORTANCE_HIGH can cause ServiceStartForegroundException with FOREGROUND_SERVICE_TYPE_LOCATION
+            val importance = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                NotificationManager.IMPORTANCE_DEFAULT
+            } else {
+                NotificationManager.IMPORTANCE_HIGH
+            }
             val channel = NotificationChannel(
                 "tracking_channel",
                 "Road Guide Tracking",
-                NotificationManager.IMPORTANCE_HIGH
+                importance
             )
             channel.description = "Used for background location tracking notifications"
             channel.enableLights(false)

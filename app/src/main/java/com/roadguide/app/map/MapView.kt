@@ -73,6 +73,12 @@ fun MapView(
             } catch (e: Exception) {
                 mapError.value = e
                 currentOnMapError.value(e)
+                return null
+            }
+            if (nativeView == null) {
+                mapError.value = NullPointerException("NativeMapView was not initialized")
+                currentOnMapError.value(NullPointerException("NativeMapView was not initialized"))
+                return null
             }
             nativeView as android.view.View
         },

@@ -105,17 +105,18 @@ class ActivityRecognitionSource(private val context: Context) {
 
 class ActivityRecognitionReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent?) {
-        val result = ActivityRecognitionResult.extractResult(intent ?: return) ?: return
-        val mostLikely = result.mostProbableActivity
-        val activityType = when {
-            mostLikely.type == DetectedActivity.STILL -> ActivityType.STATIONARY
-            mostLikely.type == DetectedActivity.WALKING -> ActivityType.WALKING
-            mostLikely.type == DetectedActivity.RUNNING -> ActivityType.RUNNING
-            mostLikely.type == DetectedActivity.ON_BICYCLE -> ActivityType.CYCLING
-            mostLikely.type == DetectedActivity.IN_VEHICLE -> ActivityType.IN_VEHICLE
-            mostLikely.type == DetectedActivity.ON_FOOT -> ActivityType.WALKING
-            else -> ActivityType.UNKNOWN
-        }
-        Log.d("ARReceiver", "Detected: $activityType (${mostLikely.type})")
+        try {
+            val result = ActivityRecognitionResult.extractResult(intent ?: return) ?: return
+            val mostLikely = result.mostProbableActivity
+            val activityType = when {
+                mostLikely.type == DetectedActivity.STILL -> ActivityType.STATIONARY
+                mostLikely.type == DetectedActivity.WALKING -> ActivityType.WALKING
+                mostLikely.type == DetectedActivity.RUNNING -> ActivityType.RUNNING
+                mostLikely.type == DetectedActivity.ON_BICYCLE -> ActivityType.CYCLING
+                mostLikely.type == DetectedActivity.IN_VEHICLE -> ActivityType.IN_VEHICLE
+                mostLikely.type == DetectedActivity.ON_FOOT -> ActivityType.WALKING
+                else -> ActivityType.UNKNOWN
+            }
+            Log.d("ARReceiver", "Detected: $activityType (${mostLikely.type})")
     }
 }
